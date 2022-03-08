@@ -34,6 +34,8 @@ namespace Qt3DExtras
 
 class QWindow;
 
+class Qgs3dAxes;
+
 
 #define SIP_NO_FILE
 
@@ -74,6 +76,7 @@ class _3D_EXPORT QgsWindow3DEngine : public QgsAbstract3DEngine
     QSurface *surface() const override;
 
     void setSize( QSize s ) override;
+
   private:
     //! 3D window with all the 3D magic inside
     Qt3DExtras::Qt3DWindow *mWindow3D = nullptr;
@@ -83,6 +86,7 @@ class _3D_EXPORT QgsWindow3DEngine : public QgsAbstract3DEngine
     Qt3DCore::QEntity *mSceneRoot = nullptr;
 
     QgsPreviewQuad *mPreviewQuad = nullptr;
+    Qgs3dAxes *mAxes = nullptr;
     QSize mSize = QSize( 1024, 768 );
 };
 

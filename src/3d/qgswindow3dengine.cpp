@@ -21,6 +21,7 @@
 #include <Qt3DRender/QRenderSettings>
 
 #include "qgspreviewquad.h"
+#include "qgs3daxes.h"
 
 QgsWindow3DEngine::QgsWindow3DEngine( QObject *parent )
   : QgsAbstract3DEngine( parent )
@@ -36,6 +37,9 @@ QgsWindow3DEngine::QgsWindow3DEngine( QObject *parent )
 
   // force switching to no shadow rendering
   setShadowRenderingEnabled( false );
+
+  mAxes = new Qgs3dAxes ( mWindow3D, mWindow3D->camera(), mRoot );
+  // connect( mWindow3D, &Qt3DExtras::Qt3DWindow::resizeEvent, mAxes, &Qgs3dAxes::updateViewport );
 }
 
 QWindow *QgsWindow3DEngine::window()
