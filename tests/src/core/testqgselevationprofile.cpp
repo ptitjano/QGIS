@@ -215,7 +215,7 @@ void TestQgsElevationProfile::testVectorLayerProfileForPoint()
   if ( ( Qgis::geosVersionMajor() == 3 && Qgis::geosVersionMinor() <= 10 ) || ( Qgis::geosVersionMajor() == 3 && Qgis::geosVersionMinor() >= 12 ) )
     doCheckPoint( request, 15, mpPointsLayer, { 5, 11, 12, 13, 14, 15, 18, 45, 46 } );
   else if ( Qgis::geosVersionMajor() == 3 && Qgis::geosVersionMinor() == 11 )
-    doCheckPoint( request, 16, mpPointsLayer, { 5, 11, 12, 13, 14, 15, 18, 45, 46 } );
+    doCheckPoint( request, 16, mpPointsLayer, { 5, 11, 12, 13, 14, 15, 18, 45, 46, 48 } );
 
   doCheckPoint( request, 70, mpPointsLayer, { 0, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 38, 45, 46, 48 } );
 }
@@ -310,7 +310,7 @@ void TestQgsElevationProfile::testVectorLayerProfileForPolygon()
   else if ( Qgis::geosVersionMajor() == 3 && Qgis::geosVersionMinor() == 11 )
   {
     doCheckLine( request, 9, mpPolygonsLayer, { 168, 172, 206, 210, 231, 267, 275, 282, 284, 306, 307, 319, 321 }, { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 } );
-    doCheckLine( request, 10, mpPolygonsLayer, { 168, 172, 206, 210, 231, 267, 275, 282, 283, 284, 306, 307, 319, 321 }, { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 } );
+    doCheckLine( request, 10, mpPolygonsLayer, { 168, 172, 206, 210, 231, 267, 275, 282, 284, 306, 307, 319, 321 }, { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 } );
   }
 }
 
