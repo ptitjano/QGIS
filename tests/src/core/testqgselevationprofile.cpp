@@ -149,9 +149,7 @@ void TestQgsElevationProfile::doCheckPoint( QgsProfileRequest &request, double t
 
   QList<QgsFeatureId> actual = mProfileResults->features.keys();
   std::sort( actual.begin(), actual.end() );
-#if DEBUG
   qWarning() << "actual sorted fid" << actual;
-#endif
 
   QCOMPARE( actual, expected );
 
