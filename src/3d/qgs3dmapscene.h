@@ -193,6 +193,8 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
     double maxAvailableGpuMemory() const { return mMaxAvailableGpuMemory;}
     //! Returns frozen layer name list
     QList<QString> frozenLayers() const;
+    //! Reads available gpu memory from settings or gpu card
+    void readAvailableGpuMemory();
 
     /**
      * Returns a map of 3D map scenes (by name) open in the QGIS application.

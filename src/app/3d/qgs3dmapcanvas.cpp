@@ -126,6 +126,9 @@ void Qgs3DMapCanvas::setMap( Qgs3DMapSettings *map )
     mScene->setObjectName( parentWidget->canvasName() );
   }
 
+  // read defaut gpu memory in 3d map settings
+  mScene->readAvailableGpuMemory();
+
   connect( mScene, &Qgs3DMapScene::fpsCountChanged, this, &Qgs3DMapCanvas::fpsCountChanged );
   connect( mScene, &Qgs3DMapScene::fpsCounterEnabledChanged, this, &Qgs3DMapCanvas::fpsCounterEnabledChanged );
   connect( mScene, &Qgs3DMapScene::viewed2DExtentFrom3DChanged, this, &Qgs3DMapCanvas::viewed2DExtentFrom3DChanged );

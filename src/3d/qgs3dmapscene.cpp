@@ -122,36 +122,6 @@ Qgs3DMapScene::Qgs3DMapScene( Qgs3DMapSettings &map, QgsAbstract3DEngine *engine
   addCameraRotationCenterEntity( mCameraController );
   updateLights();
 
-  // read defaut gpu memory in 3d map settings
-  {
-    const QgsSettings settings;
-    QString fromSetting;
-    double defaultGpuMemory = settings.value( QStringLiteral( "map3d/gpuMemoryLimit" ), 500.0, QgsSettings::App ).toDouble();
-    if ( settings.value( QStringLiteral( "map3d/gpuMemoryLimitAuto" ), true, QgsSettings::App ).toBool() )
-    {
-      int memoryAvailableKB = Qgs3DUtils::estimateGpuMemoryAvailable();
-      if ( memoryAvailableKB == -1 )
-      {
-        mMaxAvailableGpuMemory = defaultGpuMemory;
-        fromSetting = "user setting, auto failed";
-      }
-      else
-      {
-        mMaxAvailableGpuMemory = 0.8 * static_cast<double>( memoryAvailableKB ) / 1024.0;
-        fromSetting = "auto computed";
-      }
-    }
-    else
-    {
-      mMaxAvailableGpuMemory = defaultGpuMemory;
-      fromSetting = "user setting";
-    }
-    QgsDebugMsgLevel( QStringLiteral( "Gpu limit for '%1' is set to %2MB (%3)" )
-                      .arg( objectName() )
-                      .arg( mMaxAvailableGpuMemory )
-                      .arg( fromSetting ), QGS_LOG_LVL_INFO );
-  }
-
   // create terrain entity and other entities from other layers
   createTerrainDeferred();
 
@@ -239,6 +209,37 @@ Qgs3DMapScene::Qgs3DMapScene( Qgs3DMapSettings &map, QgsAbstract3DEngine *engine
 
   on3DAxisSettingsChanged();
 }
+
+void Qgs3DMapScene::readAvailableGpuMemory()
+{
+  const QgsSettings settings;
+  QString fromSetting;
+  double defaultGpuMemory = settings.value( QStringLiteral( "map3d/gpuMemoryLimit" ), 500.0, QgsSettings::App ).toDouble();
+  if ( settings.value( QStringLiteral( "map3d/readMemoryFromGpuCard" ), true, QgsSettings::App ).toBool() )
+  {
+    int memoryAvailableKB = Qgs3DUtils::estimateGpuMemoryAvailable();
+    if ( memoryAvailableKB == -1 )
+    {
+      mMaxAvailableGpuMemory = defaultGpuMemory;
+      fromSetting = "user setting, auto failed";
+    }
+    else
+    {
+      mMaxAvailableGpuMemory = 0.8 * static_cast<double>( memoryAvailableKB ) / 1024.0;
+      fromSetting = "auto computed";
+    }
+  }
+  else
+  {
+    mMaxAvailableGpuMemory = defaultGpuMemory;
+    fromSetting = "user setting";
+  }
+  QgsDebugMsgLevel( QStringLiteral( "Gpu limit for '%1' is set to %2MB (%3)" )
+                    .arg( objectName() )
+                    .arg( mMaxAvailableGpuMemory )
+                    .arg( fromSetting ), QGS_LOG_LVL_INFO );
+}
+
 
 QgsTerrainEntity *Qgs3DMapScene::terrainEntity() const
 {

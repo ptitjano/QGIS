@@ -127,6 +127,10 @@ Returns the max available gpu memory for this 3D scene
 %Docstring
 Returns frozen layer name list
 %End
+    void readAvailableGpuMemory();
+%Docstring
+Reads available gpu memory from settings or gpu card
+%End
 
     static QMap< QString, Qgs3DMapScene * > openScenes();
 %Docstring
