@@ -159,16 +159,13 @@ void QgsChunkedEntity::setHasReachedGpuMemoryLimit( bool reached )
 
       while ( !mChunkLoaderQueue->isEmpty() )
       {
-        QgsChunkListEntry *entry = mChunkLoaderQueue->takeFirst();
-        if ( entry->chunk->state() == QgsChunkNode::QueuedForUpdate )
-          entry->chunk->cancelQueuedForUpdate();
-        else if ( entry->chunk->state() == QgsChunkNode::QueuedForLoad )
-          entry->chunk->cancelQueuedForLoad();
-        else if ( entry->chunk->state() == QgsChunkNode::Loading )
-          entry->chunk->cancelLoading();
-        else if ( entry->chunk->state() == QgsChunkNode::Updating )
-          entry->chunk->cancelUpdating();
+        mChunkLoaderQueue->takeFirst();
       }
+
+      // We do not prune mReplacementQueue as the entries are created in the QgsChunkNode and they will lose prev/next references
+      // If we delete the QgsChunkNode::mReplacementQueueEntry in the QgsChunkNode::freeze function, we will need to recreate it
+      // later when the layer is un-frozen. This mechanism will be too ricky.
+      mRootNode->freezeAllChildren();
 
       emit pendingJobsCountChanged();
     }
@@ -328,7 +325,8 @@ int QgsChunkedEntity::unloadNodes()
       mReplacementQueue->takeEntry( entry );
       currentlyUsedGpuMemory -= Qgs3DUtils::calculateEntityGpuMemorySize( entry->chunk->entity() );
       mActiveNodes.removeOne( entry->chunk );
-      entry->chunk->unloadChunk(); // also deletes the entity!
+      if ( entry->chunk->state() == QgsChunkNode::Loaded ) // will unload a real loaded node. It may have been frozen during the interval
+        entry->chunk->unloadChunk(); // also deletes the entity!
       ++unloaded;
       entry = entryPrev;
     }
@@ -438,11 +436,11 @@ void QgsChunkedEntity::pruneLoaderQueue( const SceneContext &sceneContext )
   QgsChunkListEntry *e = mChunkLoaderQueue->first();
   while ( e )
   {
-    Q_ASSERT( e->chunk->state() == QgsChunkNode::QueuedForLoad || e->chunk->state() == QgsChunkNode::QueuedForUpdate );
-    if ( Qgs3DUtils::isCullable( e->chunk->bbox(), sceneContext.viewProjectionMatrix ) )
-    {
-      toRemoveFromLoaderQueue.append( e->chunk );
-    }
+    if ( e->chunk->state() == QgsChunkNode::QueuedForLoad || e->chunk->state() == QgsChunkNode::QueuedForUpdate )
+      if ( Qgs3DUtils::isCullable( e->chunk->bbox(), sceneContext.viewProjectionMatrix ) )
+      {
+        toRemoveFromLoaderQueue.append( e->chunk );
+      }
     e = e->next;
   }
 
@@ -757,7 +755,7 @@ void QgsChunkedEntity::onActiveJobFinished()
         ln = "unknown_deep";
 
       QgsDebugMsgLevel( _logHeader( ln )
-                        + QStringLiteral( "Checking entity %1. new node_size: %2, old node_size: %3, cur entity_size: %4, " )
+                        + QStringLiteral( "Checking entity %1. new node_size: %2, old node_size: %3, cur entity_size: %4" )
                         .arg( node->tileId().text() )
                         .arg( rootEntityGpuMemory )
                         .arg( mUsedGpuMemory )
@@ -770,7 +768,15 @@ void QgsChunkedEntity::onActiveJobFinished()
       {
         // we need to cancel this pre-loaded entity and set mHasReachedGpuMemoryLimit to true
         setHasReachedGpuMemoryLimit( true );
-        node->cancelLoading();
+        if ( node->state() == QgsChunkNode::Loading ) // can be frozen from elsewhere
+          node->cancelLoading();
+#ifdef QGISDEBUG
+        else
+          QgsDebugMsgLevel( _logHeader( ln )
+                            + QStringLiteral( "Entity %1 is no more in loading state (now %2)" )
+                            .arg( node->tileId().text() )
+                            .arg( node->state() ), QGS_LOG_LVL_DEBUG );
+#endif
         entity->deleteLater(); // delete the failed sub entity now
 
         // compute what we can gain:
@@ -870,6 +876,12 @@ void QgsChunkedEntity::startJobs()
 
 QgsChunkQueueJob *QgsChunkedEntity::startJob( QgsChunkNode *node )
 {
+  if ( mHasReachedGpuMemoryLimit )
+  {
+    node->freeze();
+    return nullptr;
+  }
+
   if ( node->state() == QgsChunkNode::QueuedForLoad )
   {
     QgsEventTracing::addEvent( QgsEventTracing::AsyncBegin, QStringLiteral( "3D" ), QStringLiteral( "Load" ), node->tileId().text() );

@@ -423,7 +423,7 @@ void Qgs3DMapScene::updateScene( bool forceUpdate )
     if ( entity && !entity->hasReachedGpuMemoryLimit() )
       if ( forceUpdate || ( entity->isEnabled() && entity->needsUpdate() ) )
       {
-        entity->handleSceneUpdate( buildSceneContext(), mMaxAvailableGpuMemory - mUsedGpuMemory );
+        entity->handleSceneUpdate( buildSceneContext(), mMaxAvailableGpuMemory * 0.95 - mUsedGpuMemory );
         if ( entity->hasReachedGpuMemoryLimit() )
         {
           QgsDebugMsgLevel( _logHeader( entity->layerName() )
@@ -685,7 +685,7 @@ void Qgs3DMapScene::onLayersChanged()
       if ( sceneEntity && sceneEntity->hasReachedGpuMemoryLimit() )
       {
         QgsDebugMsgLevel( _logHeader( sceneEntity->layerName() )
-                          + QStringLiteral( "Frreeedd! Will try to load new entities!" ), QGS_LOG_LVL_DEBUG );
+                          + QStringLiteral( "Un-frozen! Will try to load new entities!" ), QGS_LOG_LVL_DEBUG );
         sceneEntity->setHasReachedGpuMemoryLimit( false );
       }
     }

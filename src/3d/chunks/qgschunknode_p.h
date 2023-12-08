@@ -256,6 +256,11 @@ class QgsChunkNode
     //! Returns whether the node has any data to be displayed. If not, it will be kept as a skeleton node and will not get loaded anymore
     bool hasData() const { return mHasData; }
 
+    //! Freezes node: cancel any loading/uploading and cancel any queued states
+    void freeze();
+    //! Freezes node and child nodes
+    void freezeAllChildren();
+
   private:
     QgsAABB mBbox;      //!< Bounding box in world coordinates
     float mError;    //!< Error of the node in world coordinates (negative error means that chunk at this level has no data, but there may be children that do)
