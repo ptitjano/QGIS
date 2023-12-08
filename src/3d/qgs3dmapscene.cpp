@@ -79,6 +79,7 @@
 #include "qgswindow3dengine.h"
 #include "qgspointcloudlayer.h"
 #include "qgsmeshterraingenerator.h"
+#include "qgsrasterlayer.h"
 
 std::function< QMap< QString, Qgs3DMapScene * >() > Qgs3DMapScene::sOpenScenesFunction = [] { return QMap< QString, Qgs3DMapScene * >(); };
 
@@ -120,6 +121,36 @@ Qgs3DMapScene::Qgs3DMapScene( Qgs3DMapSettings &map, QgsAbstract3DEngine *engine
   addCameraViewCenterEntity( mEngine->camera() );
   addCameraRotationCenterEntity( mCameraController );
   updateLights();
+
+  // read defaut gpu memory in 3d map settings
+  {
+    const QgsSettings settings;
+    QString fromSetting;
+    double defaultGpuMemory = settings.value( QStringLiteral( "map3d/gpuMemoryLimit" ), 500.0, QgsSettings::App ).toDouble();
+    if ( settings.value( QStringLiteral( "map3d/gpuMemoryLimitAuto" ), true, QgsSettings::App ).toBool() )
+    {
+      int memoryAvailableKB = Qgs3DUtils::estimateGpuMemoryAvailable();
+      if ( memoryAvailableKB == -1 )
+      {
+        mMaxAvailableGpuMemory = defaultGpuMemory;
+        fromSetting = "user setting, auto failed";
+      }
+      else
+      {
+        mMaxAvailableGpuMemory = 0.8 * static_cast<double>( memoryAvailableKB ) / 1024.0;
+        fromSetting = "auto computed";
+      }
+    }
+    else
+    {
+      mMaxAvailableGpuMemory = defaultGpuMemory;
+      fromSetting = "user setting";
+    }
+    QgsDebugMsgLevel( QStringLiteral( "Gpu limit for '%1' is set to %2MB (%3)" )
+                      .arg( objectName() )
+                      .arg( mMaxAvailableGpuMemory )
+                      .arg( fromSetting ), QGS_LOG_LVL_INFO );
+  }
 
   // create terrain entity and other entities from other layers
   createTerrainDeferred();
@@ -389,12 +420,18 @@ void Qgs3DMapScene::updateScene( bool forceUpdate )
   for ( Qt3DCore::QEntity *qtEntity : mLayerEntities.values() )
   {
     Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( qtEntity );
-    if ( entity )
+    if ( entity && !entity->hasReachedGpuMemoryLimit() )
       if ( forceUpdate || ( entity->isEnabled() && entity->needsUpdate() ) )
       {
-        entity->handleSceneUpdate( buildSceneContext() );
+        entity->handleSceneUpdate( buildSceneContext(), mMaxAvailableGpuMemory - mUsedGpuMemory );
         if ( entity->hasReachedGpuMemoryLimit() )
+        {
+          QgsDebugMsgLevel( _logHeader( entity->layerName() )
+                            + QString( "has been disabled!" ), QGS_LOG_LVL_WARNING );
           emit gpuMemoryLimitReached();
+          setSceneState( Canceled );
+          break;
+        }
       }
   }
 
@@ -592,14 +629,14 @@ void Qgs3DMapScene::onLayerRenderer3DChanged()
   QgsDebugMsgLevel( _logHeader( layer->name() ) + QString( "onLayerRenderer3DChanged begin!!!" ), QGS_LOG_LVL_DEBUG );
 
   if ( layer == mTerrainLayer )
-  {
-//    createTerrain();
     return;
-  }
 
   // remove old entity - if any
   removeLayerEntity( layer );
 
+  // TODO??
+  if ( dynamic_cast<QgsRasterLayer *>( layer ) )
+    QgsDebugMsgLevel( _logHeader( layer->name() ) + "todo: add new QgsRasterLayer?", QGS_LOG_LVL_DEBUG );
   // add new entity - if any 3D renderer
   addLayerEntity( layer );
 }
@@ -634,6 +671,24 @@ void Qgs3DMapScene::onLayersChanged()
   for ( QgsMapLayer *layer : std::as_const( layersAdded ) )
   {
     addLayerEntity( layer );
+  }
+
+  QgsDebugMsgLevel( QString( "to remove: %1, to add: %2" )
+                    .arg( layersBefore.size() )
+                    .arg( layersAdded.size() ), QGS_LOG_LVL_DEBUG );
+
+  if ( layersBefore.size() != 0 ) // layers have been disabled, we try to reactivate frozen layers
+  {
+    for ( Qt3DCore::QEntity *entity : mLayerEntities.values() )
+    {
+      Qgs3DMapSceneEntity *sceneEntity = dynamic_cast<Qgs3DMapSceneEntity *>( entity );
+      if ( sceneEntity && sceneEntity->hasReachedGpuMemoryLimit() )
+      {
+        QgsDebugMsgLevel( _logHeader( sceneEntity->layerName() )
+                          + QStringLiteral( "Frreeedd! Will try to load new entities!" ), QGS_LOG_LVL_DEBUG );
+        sceneEntity->setHasReachedGpuMemoryLimit( false );
+      }
+    }
   }
 }
 
@@ -727,22 +782,38 @@ void Qgs3DMapScene::addLayerEntity( QgsMapLayer *layer )
       newEntity->setParent( this );
       mLayerEntities.insert( layer, newEntity );
 
-      finalizeNewEntity( newEntity );
+      // finalizeNewEntity( newEntity ); // TODO: need to finalize newEntity?
 
       if ( Qgs3DMapSceneEntity *sceneNewEntity = qobject_cast<Qgs3DMapSceneEntity *>( newEntity ) )
       {
         sceneNewEntity->setLayerName( layer->name() );
         needsSceneUpdate = true;
 
-        connect( sceneNewEntity, &Qgs3DMapSceneEntity::newEntityCreated, this, [this]( Qt3DCore::QEntity * entity )
+        connect( sceneNewEntity, &Qgs3DMapSceneEntity::newEntityCreated, this, [this, layer]( Qt3DCore::QEntity * entity, double entityGpuMem )
         {
           finalizeNewEntity( entity );
+
+          if ( std::isnan( entityGpuMem ) )
+          {
+            QgsDebugMsgLevel( _logHeader( layer->name() )
+                              + QStringLiteral( "Successfully loaded new entity (unknown memory usage!)." ), QGS_LOG_LVL_DEBUG );
+          }
+          else
+          {
+            QgsDebugMsgLevel( _logHeader( layer->name() )
+                              + QStringLiteral( "Successfully loaded new entity (%1MB). Total used gpu mem: %2MB" )
+                              .arg( entityGpuMem )
+                              .arg( mUsedGpuMemory + entityGpuMem ), QGS_LOG_LVL_DEBUG );
+            mUsedGpuMemory += entityGpuMem;
+          }
         } );
 
         connect( sceneNewEntity, &Qgs3DMapSceneEntity::pendingJobsCountChanged, this, &Qgs3DMapScene::totalPendingJobsCountChanged );
       }
       else
       {
+        finalizeNewEntity( newEntity );
+
         QgsDebugMsgLevel( _logHeader( layer->name() )
                           + QStringLiteral( "is not a Qgs3DMapSceneEntity" ), QGS_LOG_LVL_INFO );
       }
@@ -787,6 +858,11 @@ void Qgs3DMapScene::removeLayerEntity( QgsMapLayer *layer )
     if ( Qgs3DMapSceneEntity *sceneEntity = qobject_cast<Qgs3DMapSceneEntity *>( entity ) )
     {
       disconnect( sceneEntity, &Qgs3DMapSceneEntity::pendingJobsCountChanged, this, &Qgs3DMapScene::totalPendingJobsCountChanged );
+      mUsedGpuMemory -= sceneEntity->usedGpuMemory();
+      QgsDebugMsgLevel( _logHeader( layer->name() )
+                        + QString( "removed! Used gpu mem: %1MB (was reduced by %2MB)" )
+                        .arg( mUsedGpuMemory )
+                        .arg( sceneEntity->usedGpuMemory() ), QGS_LOG_LVL_DEBUG );
     }
     entity->deleteLater();
   }
@@ -951,14 +1027,52 @@ void Qgs3DMapScene::updateSceneState()
     return;
   }
 
-  for ( Qt3DCore::QEntity *qtEntity : mLayerEntities.values() )
+  if ( mSceneState == Canceled )
   {
-    Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( qtEntity );
-    if ( entity && entity->isEnabled() && entity->pendingJobsCount() > 0 )
+    // TODO: really nothing to do?
+  }
+  else
+  {
+    for ( Qt3DCore::QEntity *qtEntity : mLayerEntities.values() )
     {
-      setSceneState( Updating );
-      return;
+      Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( qtEntity );
+      if ( entity && entity->isEnabled() && !entity->hasReachedGpuMemoryLimit() &&  entity->pendingJobsCount() > 0 )
+      {
+        setSceneState( Updating );
+        return;
+      }
     }
+  }
+
+  if ( mSceneState != Ready )
+  {
+    // display layer sumup:
+    double usedGpuMemorySum = 0.0;
+    QgsDebugMsgLevel( QStringLiteral( "Whole scene uses %1MB over %2MB GPU memory. Per layer:" )
+                      .arg( mUsedGpuMemory )
+                      .arg( mMaxAvailableGpuMemory ), QGS_LOG_LVL_DEBUG );
+
+    for ( QgsMapLayer *layer : mLayerEntities.keys() )
+    {
+      Qt3DCore::QEntity *qtEntity = mLayerEntities[layer];
+      Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( qtEntity );
+      if ( entity && entity->isEnabled() )
+      {
+        QgsDebugMsgLevel( QStringLiteral( "    '%1' uses %2MB (frozen: %3)." )
+                          .arg( layer->name() )
+                          .arg( entity->usedGpuMemory() )
+                          .arg( entity->hasReachedGpuMemoryLimit() ), QGS_LOG_LVL_DEBUG );
+        usedGpuMemorySum += entity->usedGpuMemory();
+      }
+    }
+    if ( mUsedGpuMemory != usedGpuMemorySum )
+    {
+      mUsedGpuMemory = usedGpuMemorySum;
+      QgsDebugMsgLevel( QStringLiteral( "/!\\ UPDATED ==> whole scene uses %1MB over %2MB." )
+                        .arg( mUsedGpuMemory )
+                        .arg( mMaxAvailableGpuMemory ), QGS_LOG_LVL_DEBUG );
+    }
+
   }
 
   setSceneState( Ready );
@@ -1253,4 +1367,16 @@ void Qgs3DMapScene::on3DAxisSettingsChanged()
                                &mMap );
     }
   }
+}
+
+QList<QString> Qgs3DMapScene::frozenLayers() const
+{
+  QList<QString> out;
+  for ( QgsMapLayer *l : mLayerEntities.keys() )
+  {
+    Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( mLayerEntities[l] );
+    if ( entity && entity->hasReachedGpuMemoryLimit() )
+      out << l->name();
+  }
+  return out;
 }

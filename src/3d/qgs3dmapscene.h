@@ -113,6 +113,7 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
     //! Enumeration of possible states of the 3D scene
     enum SceneState
     {
+      Canceled,  //!< The scene load has been canceled
       Ready,     //!< The scene is fully loaded/updated
       Updating,  //!< The scene is still being loaded/updated
     };
@@ -185,6 +186,13 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
      * \since QGIS 3.30
      */
     Qgs3DMapSettings *mapSettings() const { return &mMap; }
+
+    //! Returns the used gpu memory for this 3D scene
+    double usedGpuMemory() const { return mUsedGpuMemory;}
+    //! Returns the max available gpu memory for this 3D scene
+    double maxAvailableGpuMemory() const { return mMaxAvailableGpuMemory;}
+    //! Returns frozen layer name list
+    QList<QString> frozenLayers() const;
 
     /**
      * Returns a map of 3D map scenes (by name) open in the QGIS application.
@@ -299,5 +307,9 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
     //! 3d axis visualization
     Qgs3DAxis *m3DAxis = nullptr;
 
+    //! max gpu memory available for this 3D scene (at scene creation)
+    double mMaxAvailableGpuMemory = 0.0;
+    //! current gpu memory used by this 3D scene
+    double mUsedGpuMemory = 0.0;
 };
 #endif // QGS3DMAPSCENE_H

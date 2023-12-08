@@ -64,6 +64,7 @@ Returns number of pending jobs for all chunked entities
 
     enum SceneState
     {
+      Canceled,
       Ready,
       Updating,
     };
@@ -112,6 +113,19 @@ Returns the scene's elevation range
 Returns the 3D map settings.
 
 .. versionadded:: 3.30
+%End
+
+    double usedGpuMemory() const;
+%Docstring
+Returns the used gpu memory for this 3D scene
+%End
+    double maxAvailableGpuMemory() const;
+%Docstring
+Returns the max available gpu memory for this 3D scene
+%End
+    QList<QString> frozenLayers() const;
+%Docstring
+Returns frozen layer name list
 %End
 
     static QMap< QString, Qgs3DMapScene * > openScenes();

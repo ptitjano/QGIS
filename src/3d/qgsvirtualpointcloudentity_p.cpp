@@ -101,7 +101,7 @@ void QgsVirtualPointCloudEntity::createChunkedEntityForSubIndex( int i )
   emit newEntityCreated( newChunkedEntity );
 }
 
-void QgsVirtualPointCloudEntity::handleSceneUpdate( const SceneContext &sceneContext )
+void QgsVirtualPointCloudEntity::handleSceneUpdate( const SceneContext &sceneContext, double availableGpuMemory )
 {
   const QVector<QgsPointCloudSubIndex> subIndexes = provider()->subIndexes();
   for ( int i = 0; i < subIndexes.size(); ++i )
@@ -126,7 +126,7 @@ void QgsVirtualPointCloudEntity::handleSceneUpdate( const SceneContext &sceneCon
 
     setRenderSubIndexAsBbox( i, displayAsBbox );
     if ( !displayAsBbox && mChunkedEntitiesMap.contains( i ) )
-      mChunkedEntitiesMap[i]->handleSceneUpdate( sceneContext );
+      mChunkedEntitiesMap[i]->handleSceneUpdate( sceneContext, availableGpuMemory );
   }
   updateBboxEntity();
 }
@@ -207,5 +207,11 @@ void QgsVirtualPointCloudEntity::setRenderSubIndexAsBbox( int i, bool asBbox )
     return;
 
   mChunkedEntitiesMap[i]->setEnabled( !asBbox );
+}
+
+double QgsVirtualPointCloudEntity::usedGpuMemory() const
+{
+  // TODO: to implement
+  return 0.0;
 }
 /// @endcond

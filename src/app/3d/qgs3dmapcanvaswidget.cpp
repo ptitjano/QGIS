@@ -230,6 +230,10 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   mLabelFpsCounter = new QLabel( this );
   mLabelNavigationSpeed = new QLabel( this );
 
+  mProgressGpuMemory = new QProgressBar( this );
+  mProgressGpuMemory->setTextVisible( true );
+  mProgressGpuMemory->setVisible( true );
+  mProgressGpuMemory->setAlignment( Qt::AlignLeft );
   mAnimationWidget = new Qgs3DAnimationWidget( this );
   mAnimationWidget->setVisible( false );
 
@@ -240,6 +244,7 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   topLayout->setContentsMargins( 0, 0, 0, 0 );
   topLayout->setSpacing( style()->pixelMetric( QStyle::PM_LayoutHorizontalSpacing ) );
   topLayout->addWidget( toolBar );
+  topLayout->addWidget( mProgressGpuMemory );
   topLayout->addStretch( 1 );
   topLayout->addWidget( mLabelPendingJobs );
   topLayout->addWidget( mProgressPendingJobs );
@@ -376,7 +381,9 @@ void Qgs3DMapCanvasWidget::setMapSettings( Qgs3DMapSettings *map )
 
   connect( mCanvas->scene(), &Qgs3DMapScene::totalPendingJobsCountChanged, this, &Qgs3DMapCanvasWidget::onTotalPendingJobsCountChanged );
   connect( mCanvas->scene(), &Qgs3DMapScene::gpuMemoryLimitReached, this, &Qgs3DMapCanvasWidget::onGpuMemoryLimitReached );
+  connect( mCanvas->scene(), &Qgs3DMapScene::sceneStateChanged, this, &Qgs3DMapCanvasWidget::onSceneStateChanged );
 
+  mProgressGpuMemory->setRange( 0,  std::ceil( mCanvas->scene()->maxAvailableGpuMemory() * 1024.0 ) );
   mAnimationWidget->setCameraController( mCanvas->scene()->cameraController() );
   mAnimationWidget->setMap( map );
 
@@ -532,6 +539,30 @@ void Qgs3DMapCanvasWidget::onMainCanvasLayersChanged()
 void Qgs3DMapCanvasWidget::onMainCanvasColorChanged()
 {
   mCanvas->map()->setBackgroundColor( mMainCanvas->canvasColor() );
+}
+
+void Qgs3DMapCanvasWidget::onSceneStateChanged()
+{
+  double newMem = std::min( mCanvas->scene()->usedGpuMemory(), mCanvas->scene()->maxAvailableGpuMemory() );
+  mProgressGpuMemory->setValue( std::ceil( newMem  * 1024.0 ) );
+  mProgressGpuMemory->setToolTip( QStringLiteral( "GPU memory used: %1MB / available: %2MB" )
+                                  .arg( mCanvas->scene()->usedGpuMemory() )
+                                  .arg( mCanvas->scene()->maxAvailableGpuMemory() ) );
+
+  if ( mCanvas->scene()->frozenLayers().isEmpty() )
+  {
+    mProgressGpuMemory->setFormat( "Gpu %p%" );
+  }
+  else
+  {
+    mProgressGpuMemory->setFormat( "Frozen!" );
+  }
+
+  QgsDebugMsgLevel( QStringLiteral( "ProgressBar set to: %1 < %2 (%3MB) < %4" )
+                    .arg( mProgressGpuMemory->minimum() )
+                    .arg( mProgressGpuMemory->value() )
+                    .arg( mCanvas->scene()->usedGpuMemory() )
+                    .arg( mProgressGpuMemory->maximum() ), QGS_LOG_LVL_DEBUG );
 }
 
 void Qgs3DMapCanvasWidget::onTotalPendingJobsCountChanged()

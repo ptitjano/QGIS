@@ -86,6 +86,7 @@ class APP_EXPORT Qgs3DMapCanvasWidget : public QWidget
 
     void onMainCanvasLayersChanged();
     void onMainCanvasColorChanged();
+    void onSceneStateChanged();
     void onTotalPendingJobsCountChanged();
     void updateFpsCount( float fpsCount );
     void cameraNavigationSpeedChanged( double speed );
@@ -105,6 +106,7 @@ class APP_EXPORT Qgs3DMapCanvasWidget : public QWidget
     Qgs3DAnimationWidget *mAnimationWidget = nullptr;
     QgsMapCanvas *mMainCanvas = nullptr;
     QProgressBar *mProgressPendingJobs = nullptr;
+    QProgressBar *mProgressGpuMemory = nullptr;
     QLabel *mLabelPendingJobs = nullptr;
     QLabel *mLabelFpsCounter = nullptr;
     QLabel *mLabelNavigationSpeed = nullptr;

@@ -28,6 +28,8 @@
 
 #include <queue>
 
+/// BDE TO REMOVE:
+#define QGISDEBUG 1
 ///@cond PRIVATE
 
 static QString _logHeader( const QString &layerName )
@@ -107,6 +109,7 @@ QgsChunkedEntity::~QgsChunkedEntity()
   }
 
   delete mChunkLoaderQueue;
+  mChunkLoaderQueue = nullptr;
 
   while ( !mReplacementQueue->isEmpty() )
   {
@@ -117,18 +120,64 @@ QgsChunkedEntity::~QgsChunkedEntity()
   }
 
   delete mReplacementQueue;
+  mReplacementQueue = nullptr;
   delete mRootNode;
+  mRootNode = nullptr;
 
   if ( mOwnsFactory )
   {
     delete mChunkLoaderFactory;
   }
+  mChunkLoaderFactory = nullptr;
 }
 
-
-void QgsChunkedEntity::handleSceneUpdate( const SceneContext &sceneContext )
+void QgsChunkedEntity::setHasReachedGpuMemoryLimit( bool reached )
 {
-  if ( !mIsValid )
+  if ( mHasReachedGpuMemoryLimit != reached )
+  {
+    mHasReachedGpuMemoryLimit = reached;
+    if ( reached )
+    {
+      if ( mActiveJobs.isEmpty() && mChunkLoaderQueue->isEmpty() && mReplacementQueue->isEmpty() )
+        return;
+
+      QgsDebugMsgLevel( _logHeader( mLayerName )
+                        + QStringLiteral( "has reached gpu memory limit. Cleaning up: active %1 | culled %2 | loading %3 loaded %4" )
+                        .arg( mActiveNodes.count() )
+                        .arg( mFrustumCulled )
+                        .arg( mChunkLoaderQueue->count() )
+                        .arg( mReplacementQueue->count() ), QGS_LOG_LVL_DEBUG );
+
+      while ( !mActiveJobs.isEmpty() )
+      {
+        QgsChunkQueueJob *job = mActiveJobs.takeFirst();
+        job->cancel();
+        job->deleteLater();
+      }
+
+      while ( !mChunkLoaderQueue->isEmpty() )
+      {
+        QgsChunkListEntry *entry = mChunkLoaderQueue->takeFirst();
+        if ( entry->chunk->state() == QgsChunkNode::QueuedForUpdate )
+          entry->chunk->cancelQueuedForUpdate();
+        else if ( entry->chunk->state() == QgsChunkNode::QueuedForLoad )
+          entry->chunk->cancelQueuedForLoad();
+        else if ( entry->chunk->state() == QgsChunkNode::Loading )
+          entry->chunk->cancelLoading();
+        else if ( entry->chunk->state() == QgsChunkNode::Updating )
+          entry->chunk->cancelUpdating();
+      }
+
+      emit pendingJobsCountChanged();
+    }
+  }
+}
+
+void QgsChunkedEntity::handleSceneUpdate( const SceneContext &sceneContext, double availableGpuMemory )
+{
+  mLastKnownAvailableGpuMemory = availableGpuMemory;
+
+  if ( !mIsValid || mHasReachedGpuMemoryLimit )
     return;
 
   // Let's start the update by removing from loader queue chunks that
@@ -235,26 +284,37 @@ void QgsChunkedEntity::handleSceneUpdate( const SceneContext &sceneContext )
 
 int QgsChunkedEntity::unloadNodes()
 {
-  double usedGpuMemory = Qgs3DUtils::calculateEntityGpuMemorySize( this );
-  if ( usedGpuMemory <= mGpuMemoryLimit )
+  double currentlyUsedGpuMemory = Qgs3DUtils::calculateEntityGpuMemorySize( this );
+  if ( mUsedGpuMemory < currentlyUsedGpuMemory )
+    QgsDebugMsgLevel( _logHeader( mLayerName )
+                      + QStringLiteral( "GPU memory usage increased! (now_using: %1MB, was: %2MB)" )
+                      .arg( currentlyUsedGpuMemory )
+                      .arg( mUsedGpuMemory ), QGS_LOG_LVL_DEBUG );
+
+  double usableGpuMemory = mLastKnownAvailableGpuMemory + mUsedGpuMemory;
+  if ( currentlyUsedGpuMemory <= usableGpuMemory )
   {
     QgsDebugMsgLevel( _logHeader( mLayerName )
-                      + QStringLiteral( "Nothing to unload! (now_using: %1MB)" )
-                      .arg( usedGpuMemory ), QGS_LOG_LVL_DEBUG );
+                      + QStringLiteral( "Nothing to unload! (now_using: %1MB, limit: %2MB)" )
+                      .arg( currentlyUsedGpuMemory )
+                      .arg( usableGpuMemory ), QGS_LOG_LVL_TRACE );
+    mUsedGpuMemory = currentlyUsedGpuMemory;
     setHasReachedGpuMemoryLimit( false );
     return 0;
   }
 
   QgsDebugMsgLevel( _logHeader( mLayerName )
-                    + QStringLiteral( "Going to unload nodes to free GPU memory (now_using: %1MB)" )
-                    .arg( usedGpuMemory ), QGS_LOG_LVL_DEBUG );
+                    + QStringLiteral( "Going to unload nodes to free GPU memory (was_used: %1MB, now_using: %2MB, limit: %3MB)" )
+                    .arg( mUsedGpuMemory )
+                    .arg( currentlyUsedGpuMemory )
+                    .arg( usableGpuMemory ), QGS_LOG_LVL_DEBUG );
 
   int unloaded = 0;
 
   // unload nodes starting from the back of the queue with currently loaded
   // nodes - i.e. those that have been least recently used
   QgsChunkListEntry *entry = mReplacementQueue->last();
-  while ( entry && usedGpuMemory > mGpuMemoryLimit )
+  while ( entry && currentlyUsedGpuMemory > usableGpuMemory )
   {
     // not all nodes are safe to unload: we do not want to unload nodes
     // that are currently active, or have their descendants active or their
@@ -264,7 +324,7 @@ int QgsChunkedEntity::unloadNodes()
     {
       QgsChunkListEntry *entryPrev = entry->prev;
       mReplacementQueue->takeEntry( entry );
-      usedGpuMemory -= Qgs3DUtils::calculateEntityGpuMemorySize( entry->chunk->entity() );
+      currentlyUsedGpuMemory -= Qgs3DUtils::calculateEntityGpuMemorySize( entry->chunk->entity() );
       mActiveNodes.removeOne( entry->chunk );
       entry->chunk->unloadChunk(); // also deletes the entity!
       ++unloaded;
@@ -276,14 +336,18 @@ int QgsChunkedEntity::unloadNodes()
     }
   }
 
-  if ( usedGpuMemory > mGpuMemoryLimit )
+  if ( currentlyUsedGpuMemory > usableGpuMemory )
   {
     setHasReachedGpuMemoryLimit( true );
     QgsDebugMsgLevel( _logHeader( mLayerName )
-                      + QStringLiteral( "Unable to unload enough nodes to free GPU memory (now_using: %1MB, limit: %2MB)" )
-                      .arg( usedGpuMemory )
-                      .arg( mGpuMemoryLimit ), QGS_LOG_LVL_DEBUG );
+                      + QStringLiteral( "Unable to unload enough nodes to free GPU memory (was_used: %1 MB, now_using: %2 MB, limit: %3 MB)" )
+                      .arg( mUsedGpuMemory )
+                      .arg( currentlyUsedGpuMemory )
+                      .arg( usableGpuMemory ), QGS_LOG_LVL_DEBUG );
   }
+
+  mLastKnownAvailableGpuMemory += ( currentlyUsedGpuMemory - mUsedGpuMemory );
+  mUsedGpuMemory = currentlyUsedGpuMemory;
 
   return unloaded;
 }
@@ -336,6 +400,9 @@ void QgsChunkedEntity::updateNodes( const QList<QgsChunkNode *> &nodes, QgsChunk
 {
   for ( QgsChunkNode *node : nodes )
   {
+    if ( mHasReachedGpuMemoryLimit )
+      return;
+
     if ( node->state() == QgsChunkNode::QueuedForUpdate )
     {
       mChunkLoaderQueue->takeEntry( node->loaderQueueEntry() );
@@ -432,6 +499,9 @@ struct
 
 void QgsChunkedEntity::update( QgsChunkNode *root, const SceneContext &sceneContext )
 {
+  if ( mHasReachedGpuMemoryLimit )
+    return;
+
   QSet<QgsChunkNode *> nodes;
   QVector<ResidencyRequest> residencyRequests;
 
@@ -488,7 +558,7 @@ void QgsChunkedEntity::update( QgsChunkNode *root, const SceneContext &sceneCont
     }
     bool becomesActive = false;
 
-    // QgsDebugMsgLevel( QStringLiteral( "%1|%2|%3  %4  %5" ).arg( node->tileId().x ).arg( node->tileId().y ).arg( node->tileId().z ).arg( mTau ).arg( screenSpaceError( node, sceneContext ) ), 2 );
+    // QgsDebugMsgLevel( QStringLiteral( "%1|%2|%3  %4  %5" ).arg( node->tileId().x ).arg( node->tileId().y ).arg( node->tileId().z ).arg( mTau ).arg( screenSpaceError( node, sceneContext ) ), QGS_LOG_LVL_DEBUG );
     if ( node->childCount() == 0 )
     {
       // there's no children available for this node, so regardless of whether it has an acceptable error
@@ -560,15 +630,24 @@ void QgsChunkedEntity::update( QgsChunkNode *root, const SceneContext &sceneCont
 
     if ( becomesActive )
     {
-      mActiveNodes << node;
-      // if we are not using additive strategy we need to make sure the parent primitives are not counted
-      if ( node->refinementProcess() != Qgis::TileRefinementProcess::Additive && node->parent() && nodes.contains( node->parent() ) )
+      if ( !node->entity() )
       {
-        nodes.remove( node->parent() );
-        renderedCount -= mChunkLoaderFactory->primitivesCount( node->parent() );
+        QgsDebugError( _logHeader( mLayerName )
+                       + QString( "Active node %1 has null entity - this should never happen!" )
+                       .arg( node->tileId().text() ) );
       }
-      renderedCount += mChunkLoaderFactory->primitivesCount( node );
-      nodes.insert( node );
+      else
+      {
+        mActiveNodes << node;
+        // if we are not using additive strategy we need to make sure the parent primitives are not counted
+        if ( node->refinementProcess() != Qgis::TileRefinementProcess::Additive && node->parent() && nodes.contains( node->parent() ) )
+        {
+          nodes.remove( node->parent() );
+          renderedCount -= mChunkLoaderFactory->primitivesCount( node->parent() );
+        }
+        renderedCount += mChunkLoaderFactory->primitivesCount( node );
+        nodes.insert( node );
+      }
     }
   }
 
@@ -623,8 +702,20 @@ void QgsChunkedEntity::onActiveJobFinished()
 
   QgsChunkQueueJob *job = qobject_cast<QgsChunkQueueJob *>( sender() );
   Q_ASSERT( job );
+
+  if ( mHasReachedGpuMemoryLimit )
+  {
+    // cleanup the job that has just finished
+    mActiveJobs.removeOne( job );
+    job->deleteLater();
+    emit pendingJobsCountChanged();
+
+    return;
+  }
+
   Q_ASSERT( mActiveJobs.contains( job ) );
 
+  // this <==> root entity --> node <==> sub node/chunk loaded by this
   QgsChunkNode *node = job->chunk();
 
   if ( QgsChunkLoader *loader = qobject_cast<QgsChunkLoader *>( job ) )
@@ -638,25 +729,86 @@ void QgsChunkedEntity::onActiveJobFinished()
     QgsEventTracing::ScopedEvent e( "3D", QString( "create" ) );
     // mark as loaded + create entity
     Qt3DCore::QEntity *entity = node->loader()->createEntity( this );
+    // entity <==> sub node entity (attached to this, ie. root entity)
 
     if ( entity )
     {
-      // The returned QEntity is initially enabled, so let's add it to active nodes too.
-      // Soon afterwards updateScene() will be called, which would remove it from the scene
-      // if the node should not be shown anymore. Ideally entities should be initially disabled,
-      // but there seems to be a bug in Qt3D - if entity is disabled initially, showing it
-      // by setting setEnabled(true) is not reliable (entity eventually gets shown, but only after
-      // some more changes in the scene) - see https://github.com/qgis/QGIS/issues/48334
-      mActiveNodes << node;
+      double rootEntityGpuMemory = Qgs3DUtils::calculateEntityGpuMemorySize( this );
+      double prevUsedGpuMemory = mUsedGpuMemory;
+      double entityGpuMemory = rootEntityGpuMemory - prevUsedGpuMemory;
+#ifdef QGISDEBUG
+      // search layer name for log purpose
+      Qgs3DMapSceneEntity *ent = dynamic_cast<Qgs3DMapSceneEntity *>( this );
+      while ( ent->layerName().isEmpty() || ent->layerName() == "unknown" )
+      {
+        if ( ent->parent() && dynamic_cast<Qgs3DMapSceneEntity *>( ent->parent() ) )
+          ent = dynamic_cast<Qgs3DMapSceneEntity *>( ent->parent() );
+        else
+          break;
+      }
+      QString ln = ent->layerName();
+      if ( ln.isEmpty() || ln == "unknown" )
+        ln = "unknown_deep";
 
-      // load into node (should be in main thread again)
-      node->setLoaded( entity );
+      QgsDebugMsgLevel( _logHeader( ln )
+                        + QStringLiteral( "Checking entity %1. new node_size: %2, old node_size: %3, cur entity_size: %4, " )
+                        .arg( node->tileId().text() )
+                        .arg( rootEntityGpuMemory )
+                        .arg( mUsedGpuMemory )
+                        .arg( entityGpuMemory )
+                        , QGS_LOG_LVL_DEBUG );
+#endif
 
-      mReplacementQueue->insertFirst( node->replacementQueueEntry() );
+      // check memory consumption, ie. if we are near or will reach available memory
+      if ( entityGpuMemory * mActiveJobs.size() / 2.0 > mLastKnownAvailableGpuMemory )
+      {
+        // we need to cancel this pre-loaded entity and set mHasReachedGpuMemoryLimit to true
+        setHasReachedGpuMemoryLimit( true );
+        node->cancelLoading();
+        entity->deleteLater(); // delete the failed sub entity now
 
-      emit newEntityCreated( entity );
+        // compute what we can gain:
+        double rootEntityGpuMemoryAfter = Qgs3DUtils::calculateEntityGpuMemorySize( this );
+        mLastKnownAvailableGpuMemory -= ( rootEntityGpuMemoryAfter - rootEntityGpuMemory );
+        mUsedGpuMemory = rootEntityGpuMemoryAfter;
+#ifdef QGISDEBUG
+        QgsDebugMsgLevel( _logHeader( ln )
+                          + QStringLiteral( "Cancel loading %1. node_size: %2, availGpuMem: %3" )
+                          .arg( node->tileId().text() )
+                          .arg( mUsedGpuMemory )
+                          .arg( mLastKnownAvailableGpuMemory ), QGS_LOG_LVL_DEBUG );
+#endif
+      }
+      else
+      {
+        // we can keep this pre-loaded entity and add it to mActiveNodes
+        mLastKnownAvailableGpuMemory -= ( rootEntityGpuMemory - prevUsedGpuMemory );
+        mUsedGpuMemory = rootEntityGpuMemory;
+#ifdef QGISDEBUG
+        QgsDebugMsgLevel( _logHeader( ln )
+                          + QStringLiteral( "New entity loaded %1. node_size: %2, availGpuMem: %3" )
+                          .arg( node->tileId().text() )
+                          .arg( mUsedGpuMemory )
+                          .arg( mLastKnownAvailableGpuMemory ), QGS_LOG_LVL_DEBUG );
+#endif
+
+        // The returned QEntity is initially enabled, so let's add it to active nodes too.
+        // Soon afterwards updateScene() will be called, which would remove it from the scene
+        // if the node should not be shown anymore. Ideally entities should be initially disabled,
+        // but there seems to be a bug in Qt3D - if entity is disabled initially, showing it
+        // by setting setEnabled(true) is not reliable (entity eventually gets shown, but only after
+        // some more changes in the scene) - see https://github.com/qgis/QGIS/issues/48334
+        mActiveNodes << node;
+
+        // load into node (should be in main thread again)
+        node->setLoaded( entity );
+
+        mReplacementQueue->insertFirst( node->replacementQueueEntry() );
+
+        emit newEntityCreated( entity, entityGpuMemory );
+      }
     }
-    else
+    else // entity is NULL
     {
       node->setHasData( false );
       node->cancelLoading();
@@ -665,11 +817,22 @@ void QgsChunkedEntity::onActiveJobFinished()
     // now we need an update!
     mNeedsUpdate = true;
   }
-  else
+  else // job is NOT a QgsChunkLoader
   {
-    Q_ASSERT( node->state() == QgsChunkNode::Updating );
-    QgsEventTracing::addEvent( QgsEventTracing::AsyncEnd, QStringLiteral( "3D" ), QStringLiteral( "Update" ), node->tileId().text() );
-    node->setUpdated();
+    if ( ! mHasReachedGpuMemoryLimit ) // if mHasReachedGpuMemoryLimit some job cannot be finished yet, node will have bad state
+    {
+      if ( node->state() != QgsChunkNode::Updating )
+      {
+        QgsDebugMsgLevel( QStringLiteral( "Node %1 should be in state Updating but is state: '%2'" )
+                          .arg( node->tileId().text() )
+                          .arg( node->state() ), QGS_LOG_LVL_WARNING );
+      }
+      else
+      {
+        QgsEventTracing::addEvent( QgsEventTracing::AsyncEnd, QStringLiteral( "3D" ), QStringLiteral( "Update" ), node->tileId().text() );
+        node->setUpdated();
+      }
+    }
   }
 
   // cleanup the job that has just finished
@@ -685,7 +848,7 @@ void QgsChunkedEntity::onActiveJobFinished()
 
 void QgsChunkedEntity::startJobs()
 {
-  while ( mActiveJobs.count() < 4 && !mChunkLoaderQueue->isEmpty() )
+  while ( !mHasReachedGpuMemoryLimit && mActiveJobs.count() < 4 && !mChunkLoaderQueue->isEmpty() )
   {
     QgsChunkListEntry *entry = mChunkLoaderQueue->takeFirst();
     Q_ASSERT( entry );
@@ -726,12 +889,17 @@ QgsChunkQueueJob *QgsChunkedEntity::startJob( QgsChunkNode *node )
 
 void QgsChunkedEntity::cancelActiveJob( QgsChunkQueueJob *job )
 {
-  Q_ASSERT( job );
+  if ( !job || !mActiveJobs.contains( job ) )
+  {
+    QgsDebugError( _logHeader( mLayerName )
+                   + "Cannot cancel null job!" );
+    return;
+  }
 
   QgsChunkNode *node = job->chunk();
   disconnect( job, &QgsChunkQueueJob::finished, this, &QgsChunkedEntity::onActiveJobFinished );
 
-  if ( qobject_cast<QgsChunkLoader *>( job ) )
+  if ( dynamic_cast<QgsChunkLoader *>( job ) )
   {
     // return node back to skeleton
     node->cancelLoading();

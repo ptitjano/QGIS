@@ -72,7 +72,7 @@ class QgsChunkedEntity : public Qgs3DMapSceneEntity
     ~QgsChunkedEntity() override;
 
     //! Called when e.g. camera changes and entity may need updated
-    void handleSceneUpdate( const SceneContext &sceneContext ) override;
+    void handleSceneUpdate( const SceneContext &sceneContext, double availableGpuMemory ) override;
 
     //! Returns number of jobs pending for this entity until it is fully loaded/updated in the current view
     int pendingJobsCount() const override;
@@ -94,6 +94,12 @@ class QgsChunkedEntity : public Qgs3DMapSceneEntity
     QgsChunkNode *rootNode() const { return mRootNode; }
 
     /**
+     * Returns the limit of the GPU memory used to render the entity in megabytes
+     * \since QGIS 3.36
+     */
+    double usedGpuMemory() const override { return mUsedGpuMemory; }
+
+    /**
      * Checks if \a ray intersects the entity by using the specified parameters in \a context and returns information about the hits.
      * This method is typically used by map tools that need to identify the exact location on a 3d entity that the mouse cursor points at,
      * as well as properties of the intersected entity (fid for vector layers, point cloud attributes for point cloud layers etc). The camera position
@@ -103,6 +109,8 @@ class QgsChunkedEntity : public Qgs3DMapSceneEntity
      * \since QGIS 3.32
      */
     virtual QVector<QgsRayCastingUtils::RayHit> rayIntersection( const QgsRayCastingUtils::Ray3D &ray, const QgsRayCastingUtils::RayCastContext &context ) const;
+
+    void setHasReachedGpuMemoryLimit( bool reached ) override;
 
   protected:
     //! Cancels the background job that is currently in progress
@@ -168,6 +176,9 @@ class QgsChunkedEntity : public Qgs3DMapSceneEntity
     bool mIsValid = true;
 
     int mPrimitivesBudget = std::numeric_limits<int>::max();
+
+    double mLastKnownAvailableGpuMemory = 0.0; // in megabytes
+    double mUsedGpuMemory = 0.0; // in megabytes
 };
 
 /// @endcond
