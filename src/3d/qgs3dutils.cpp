@@ -45,6 +45,9 @@
 #include "qgspointcloudclassifiedrenderer.h"
 
 #include <QtMath>
+#include <QOffscreenSurface>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
 #include <Qt3DExtras/QPhongMaterial>
 #include <Qt3DRender/QRenderSettings>
 
@@ -54,6 +57,14 @@ typedef Qt3DRender::QBuffer Qt3DQBuffer;
 #else
 #include <Qt3DCore/QBuffer>
 typedef Qt3DCore::QBuffer Qt3DQBuffer;
+#endif
+
+#ifndef GL_TEXTURE_FREE_MEMORY_ATI
+#define GL_TEXTURE_FREE_MEMORY_ATI 0x87FC
+#endif
+
+#ifndef GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX
+#define GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
 #endif
 
 // declared here as Qgs3DTypes has no cpp file
@@ -167,6 +178,45 @@ double Qgs3DUtils::calculateEntityGpuMemorySize( Qt3DCore::QEntity *entity )
   return usedGpuMemory / 1024.0 / 1024.0;
 }
 
+int Qgs3DUtils::estimateGpuMemoryAvailable()
+{
+  int availableMemoryKB = -1;
+
+  QOffscreenSurface offscreen;
+  QOpenGLContext ctx;
+
+  offscreen.setFormat( QSurfaceFormat::defaultFormat() );
+  offscreen.create();
+  Q_ASSERT_X( offscreen.isValid(), Q_FUNC_INFO, "Unable to create offscreen surface to gather capabilities" );
+
+  ctx.setFormat( QSurfaceFormat::defaultFormat() );
+  if ( ctx.create() )
+  {
+    ctx.makeCurrent( &offscreen );
+    const QSurfaceFormat format = ctx.format();
+    auto funcs = ctx.functions();
+
+    // nvidia memory cards
+    if ( ctx.hasExtension( "GL_NVX_gpu_memory_info" ) )
+    {
+      funcs->glGetIntegerv( GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &availableMemoryKB );
+    }
+    // amd memory cards
+    else if ( ctx.hasExtension( "GL_ATI_meminfo" ) )
+    {
+      GLint info[4];
+      funcs->glGetIntegerv( GL_TEXTURE_FREE_MEMORY_ATI, info );
+      availableMemoryKB = info[0];
+    }
+
+    if ( availableMemoryKB == 0 )
+    {
+      availableMemoryKB = -1;
+    }
+  }
+
+  return availableMemoryKB;
+}
 
 bool Qgs3DUtils::exportAnimation( const Qgs3DAnimationSettings &animationSettings,
                                   Qgs3DMapSettings &mapSettings,

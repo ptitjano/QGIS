@@ -82,6 +82,16 @@ class _3D_EXPORT Qgs3DUtils
     static double calculateEntityGpuMemorySize( Qt3DCore::QEntity *entity );
 
     /**
+     * This routine tries to estimate the GPU available memory in kb;
+     * It uses some vendor OpenGL extensions. It works for AMD and Nvidia
+     * but there is no available extension for an Intel card.
+     * It returns -1 in case of failure.
+     *
+     * \since QGIS 3.36
+     */
+    static int estimateGpuMemoryAvailable();
+
+    /**
      * Captures 3D animation frames to the selected folder
      *
      * \param animationSettings Settings for keyframes and camera
