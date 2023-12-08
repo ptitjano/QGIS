@@ -69,11 +69,6 @@ typedef SInt32 SRefCon;
 #ifdef HAVE_CRASH_HANDLER
 #if defined(__GLIBC__) || defined(__FreeBSD__)
 #define QGIS_CRASH
-#include <unistd.h>
-#include <execinfo.h>
-#include <csignal>
-#include <sys/wait.h>
-#include <cerrno>
 #endif
 #endif
 
@@ -211,252 +206,12 @@ bool bundleclicked( int argc, char *argv[] )
   return ( argc > 1 && memcmp( argv[1], "-psn_", 5 ) == 0 );
 }
 
-void myPrint( const char *fmt, ... )
-{
-  va_list ap;
-  va_start( ap, fmt );
-#if defined(Q_OS_WIN)
-  char buffer[1024];
-  vsnprintf( buffer, sizeof buffer, fmt, ap );
-  OutputDebugString( buffer );
-#else
-  vfprintf( stderr, fmt, ap );
-#endif
-  va_end( ap );
-}
-
-static void dumpBacktrace( unsigned int depth )
-{
-  if ( depth == 0 )
-    depth = 20;
-
-#ifdef QGIS_CRASH
-  // Below there is a bunch of operations that are not safe in multi-threaded
-  // environment (dup()+close() combo, wait(), juggling with file descriptors).
-  // Maybe some problems could be resolved with dup2() and waitpid(), but it seems
-  // that if the operations on descriptors are not serialized, things will get nasty.
-  // That's why there's this lovely mutex here...
-  static QMutex sMutex;
-  QMutexLocker locker( &sMutex );
-
-  int stderr_fd = -1;
-  if ( access( "/usr/bin/c++filt", X_OK ) < 0 )
-  {
-    myPrint( "Stacktrace (c++filt NOT FOUND):\n" );
-  }
-  else
-  {
-    int fd[2];
-
-    if ( pipe( fd ) == 0 && fork() == 0 )
-    {
-      close( STDIN_FILENO ); // close stdin
-
-      // stdin from pipe
-      if ( dup( fd[0] ) != STDIN_FILENO )
-      {
-        QgsDebugError( QStringLiteral( "dup to stdin failed" ) );
-      }
-
-      close( fd[1] );        // close writing end
-      execl( "/usr/bin/c++filt", "c++filt", static_cast< char * >( nullptr ) );
-      perror( "could not start c++filt" );
-      exit( 1 );
-    }
-
-    myPrint( "Stacktrace (piped through c++filt):\n" );
-    stderr_fd = dup( STDERR_FILENO );
-    close( fd[0] );          // close reading end
-    close( STDERR_FILENO );  // close stderr
-
-    // stderr to pipe
-    int stderr_new = dup( fd[1] );
-    if ( stderr_new != STDERR_FILENO )
-    {
-      if ( stderr_new >= 0 )
-        close( stderr_new );
-      QgsDebugError( QStringLiteral( "dup to stderr failed" ) );
-    }
-
-    close( fd[1] );  // close duped pipe
-  }
-
-  void **buffer = new void *[ depth ];
-  int nptrs = backtrace( buffer, depth );
-  backtrace_symbols_fd( buffer, nptrs, STDERR_FILENO );
-  delete [] buffer;
-  if ( stderr_fd >= 0 )
-  {
-    int status;
-    close( STDERR_FILENO );
-    int dup_stderr = dup( stderr_fd );
-    if ( dup_stderr != STDERR_FILENO )
-    {
-      close( dup_stderr );
-      QgsDebugError( QStringLiteral( "dup to stderr failed" ) );
-    }
-    close( stderr_fd );
-    wait( &status );
-  }
-#elif defined(Q_OS_WIN)
-  // TODO Replace with incoming QgsStackTrace
-#else
-  Q_UNUSED( depth )
-#endif
-}
-
-#ifdef QGIS_CRASH
 void qgisCrash( int signal )
 {
-  fprintf( stderr, "QGIS died on signal %d", signal );
-
-  QgsCrashHandler::handle( 0 );
-
-  if ( access( "/usr/bin/gdb", X_OK ) == 0 )
-  {
-    // take full stacktrace using gdb
-    // http://stackoverflow.com/questions/3151779/how-its-better-to-invoke-gdb-from-program-to-print-its-stacktrace
-    // unfortunately, this is not so simple. the proper method is way more OS-specific
-    // than this code would suggest, see http://stackoverflow.com/a/1024937
-
-    char exename[512];
-#if defined(__FreeBSD__)
-    int len = readlink( "/proc/curproc/file", exename, sizeof( exename ) - 1 );
-#else
-    int len = readlink( "/proc/self/exe", exename, sizeof( exename ) - 1 );
-#endif
-    if ( len < 0 )
-    {
-      myPrint( "Could not read link (%d: %s)\n", errno, strerror( errno ) );
-    }
-    else
-    {
-      exename[ len ] = 0;
-
-      char pidstr[32];
-      snprintf( pidstr, sizeof pidstr, "--pid=%d", getpid() );
-
-      int gdbpid = fork();
-      if ( gdbpid == 0 )
-      {
-        // attach, backtrace and continue
-        execl( "/usr/bin/gdb", "gdb", "-q", "-batch", "-n", pidstr, "-ex", "thread", "-ex", "bt full", exename, NULL );
-        perror( "cannot exec gdb" );
-        exit( 1 );
-      }
-      else if ( gdbpid >= 0 )
-      {
-        int status;
-        waitpid( gdbpid, &status, 0 );
-        myPrint( "gdb returned %d\n", status );
-      }
-      else
-      {
-        myPrint( "Cannot fork (%d: %s)\n", errno, strerror( errno ) );
-        dumpBacktrace( 256 );
-      }
-    }
-  }
-
-  abort();
-}
-#endif
-
-/*
- * Hook into the qWarning/qFatal mechanism so that we can channel messages
- * from libpng to the user.
- *
- * Some JPL WMS images tend to overload the libpng 1.2.2 implementation
- * somehow (especially when zoomed in)
- * and it would be useful for the user to know why their picture turned up blank
- *
- * Based on qInstallMsgHandler example code in the Qt documentation.
- *
- */
-void myMessageOutput( QtMsgType type, const QMessageLogContext &, const QString &msg )
-{
-  switch ( type )
-  {
-    case QtDebugMsg:
-      myPrint( "%s\n", msg.toLocal8Bit().constData() );
-      if ( msg.startsWith( QLatin1String( "Backtrace" ) ) )
-      {
-        const QString trace = msg.mid( 9 );
-        dumpBacktrace( atoi( trace.toLocal8Bit().constData() ) );
-      }
-      break;
-    case QtCriticalMsg:
-      myPrint( "Critical: %s\n", msg.toLocal8Bit().constData() );
-
-#ifdef QGISDEBUG
-      dumpBacktrace( 20 );
-#endif
-
-      break;
-    case QtWarningMsg:
-    {
-      /* Ignore:
-       * - libpng iCPP known incorrect SRGB profile errors (which are thrown by 3rd party components
-       *  we have no control over and have low value anyway);
-       * - QtSVG warnings with regards to lack of implementation beyond Tiny SVG 1.2
-       */
-      if ( msg.contains( QLatin1String( "QXcbClipboard" ), Qt::CaseInsensitive ) ||
-           msg.contains( QLatin1String( "QGestureManager::deliverEvent" ), Qt::CaseInsensitive ) ||
-           msg.startsWith( QLatin1String( "libpng warning: iCCP: known incorrect sRGB profile" ), Qt::CaseInsensitive ) ||
-           msg.contains( QLatin1String( "Could not add child element to parent element because the types are incorrect" ), Qt::CaseInsensitive ) ||
-           msg.contains( QLatin1String( "OpenType support missing for" ), Qt::CaseInsensitive ) )
-        break;
-
-      myPrint( "Warning: %s\n", msg.toLocal8Bit().constData() );
-
-#ifdef QGISDEBUG
-      // Print all warnings except setNamedColor.
-      // Only seems to happen on windows
-      if ( !msg.startsWith( QLatin1String( "QColor::setNamedColor: Unknown color name 'param" ), Qt::CaseInsensitive )
-           && !msg.startsWith( QLatin1String( "Trying to create a QVariant instance of QMetaType::Void type, an invalid QVariant will be constructed instead" ), Qt::CaseInsensitive )
-           && !msg.startsWith( QLatin1String( "Logged warning" ), Qt::CaseInsensitive ) )
-      {
-        // TODO: Verify this code in action.
-        dumpBacktrace( 20 );
-
-        // also be super obnoxious -- we DON'T want to allow these errors to be ignored!!
-        if ( QgisApp::instance() && QgisApp::instance()->messageBar() && QgisApp::instance()->thread() == QThread::currentThread() )
-        {
-          QgisApp::instance()->messageBar()->pushCritical( QStringLiteral( "Qt" ), msg );
-        }
-        else
-        {
-          QgsMessageLog::logMessage( msg, QStringLiteral( "Qt" ) );
-        }
-      }
-#endif
-
-      // TODO: Verify this code in action.
-      if ( msg.startsWith( QLatin1String( "libpng error:" ), Qt::CaseInsensitive ) )
-      {
-        // Let the user know
-        QgsMessageLog::logMessage( msg, QStringLiteral( "libpng" ) );
-      }
-
-      break;
-    }
-
-    case QtFatalMsg:
-    {
-      myPrint( "Fatal: %s\n", msg.toLocal8Bit().constData() );
 #ifdef QGIS_CRASH
-      qgisCrash( -1 );
-#else
-      dumpBacktrace( 256 );
-      abort();                    // deliberately dump core
+  QgsCrashHandler::handle( 0 );
 #endif
-      break; // silence warnings
-    }
-
-    case QtInfoMsg:
-      myPrint( "Info: %s\n", msg.toLocal8Bit().constData() );
-      break;
-  }
+  QgsLogger::qgisCrash( signal );
 }
 
 #ifdef _MSC_VER
@@ -512,6 +267,8 @@ int main( int argc, char *argv[] )
 #endif
 
   QgsDebugMsgLevel( QStringLiteral( "Starting qgis main" ), 1 );
+  QgsDebugMsgLevel( QStringLiteral( "Qgis logger will use this format: %1" ).arg( QgsLogger::logFormat().toLocal8Bit().constData() ), QGS_LOG_LVL_DEBUG );
+
 #ifdef WIN32  // Windows
 #ifdef _MSC_VER
   _set_fmode( _O_BINARY );
@@ -519,11 +276,6 @@ int main( int argc, char *argv[] )
   _fmode = _O_BINARY;
 #endif  // _MSC_VER
 #endif  // WIN32
-
-  // Set up the custom qWarning/qDebug custom handler
-#ifndef ANDROID
-  qInstallMessageHandler( myMessageOutput );
-#endif
 
 #ifdef QGIS_CRASH
   signal( SIGQUIT, qgisCrash );

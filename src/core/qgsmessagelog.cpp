@@ -26,19 +26,35 @@ class QgsMessageLogConsole;
 
 void QgsMessageLog::logMessage( const QString &message, const QString &tag, Qgis::MessageLevel level, bool notifyUser )
 {
+  // convert Qgis::MessageLevel to QgsLogger levels
+  int loggerLevel;
   switch ( level )
   {
     case Qgis::MessageLevel::Info:
     case Qgis::MessageLevel::Success:
     case Qgis::MessageLevel::NoLevel:
-      QgsDebugMsgLevel( QStringLiteral( "%1 %2[%3] %4" ).arg( QDateTime::currentDateTime().toString( Qt::ISODate ), tag ).arg( static_cast< int >( level ) ).arg( message ), 1 );
+      loggerLevel = QGS_LOG_LVL_INFO;
       break;
 
     case Qgis::MessageLevel::Warning:
-    case Qgis::MessageLevel::Critical:
-      QgsDebugError( QStringLiteral( "%1 %2[%3] %4" ).arg( QDateTime::currentDateTime().toString( Qt::ISODate ), tag ).arg( static_cast< int >( level ) ).arg( message ) );
+      loggerLevel = QGS_LOG_LVL_WARNING;
       break;
+
+    case Qgis::MessageLevel::Critical:
+      loggerLevel = QGS_LOG_LVL_CRITICAL;
+      break;
+
+    default:
+      loggerLevel = QGS_LOG_LVL_INFO;
   }
+
+  // TODO must use the QLoggingCategory
+  Q_UNUSED( loggerLevel );
+  QgsDebugMsgLevel( QStringLiteral( "%1[%2] %3" )
+                    .arg( tag )
+                    .arg( static_cast< int >( level ) )
+                    .arg( message )
+                    , loggerLevel );
 
   QgsApplication::messageLog()->emitMessage( message, tag, level, notifyUser );
 }
