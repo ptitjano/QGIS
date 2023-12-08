@@ -274,7 +274,7 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
     void updateScene();
     void finalizeNewEntity( Qt3DCore::QEntity *newEntity );
     int maximumTextureSize() const;
-    Qgs3DMapSceneEntity::SceneState buildSceneState( ) const;
+    Qgs3DMapSceneEntity::SceneContext buildSceneContext( ) const;
 
   private:
     Qgs3DMapSettings &mMap;

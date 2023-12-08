@@ -202,10 +202,10 @@ Qgs3DMapScene::Qgs3DMapScene( Qgs3DMapSettings &map, QgsAbstract3DEngine *engine
   on3DAxisSettingsChanged();
 }
 
-QgsTerrainEntity* Qgs3DMapScene::terrainEntity() const
+QgsTerrainEntity *Qgs3DMapScene::terrainEntity() const
 {
   if ( mTerrainLayer )
-      return dynamic_cast<QgsTerrainEntity *>( mLayerEntities[mTerrainLayer] );
+    return dynamic_cast<QgsTerrainEntity *>( mLayerEntities[mTerrainLayer] );
 
   return nullptr;
 }
@@ -302,16 +302,16 @@ float Qgs3DMapScene::worldSpaceError( float epsilon, float distance ) const
   return err;
 }
 
-Qgs3DMapSceneEntity::SceneState Qgs3DMapScene::buildSceneState( ) const
+Qgs3DMapSceneEntity::SceneContext Qgs3DMapScene::buildSceneContext( ) const
 {
   Qt3DRender::QCamera *camera = mEngine->camera();
-  Qgs3DMapSceneEntity::SceneState state;
-  state.cameraFov = camera->fieldOfView();
-  state.cameraPos = camera->position();
+  Qgs3DMapSceneEntity::SceneContext sceneContext;
+  sceneContext.cameraFov = camera->fieldOfView();
+  sceneContext.cameraPos = camera->position();
   const QSize size = mEngine->size();
-  state.screenSizePx = std::max( size.width(), size.height() ); // TODO: is this correct?
-  state.viewProjectionMatrix = camera->projectionMatrix() * camera->viewMatrix();
-  return state;
+  sceneContext.screenSizePx = std::max( size.width(), size.height() ); // TODO: is this correct?
+  sceneContext.viewProjectionMatrix = camera->projectionMatrix() * camera->viewMatrix();
+  return sceneContext;
 }
 
 void Qgs3DMapScene::onCameraChanged()
@@ -383,7 +383,7 @@ void Qgs3DMapScene::updateScene()
     Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( qtEntity );
     if ( entity )
     {
-      entity->handleSceneUpdate( buildSceneState() );
+      entity->handleSceneUpdate( buildSceneContext() );
       if ( entity->hasReachedGpuMemoryLimit() )
         emit gpuMemoryLimitReached();
     }
@@ -466,7 +466,7 @@ void Qgs3DMapScene::onFrameTriggered( float dt )
     if ( entity && entity->isEnabled() && entity->needsUpdate() )
     {
       QgsDebugMsgLevel( QStringLiteral( "need for update" ), 2 );
-      entity->handleSceneUpdate( buildSceneState() );
+      entity->handleSceneUpdate( buildSceneContext() );
       if ( entity->hasReachedGpuMemoryLimit() )
         emit gpuMemoryLimitReached();
     }
@@ -754,7 +754,7 @@ void Qgs3DMapScene::removeLayerEntity( QgsMapLayer *layer )
 
   if ( entity )
   {
-    if ( Qgs3DMapSceneEntity * sceneEntity = qobject_cast<Qgs3DMapSceneEntity *>( entity ) )
+    if ( Qgs3DMapSceneEntity *sceneEntity = qobject_cast<Qgs3DMapSceneEntity *>( entity ) )
     {
       disconnect( sceneEntity, &Qgs3DMapSceneEntity::pendingJobsCountChanged, this, &Qgs3DMapScene::totalPendingJobsCountChanged );
     }
