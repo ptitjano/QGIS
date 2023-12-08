@@ -82,6 +82,13 @@
 
 std::function< QMap< QString, Qgs3DMapScene * >() > Qgs3DMapScene::sOpenScenesFunction = [] { return QMap< QString, Qgs3DMapScene * >(); };
 
+static QString _logHeader( const QString &layerName )
+{
+  if ( layerName.isEmpty() )
+    return QStringLiteral( "{layer:<not_set>} " );
+  return QStringLiteral( "{layer:%1} " ).arg( layerName );
+}
+
 Qgs3DMapScene::Qgs3DMapScene( Qgs3DMapSettings &map, QgsAbstract3DEngine *engine )
   : mMap( map )
   , mEngine( engine )
@@ -488,16 +495,16 @@ void Qgs3DMapScene::onFrameTriggered( float dt )
 
 void Qgs3DMapScene::createTerrain()
 {
-  qDebug() << "=============== Qgs3DMapScene::createTerrain !!!";
+  QgsDebugMsgLevel( "createTerrain begin!!!", QGS_LOG_LVL_DEBUG );
   if ( mTerrainLayer )
   {
-    qDebug() << "=============== Qgs3DMapScene::createTerrain should removeLayerEntity";
+    QgsDebugMsgLevel( "should removeLayerEntity", QGS_LOG_LVL_DEBUG );
     removeLayerEntity( mTerrainLayer );
   }
 
   if ( !mTerrainUpdateScheduled )
   {
-    qDebug() << "=============== Qgs3DMapScene::createTerrain should createTerrainDeferred";
+    QgsDebugMsgLevel( "should createTerrainDeferred", QGS_LOG_LVL_DEBUG );
     // defer re-creation of terrain: there may be multiple invocations of this slot, so create the new entity just once
     QTimer::singleShot( 0, this, &Qgs3DMapScene::createTerrainDeferred );
     mTerrainUpdateScheduled = true;
@@ -511,27 +518,27 @@ void Qgs3DMapScene::createTerrain()
 
 void Qgs3DMapScene::createTerrainDeferred()
 {
-  qDebug() << "=============== Qgs3DMapScene::createTerrainDeferred !!!";
+  QgsDebugMsgLevel( "createTerrainDeferred begin!!!", QGS_LOG_LVL_DEBUG );
   if ( mMap.terrainRenderingEnabled() )
   {
     if ( !mTerrainLayer )
     {
-      qDebug() << "=============== Qgs3DMapScene::createTerrainDeferred no layer ==> creating";
+      QgsDebugMsgLevel( "no layer ==> creating", QGS_LOG_LVL_DEBUG );
       Qgis::LayerType type;
       if ( dynamic_cast<QgsMeshTerrainGenerator *>( mMap.terrainGenerator() ) )
         type = Qgis::LayerType::Mesh;
       else
         type = Qgis::LayerType::Raster;
-      qDebug() << "=============== Qgs3DMapScene::createTerrainDeferred type:" << type;
+      QgsDebugMsgLevel( QString( "terrain layer type: %1" ).arg( ( int )type ), QGS_LOG_LVL_DEBUG );;
       mTerrainLayer = new QgsDummyLayer( type, "technicalTerrainLayer" );
       mTerrainLayer->setRenderer3D( new QgsTerrainLayer3DRenderer() );
     }
-    qDebug() << "=============== Qgs3DMapScene::createTerrainDeferred should addLayerEntity";
+    QgsDebugMsgLevel( "should addLayerEntity", QGS_LOG_LVL_DEBUG );
     addLayerEntity( mTerrainLayer );
   }
   else
   {
-    qDebug() << "=============== Qgs3DMapScene::createTerrainDeferred terrain disabled!";
+    QgsDebugMsgLevel( "terrain disabled!", QGS_LOG_LVL_DEBUG );
   }
 
   // make sure that renderers for layers are re-created as well to handle new terrain properties
@@ -582,7 +589,8 @@ void Qgs3DMapScene::onLayerRenderer3DChanged()
   QgsMapLayer *layer = qobject_cast<QgsMapLayer *>( sender() );
   Q_ASSERT( layer );
 
-  qDebug() << "=============== Qgs3DMapScene::onLayerRenderer3DChanged layer:" << layer->name();
+  QgsDebugMsgLevel( _logHeader( layer->name() ) + QString( "onLayerRenderer3DChanged begin!!!" ), QGS_LOG_LVL_DEBUG );
+
   if ( layer == mTerrainLayer )
   {
 //    createTerrain();
@@ -598,7 +606,7 @@ void Qgs3DMapScene::onLayerRenderer3DChanged()
 
 void Qgs3DMapScene::onLayersChanged()
 {
-  qDebug() << "=============== Qgs3DMapScene::onLayersChanged ";
+  QgsDebugMsgLevel( "onLayersChanged begin!!!", QGS_LOG_LVL_DEBUG );
   QSet<QgsMapLayer *> layersBefore = qgis::listToSet( mLayerEntities.keys() );
   QList<QgsMapLayer *> layersAdded;
   const QList<QgsMapLayer *> layers = mMap.layers();
@@ -647,11 +655,16 @@ void Qgs3DMapScene::updateTemporal()
 
 void Qgs3DMapScene::addLayerEntity( QgsMapLayer *layer )
 {
-  qDebug() << "=============== Qgs3DMapScene::addLayerEntity layer:" << layer->name();
+  QgsDebugMsgLevel( _logHeader( layer->name() )
+                    + QStringLiteral( "type: %1" )
+                    .arg( static_cast<int>( layer->type() ) ), QGS_LOG_LVL_DEBUG );
   bool needsSceneUpdate = false;
   QgsAbstract3DRenderer *renderer = layer->renderer3D();
   if ( renderer )
   {
+    QgsDebugMsgLevel( _logHeader( layer->name() )
+                      + QStringLiteral( "renderer type: %1" )
+                      .arg( renderer->type() ), QGS_LOG_LVL_DEBUG );
     // Fix vector layer's renderer to make sure the renderer is pointing to its layer.
     // It has happened before that renderer pointed to a different layer (probably after copying a style).
     // This is a bit of a hack and it should be handled in QgsMapLayer::setRenderer3D() but in qgis_core
@@ -718,6 +731,7 @@ void Qgs3DMapScene::addLayerEntity( QgsMapLayer *layer )
 
       if ( Qgs3DMapSceneEntity *sceneNewEntity = qobject_cast<Qgs3DMapSceneEntity *>( newEntity ) )
       {
+        sceneNewEntity->setLayerName( layer->name() );
         needsSceneUpdate = true;
 
         connect( sceneNewEntity, &Qgs3DMapSceneEntity::newEntityCreated, this, [this]( Qt3DCore::QEntity * entity )
@@ -727,8 +741,16 @@ void Qgs3DMapScene::addLayerEntity( QgsMapLayer *layer )
 
         connect( sceneNewEntity, &Qgs3DMapSceneEntity::pendingJobsCountChanged, this, &Qgs3DMapScene::totalPendingJobsCountChanged );
       }
+      else
+      {
+        QgsDebugMsgLevel( _logHeader( layer->name() )
+                          + QStringLiteral( "is not a Qgs3DMapSceneEntity" ), QGS_LOG_LVL_INFO );
+      }
     }
   }
+  else
+    QgsDebugMsgLevel( _logHeader( layer->name() )
+                      + QStringLiteral( "NO RENDERER for this layer!" ), QGS_LOG_LVL_DEBUG );
 
   if ( needsSceneUpdate )
     onCameraChanged();   // needed for chunked entities
@@ -755,7 +777,7 @@ void Qgs3DMapScene::addLayerEntity( QgsMapLayer *layer )
 
 void Qgs3DMapScene::removeLayerEntity( QgsMapLayer *layer )
 {
-  qDebug() << "=============== Qgs3DMapScene::removeLayerEntity layer:" << layer->name();
+  QgsDebugMsgLevel( _logHeader( layer->name() ) + QString( "removeLayerEntity begin!!!" ), QGS_LOG_LVL_DEBUG );;
   Qt3DCore::QEntity *entity = mLayerEntities.take( layer );
 
   mLayerEntities.remove( layer );

@@ -30,6 +30,12 @@
 
 ///@cond PRIVATE
 
+static QString _logHeader( const QString &layerName )
+{
+  if ( layerName.isEmpty() )
+    return QStringLiteral( "{layer:<not_set>} " );
+  return QStringLiteral( "{layer:%1} " ).arg( layerName );
+}
 
 static float screenSpaceError( QgsChunkNode *node, const QgsChunkedEntity::SceneContext &sceneContext )
 {
@@ -158,7 +164,9 @@ void QgsChunkedEntity::handleSceneUpdate( const SceneContext &sceneContext )
     {
       if ( !node->entity() )
       {
-        QgsDebugError( "Active node has null entity - this should never happen!" );
+        QgsDebugError( _logHeader( mLayerName )
+                       + QString( "Active node %1 has null entity - this should never happen!" )
+                       .arg( node->tileId().text() ) );
         continue;
       }
       node->entity()->setEnabled( true );
@@ -173,7 +181,9 @@ void QgsChunkedEntity::handleSceneUpdate( const SceneContext &sceneContext )
   {
     if ( !node->entity() )
     {
-      QgsDebugError( "Active node has null entity - this should never happen!" );
+      QgsDebugError( _logHeader( mLayerName )
+                     + QString( "Active node %1 has null entity - this should never happen!" )
+                     .arg( node->tileId().text() ) );
       continue;
     }
     node->entity()->setEnabled( false );
@@ -206,14 +216,20 @@ void QgsChunkedEntity::handleSceneUpdate( const SceneContext &sceneContext )
   if ( pendingJobsCount() != oldJobsCount )
     emit pendingJobsCountChanged();
 
-  QgsDebugMsgLevel( QStringLiteral( "update: active %1 enabled %2 disabled %3 | culled %4 | loading %5 loaded %6 | unloaded %7 elapsed %8ms" ).arg( mActiveNodes.count() )
+#ifdef QGISDEBUG
+  QgsDebugMsgLevel( _logHeader( mLayerName )
+                    + QStringLiteral( "update: enabled %1 disabled %2 | unloaded %3" )
                     .arg( enabled )
                     .arg( disabled )
+                    .arg( unloaded ), QGS_LOG_LVL_TRACE );
+#endif
+  QgsDebugMsgLevel( _logHeader( mLayerName )
+                    + QStringLiteral( "update: active %1 | culled %2 | loading %3 loaded %4 | elapsed %5ms" )
+                    .arg( mActiveNodes.count() )
                     .arg( mFrustumCulled )
                     .arg( mChunkLoaderQueue->count() )
                     .arg( mReplacementQueue->count() )
-                    .arg( unloaded )
-                    .arg( t.elapsed() ), 2 );
+                    .arg( t.elapsed() ), QGS_LOG_LVL_DEBUG );
 }
 
 
@@ -222,11 +238,16 @@ int QgsChunkedEntity::unloadNodes()
   double usedGpuMemory = Qgs3DUtils::calculateEntityGpuMemorySize( this );
   if ( usedGpuMemory <= mGpuMemoryLimit )
   {
+    QgsDebugMsgLevel( _logHeader( mLayerName )
+                      + QStringLiteral( "Nothing to unload! (now_using: %1MB)" )
+                      .arg( usedGpuMemory ), QGS_LOG_LVL_DEBUG );
     setHasReachedGpuMemoryLimit( false );
     return 0;
   }
 
-  QgsDebugMsgLevel( QStringLiteral( "Going to unload nodes to free GPU memory (used: %1 MB, limit: %2 MB)" ).arg( usedGpuMemory ).arg( mGpuMemoryLimit ), 2 );
+  QgsDebugMsgLevel( _logHeader( mLayerName )
+                    + QStringLiteral( "Going to unload nodes to free GPU memory (now_using: %1MB)" )
+                    .arg( usedGpuMemory ), QGS_LOG_LVL_DEBUG );
 
   int unloaded = 0;
 
@@ -258,7 +279,10 @@ int QgsChunkedEntity::unloadNodes()
   if ( usedGpuMemory > mGpuMemoryLimit )
   {
     setHasReachedGpuMemoryLimit( true );
-    QgsDebugMsgLevel( QStringLiteral( "Unable to unload enough nodes to free GPU memory (used: %1 MB, limit: %2 MB)" ).arg( usedGpuMemory ).arg( mGpuMemoryLimit ), 2 );
+    QgsDebugMsgLevel( _logHeader( mLayerName )
+                      + QStringLiteral( "Unable to unload enough nodes to free GPU memory (now_using: %1MB, limit: %2MB)" )
+                      .arg( usedGpuMemory )
+                      .arg( mGpuMemoryLimit ), QGS_LOG_LVL_DEBUG );
   }
 
   return unloaded;
@@ -369,7 +393,8 @@ void QgsChunkedEntity::pruneLoaderQueue( const SceneContext &sceneContext )
 
   if ( !toRemoveFromLoaderQueue.isEmpty() )
   {
-    QgsDebugMsgLevel( QStringLiteral( "Pruned %1 chunks in loading queue" ).arg( toRemoveFromLoaderQueue.count() ), 2 );
+    QgsDebugMsgLevel( _logHeader( mLayerName )
+                      + QStringLiteral( "Pruned %1 chunks in loading queue" ).arg( toRemoveFromLoaderQueue.count() ), QGS_LOG_LVL_DEBUG );
   }
 }
 

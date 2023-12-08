@@ -85,6 +85,11 @@ class Qgs3DMapSceneEntity : public Qt3DCore::QEntity
     //! Returns whether the entity has reached GPU memory limit
     bool hasReachedGpuMemoryLimit() const { return mHasReachedGpuMemoryLimit; }
 
+    //! Updates layer name in which this entity in included
+    virtual void setLayerName( const QString &layerName ) { mLayerName = layerName; }
+    //! Returns layer name in which this entity in included
+    virtual QString layerName() const  { return mLayerName; }
+
   protected:
     //! Sets whether the GPU memory limit has been reached
     void setHasReachedGpuMemoryLimit( bool reached ) { mHasReachedGpuMemoryLimit = reached; }
@@ -101,6 +106,8 @@ class Qgs3DMapSceneEntity : public Qt3DCore::QEntity
     double mGpuMemoryLimit = 500.0; // in megabytes
     //! Whether the entity is currently over the GPU memory limit (used to report a warning to the user)
     bool mHasReachedGpuMemoryLimit = false;
+    //! Layer name in which this entity in included
+    QString mLayerName = "unknown";
 };
 
 /// @endcond
