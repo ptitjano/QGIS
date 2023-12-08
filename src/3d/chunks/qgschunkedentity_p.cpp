@@ -144,7 +144,7 @@ void QgsChunkedEntity::setHasReachedGpuMemoryLimit( bool reached )
         return;
 
       QgsDebugMsgLevel( _logHeader( mLayerName )
-                        + QStringLiteral( "has reached gpu memory limit. Cleaning up: active %1 | culled %2 | loading %3 loaded %4" )
+                        + QStringLiteral( "is now frozen. Cleaning up: active %1 | culled %2 | loading %3 loaded %4" )
                         .arg( mActiveNodes.count() )
                         .arg( mFrustumCulled )
                         .arg( mChunkLoaderQueue->count() )
@@ -294,12 +294,6 @@ void QgsChunkedEntity::handleSceneUpdate( const SceneContext &sceneContext, doub
 int QgsChunkedEntity::unloadNodes()
 {
   double currentlyUsedGpuMemory = Qgs3DUtils::calculateEntityGpuMemorySize( this );
-  if ( mUsedGpuMemory < currentlyUsedGpuMemory )
-    QgsDebugMsgLevel( _logHeader( mLayerName )
-                      + QStringLiteral( "GPU memory usage increased! (now_using: %1MB, was: %2MB)" )
-                      .arg( currentlyUsedGpuMemory )
-                      .arg( mUsedGpuMemory ), QGS_LOG_LVL_DEBUG );
-
   double usableGpuMemory = mLastKnownAvailableGpuMemory + mUsedGpuMemory;
   if ( currentlyUsedGpuMemory <= usableGpuMemory )
   {
@@ -763,7 +757,13 @@ void QgsChunkedEntity::onActiveJobFinished()
       while ( ent->layerName().isEmpty() || ent->layerName() == "unknown" )
       {
         if ( ent->parent() && dynamic_cast<Qgs3DMapSceneEntity *>( ent->parent() ) )
+        {
           ent = dynamic_cast<Qgs3DMapSceneEntity *>( ent->parent() );
+          QgsDebugMsgLevel( _logHeader( "ln???" )
+                            + QStringLiteral( "searching in parent of %1" )
+                            .arg( node->tileId().text() )
+                            , QGS_LOG_LVL_DEBUG );
+        }
         else
           break;
       }
