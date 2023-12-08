@@ -420,19 +420,29 @@ void Qgs3DMapScene::updateScene( bool forceUpdate )
   for ( Qt3DCore::QEntity *qtEntity : mLayerEntities.values() )
   {
     Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( qtEntity );
-    if ( entity && !entity->hasReachedGpuMemoryLimit() )
-      if ( forceUpdate || ( entity->isEnabled() && entity->needsUpdate() ) )
+    if ( entity &&
+         ( forceUpdate || ( entity->isEnabled() && entity->needsUpdate() ) ) )
+    {
+      bool previousReachedGpu = entity->hasReachedGpuMemoryLimit();
+      entity->handleSceneUpdate( buildSceneContext(), mMaxAvailableGpuMemory * 0.95 - mUsedGpuMemory );
+      if ( previousReachedGpu != entity->hasReachedGpuMemoryLimit() )
       {
-        entity->handleSceneUpdate( buildSceneContext(), mMaxAvailableGpuMemory * 0.95 - mUsedGpuMemory );
         if ( entity->hasReachedGpuMemoryLimit() )
         {
           QgsDebugMsgLevel( _logHeader( entity->layerName() )
-                            + QString( "has been disabled!" ), QGS_LOG_LVL_WARNING );
+                            + QString( "has been frozen!" ), QGS_LOG_LVL_WARNING );
           emit gpuMemoryLimitReached();
           setSceneState( Canceled );
           break;
         }
+        else
+        {
+          QgsDebugMsgLevel( _logHeader( entity->layerName() )
+                            + QString( "has been un-frozen!" ), QGS_LOG_LVL_INFO );
+
+        }
       }
+    }
   }
 
   updateSceneState();

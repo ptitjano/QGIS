@@ -176,7 +176,7 @@ void QgsChunkedEntity::handleSceneUpdate( const SceneContext &sceneContext, doub
 {
   mLastKnownAvailableGpuMemory = availableGpuMemory;
 
-  if ( !mIsValid || mHasReachedGpuMemoryLimit )
+  if ( !mIsValid )
     return;
 
   // Let's start the update by removing from loader queue chunks that
@@ -185,6 +185,16 @@ void QgsChunkedEntity::handleSceneUpdate( const SceneContext &sceneContext, doub
   // and we avoid loading chunks that we only wanted for a short period
   // of time when camera was moving.
   pruneLoaderQueue( sceneContext );
+
+  if ( mHasReachedGpuMemoryLimit )
+  {
+    if ( unloadNodes() && mUsedGpuMemory < mLastKnownAvailableGpuMemory )
+    {
+      setHasReachedGpuMemoryLimit( false );
+    }
+    mNeedsUpdate = false;  // just updated
+    return;
+  }
 
   QElapsedTimer t;
   t.start();
@@ -341,6 +351,15 @@ int QgsChunkedEntity::unloadNodes()
     setHasReachedGpuMemoryLimit( true );
     QgsDebugMsgLevel( _logHeader( mLayerName )
                       + QStringLiteral( "Unable to unload enough nodes to free GPU memory (was_used: %1 MB, now_using: %2 MB, limit: %3 MB)" )
+                      .arg( mUsedGpuMemory )
+                      .arg( currentlyUsedGpuMemory )
+                      .arg( usableGpuMemory ), QGS_LOG_LVL_DEBUG );
+  }
+  else
+  {
+    QgsDebugMsgLevel( _logHeader( mLayerName )
+                      + QStringLiteral( "Unloaded %1 nodes to free GPU memory (was_used: %2 MB, now_using: %3 MB, limit: %4 MB)" )
+                      .arg( unloaded )
                       .arg( mUsedGpuMemory )
                       .arg( currentlyUsedGpuMemory )
                       .arg( usableGpuMemory ), QGS_LOG_LVL_DEBUG );
@@ -707,7 +726,7 @@ void QgsChunkedEntity::onActiveJobFinished()
   QgsChunkQueueJob *job = qobject_cast<QgsChunkQueueJob *>( sender() );
   Q_ASSERT( job );
 
-  if ( mHasReachedGpuMemoryLimit )
+  if ( mHasReachedGpuMemoryLimit || !mActiveJobs.contains( job ) )
   {
     // cleanup the job that has just finished
     mActiveJobs.removeOne( job );
@@ -716,8 +735,6 @@ void QgsChunkedEntity::onActiveJobFinished()
 
     return;
   }
-
-  Q_ASSERT( mActiveJobs.contains( job ) );
 
   // this <==> root entity --> node <==> sub node/chunk loaded by this
   QgsChunkNode *node = job->chunk();
