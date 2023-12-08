@@ -267,6 +267,7 @@ QgsTerrainLayer3DRenderer *QgsTerrainLayer3DRenderer::clone() const
 
 Qt3DCore::QEntity *QgsTerrainLayer3DRenderer::createEntity( const Qgs3DMapSettings &map3DSettings ) const
 {
+  qDebug() << "=============== QgsTerrainLayer3DRenderer::createEntity";
   QgsTerrainEntity *terrainEntity = nullptr;
   if ( map3DSettings.terrainRenderingEnabled() && map3DSettings.terrainGenerator() )
   {
@@ -275,12 +276,14 @@ Qt3DCore::QEntity *QgsTerrainLayer3DRenderer::createEntity( const Qgs3DMapSettin
     QgsAABB rootBbox = map3DSettings.terrainGenerator()->rootChunkBbox( map3DSettings );
     float rootError = map3DSettings.terrainGenerator()->rootChunkError( map3DSettings );
     const QgsAABB clippingBbox = Qgs3DUtils::mapToWorldExtent( map3DSettings.extent(), rootBbox.zMin, rootBbox.zMax, map3DSettings.origin() );
+    qDebug() << "=============== QgsTerrainLayer3DRenderer::createEntity will setup quadtree";
     map3DSettings.terrainGenerator()->setupQuadtree( rootBbox, rootError, maxZoomLevel, clippingBbox );
 
+    qDebug() << "=============== QgsTerrainLayer3DRenderer::createEntity will create terrain";
     terrainEntity = new QgsTerrainEntity( map3DSettings );
     terrainEntity->setShowBoundingBoxes( map3DSettings.showTerrainBoundingBoxes() );
   }
-
+  qDebug() << "=============== QgsTerrainLayer3DRenderer::createEntity done!";
   return terrainEntity;
 }
 /// @endcond

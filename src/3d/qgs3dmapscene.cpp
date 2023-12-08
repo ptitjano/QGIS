@@ -498,13 +498,16 @@ void Qgs3DMapScene::onFrameTriggered( float dt )
 
 void Qgs3DMapScene::createTerrain()
 {
+  qDebug() << "=============== Qgs3DMapScene::createTerrain !!!";
   if ( mTerrainLayer )
   {
+    qDebug() << "=============== Qgs3DMapScene::createTerrain should removeLayerEntity";
     removeLayerEntity( mTerrainLayer );
   }
 
   if ( !mTerrainUpdateScheduled )
   {
+    qDebug() << "=============== Qgs3DMapScene::createTerrain should createTerrainDeferred";
     // defer re-creation of terrain: there may be multiple invocations of this slot, so create the new entity just once
     QTimer::singleShot( 0, this, &Qgs3DMapScene::createTerrainDeferred );
     mTerrainUpdateScheduled = true;
@@ -518,19 +521,28 @@ void Qgs3DMapScene::createTerrain()
 
 void Qgs3DMapScene::createTerrainDeferred()
 {
+  qDebug() << "=============== Qgs3DMapScene::createTerrainDeferred !!!";
+  // TODO: should be in a new QgsAbstract3DRenderer
   if ( mMap.terrainRenderingEnabled() )
   {
     if ( !mTerrainLayer )
     {
+      qDebug() << "=============== Qgs3DMapScene::createTerrainDeferred no layer ==> creating";
       Qgis::LayerType type;
       if ( dynamic_cast<QgsMeshTerrainGenerator *>( mMap.terrainGenerator() ) )
         type = Qgis::LayerType::Mesh;
       else
         type = Qgis::LayerType::Raster;
+      qDebug() << "=============== Qgs3DMapScene::createTerrainDeferred type:" << type;
       mTerrainLayer = new QgsDummyLayer( type, "technicalTerrainLayer" );
       mTerrainLayer->setRenderer3D( new QgsTerrainLayer3DRenderer() );
     }
+    qDebug() << "=============== Qgs3DMapScene::createTerrainDeferred should addLayerEntity";
     addLayerEntity( mTerrainLayer );
+  }
+  else
+  {
+    qDebug() << "=============== Qgs3DMapScene::createTerrainDeferred terrain disabled!";
   }
 
   // make sure that renderers for layers are re-created as well to handle new terrain properties
@@ -581,8 +593,12 @@ void Qgs3DMapScene::onLayerRenderer3DChanged()
   QgsMapLayer *layer = qobject_cast<QgsMapLayer *>( sender() );
   Q_ASSERT( layer );
 
+  qDebug() << "=============== Qgs3DMapScene::onLayerRenderer3DChanged layer:" << layer->name();
   if ( layer == mTerrainLayer )
+  {
+//    createTerrain();
     return;
+  }
 
   // remove old entity - if any
   removeLayerEntity( layer );
@@ -593,6 +609,7 @@ void Qgs3DMapScene::onLayerRenderer3DChanged()
 
 void Qgs3DMapScene::onLayersChanged()
 {
+  qDebug() << "=============== Qgs3DMapScene::onLayersChanged ";
   QSet<QgsMapLayer *> layersBefore = qgis::listToSet( mLayerEntities.keys() );
   QList<QgsMapLayer *> layersAdded;
   const QList<QgsMapLayer *> layers = mMap.layers();
@@ -641,6 +658,7 @@ void Qgs3DMapScene::updateTemporal()
 
 void Qgs3DMapScene::addLayerEntity( QgsMapLayer *layer )
 {
+  qDebug() << "=============== Qgs3DMapScene::addLayerEntity layer:" << layer->name();
   bool needsSceneUpdate = false;
   QgsAbstract3DRenderer *renderer = layer->renderer3D();
   if ( renderer )
@@ -748,6 +766,7 @@ void Qgs3DMapScene::addLayerEntity( QgsMapLayer *layer )
 
 void Qgs3DMapScene::removeLayerEntity( QgsMapLayer *layer )
 {
+  qDebug() << "=============== Qgs3DMapScene::removeLayerEntity layer:" << layer->name();
   Qt3DCore::QEntity *entity = mLayerEntities.take( layer );
 
   mLayerEntities.remove( layer );
