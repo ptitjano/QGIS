@@ -111,7 +111,6 @@ void QgsChunkNode::cancelQueuedForLoad()
   Q_ASSERT( mState == QueuedForLoad );
   Q_ASSERT( mLoaderQueueEntry );
 
-  delete mLoaderQueueEntry;
   mLoaderQueueEntry = nullptr;
 
   mState = QgsChunkNode::Skeleton;
@@ -196,7 +195,6 @@ void QgsChunkNode::cancelQueuedForUpdate()
   mState = Loaded;
   mUpdaterFactory = nullptr;  // not owned by the node
 
-  delete mLoaderQueueEntry;
   mLoaderQueueEntry = nullptr;
 }
 

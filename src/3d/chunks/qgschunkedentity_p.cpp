@@ -106,6 +106,8 @@ QgsChunkedEntity::~QgsChunkedEntity()
       node->cancelQueuedForUpdate();
     else
       Q_ASSERT( false );  // impossible!
+
+    delete entry; // created here, deleted here
   }
 
   delete mChunkLoaderQueue;
@@ -405,8 +407,10 @@ void QgsChunkedEntity::updateNodes( const QList<QgsChunkNode *> &nodes, QgsChunk
 
     if ( node->state() == QgsChunkNode::QueuedForUpdate )
     {
-      mChunkLoaderQueue->takeEntry( node->loaderQueueEntry() );
+      QgsChunkListEntry *entry = node->loaderQueueEntry();
+      mChunkLoaderQueue->takeEntry( entry );
       node->cancelQueuedForUpdate();
+      delete entry;
     }
     else if ( node->state() == QgsChunkNode::Updating )
     {
@@ -443,19 +447,21 @@ void QgsChunkedEntity::pruneLoaderQueue( const SceneContext &sceneContext )
   }
 
   // Step 2: remove collected chunks from the loading queue
-  for ( QgsChunkNode *n : toRemoveFromLoaderQueue )
+  for ( QgsChunkNode *node : toRemoveFromLoaderQueue )
   {
-    mChunkLoaderQueue->takeEntry( n->loaderQueueEntry() );
-    if ( n->state() == QgsChunkNode::QueuedForLoad )
+    QgsChunkListEntry *entry = node->loaderQueueEntry();
+    mChunkLoaderQueue->takeEntry( entry );
+    if ( node->state() == QgsChunkNode::QueuedForLoad )
     {
-      n->cancelQueuedForLoad();
+      node->cancelQueuedForLoad();
     }
     else  // queued for update
     {
-      n->cancelQueuedForUpdate();
-      mReplacementQueue->takeEntry( n->replacementQueueEntry() );
-      n->unloadChunk(); // also deletes the entity!
+      node->cancelQueuedForUpdate();
+      mReplacementQueue->takeEntry( node->replacementQueueEntry() );
+      node->unloadChunk(); // also deletes the entity!
     }
+    delete entry;
   }
 
   if ( !toRemoveFromLoaderQueue.isEmpty() )
