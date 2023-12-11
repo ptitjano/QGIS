@@ -167,11 +167,9 @@ void QgsTerrainEntity::invalidateMapImages()
   QgsEventTracing::addEvent( QgsEventTracing::Instant, QStringLiteral( "3D" ), QStringLiteral( "Invalidate textures" ) );
 
   // handle active nodes
-
   updateNodes( mActiveNodes, mUpdateJobFactory.get() );
 
   // handle inactive nodes afterwards
-
   QList<QgsChunkNode *> inactiveNodes;
   const QList<QgsChunkNode *> descendants = mRootNode->descendants();
   for ( QgsChunkNode *node : descendants )
@@ -228,8 +226,8 @@ TerrainMapUpdateJob::TerrainMapUpdateJob( QgsTerrainTextureGenerator *textureGen
   , mTextureGenerator( textureGenerator )
 {
   QgsTerrainTileEntity *entity = qobject_cast<QgsTerrainTileEntity *>( node->entity() );
-  connect( textureGenerator, &QgsTerrainTextureGenerator::tileReady, this, &TerrainMapUpdateJob::onTileReady );
-  mJobId = textureGenerator->render( entity->textureImage()->imageExtent(), node->tileId(), entity->textureImage()->imageDebugText() );
+  connect( mTextureGenerator, &QgsTerrainTextureGenerator::tileReady, this, &TerrainMapUpdateJob::onTileReady );
+  mJobId = mTextureGenerator->render( entity->textureImage()->imageExtent(), node->tileId(), entity->textureImage()->imageDebugText() );
 }
 
 void TerrainMapUpdateJob::cancel()
