@@ -820,6 +820,8 @@ void QgsChunkedEntity::onActiveJobFinished()
       node->cancelLoading();
     }
 
+    loader->deleteLater();
+
     // now we need an update!
     mNeedsUpdate = true;
   }
