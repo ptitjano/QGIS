@@ -113,7 +113,7 @@ QgsChunkedEntity::~QgsChunkedEntity()
     QgsChunkListEntry *entry = mReplacementQueue->takeFirst();
 
     // remove loaded data from node
-    entry->chunk->unloadChunk(); // also deletes the entry
+    entry->chunk->unloadChunk(); // also deletes the entity!
   }
 
   delete mReplacementQueue;
@@ -266,7 +266,7 @@ int QgsChunkedEntity::unloadNodes()
       mReplacementQueue->takeEntry( entry );
       usedGpuMemory -= Qgs3DUtils::calculateEntityGpuMemorySize( entry->chunk->entity() );
       mActiveNodes.removeOne( entry->chunk );
-      entry->chunk->unloadChunk();  // also deletes the entry
+      entry->chunk->unloadChunk(); // also deletes the entity!
       ++unloaded;
       entry = entryPrev;
     }
@@ -387,7 +387,7 @@ void QgsChunkedEntity::pruneLoaderQueue( const SceneContext &sceneContext )
     {
       n->cancelQueuedForUpdate();
       mReplacementQueue->takeEntry( n->replacementQueueEntry() );
-      n->unloadChunk();
+      n->unloadChunk(); // also deletes the entity!
     }
   }
 
