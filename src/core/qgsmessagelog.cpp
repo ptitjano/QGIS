@@ -49,12 +49,10 @@ void QgsMessageLog::logMessage( const QString &message, const QString &tag, Qgis
   }
 
   // TODO must use the QLoggingCategory
-  Q_UNUSED( loggerLevel );
-  QgsDebugMsgLevel( QStringLiteral( "%1[%2] %3" )
+  QgsLogger::debug( QStringLiteral( "%1[%2] %3" )
                     .arg( tag )
                     .arg( static_cast< int >( level ) )
-                    .arg( message )
-                    , loggerLevel );
+                    .arg( message ), loggerLevel, "logMessage_caller" );
 
   QgsApplication::messageLog()->emitMessage( message, tag, level, notifyUser );
 }

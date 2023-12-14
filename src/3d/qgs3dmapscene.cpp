@@ -83,12 +83,14 @@
 
 std::function< QMap< QString, Qgs3DMapScene * >() > Qgs3DMapScene::sOpenScenesFunction = [] { return QMap< QString, Qgs3DMapScene * >(); };
 
+#ifdef QGISDEBUG
 static QString _logHeader( const QString &layerName )
 {
   if ( layerName.isEmpty() )
     return QStringLiteral( "{layer:<not_set>} " );
   return QStringLiteral( "{layer:%1} " ).arg( layerName );
 }
+#endif
 
 Qgs3DMapScene::Qgs3DMapScene( Qgs3DMapSettings &map, QgsAbstract3DEngine *engine )
   : mMap( map )

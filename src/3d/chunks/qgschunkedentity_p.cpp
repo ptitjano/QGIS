@@ -30,12 +30,14 @@
 
 ///@cond PRIVATE
 
+#ifdef QGISDEBUG
 static QString _logHeader( const QString &layerName )
 {
   if ( layerName.isEmpty() )
     return QStringLiteral( "{layer:<not_set>} " );
   return QStringLiteral( "{layer:%1} " ).arg( layerName );
 }
+#endif
 
 static float screenSpaceError( QgsChunkNode *node, const QgsChunkedEntity::SceneContext &sceneContext )
 {
