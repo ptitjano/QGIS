@@ -802,6 +802,7 @@ void Qgs3DMapScene::addLayerEntity( QgsMapLayer *layer )
 
         connect( sceneNewEntity, &Qgs3DMapSceneEntity::newEntityCreated, this, [this, layer]( Qt3DCore::QEntity * entity, double entityGpuMem )
         {
+          Q_UNUSED( layer );
           finalizeNewEntity( entity );
 
           if ( std::isnan( entityGpuMem ) )
