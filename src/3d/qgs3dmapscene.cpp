@@ -316,9 +316,9 @@ QVector<QgsPointXY> Qgs3DMapScene::viewFrustum2DExtent() const
 int Qgs3DMapScene::totalPendingJobsCount() const
 {
   int count = 0;
-  for ( Qt3DCore::QEntity *qtEntity : mLayerEntities.values() )
+  for ( auto it = mLayerEntities.begin(); it != mLayerEntities.end(); ++it )
   {
-    Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( qtEntity );
+    Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( it.value() );
     if ( entity )
     {
       count += entity->pendingJobsCount();
@@ -418,9 +418,9 @@ void Qgs3DMapScene::updateScene( bool forceUpdate )
   if ( forceUpdate )
     QgsEventTracing::addEvent( QgsEventTracing::Instant, QStringLiteral( "3D" ), QStringLiteral( "Update Scene" ) );
 
-  for ( Qt3DCore::QEntity *qtEntity : mLayerEntities.values() )
+  for ( auto it = mLayerEntities.begin(); it != mLayerEntities.end(); ++it )
   {
-    Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( qtEntity );
+    Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( it.value() );
     if ( entity &&
          ( forceUpdate || ( entity->isEnabled() && entity->needsUpdate() ) ) )
     {
@@ -470,9 +470,9 @@ bool Qgs3DMapScene::updateCameraNearFarPlanes()
 
   // Iterate all scene entities to make sure that they will not get
   // clipped by the near or far plane
-  for ( Qt3DCore::QEntity *qtEntity : mLayerEntities.values() )
+  for ( auto it = mLayerEntities.begin(); it != mLayerEntities.end(); ++it )
   {
-    Qgs3DMapSceneEntity *sceneEntity = dynamic_cast<Qgs3DMapSceneEntity *>( qtEntity );
+    Qgs3DMapSceneEntity *sceneEntity = dynamic_cast<Qgs3DMapSceneEntity *>( it.value() );
     if ( sceneEntity )
     {
       const QgsRange<float> depthRange = sceneEntity->getNearFarPlaneRange( viewMatrix );
@@ -690,9 +690,9 @@ void Qgs3DMapScene::onLayersChanged()
 
   if ( layersBefore.size() != 0 ) // layers have been disabled, we try to reactivate frozen layers
   {
-    for ( Qt3DCore::QEntity *entity : mLayerEntities.values() )
+    for ( auto it = mLayerEntities.begin(); it != mLayerEntities.end(); ++it )
     {
-      Qgs3DMapSceneEntity *sceneEntity = dynamic_cast<Qgs3DMapSceneEntity *>( entity );
+      Qgs3DMapSceneEntity *sceneEntity = dynamic_cast<Qgs3DMapSceneEntity *>( it.value() );
       if ( sceneEntity && sceneEntity->hasReachedGpuMemoryLimit() )
       {
         QgsDebugMsgLevel( _logHeader( sceneEntity->layerName() )
@@ -1044,9 +1044,9 @@ void Qgs3DMapScene::updateSceneState()
   }
   else
   {
-    for ( Qt3DCore::QEntity *qtEntity : mLayerEntities.values() )
+    for ( auto it = mLayerEntities.begin(); it != mLayerEntities.end(); ++it )
     {
-      Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( qtEntity );
+      Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( it.value() );
       if ( entity && entity->isEnabled() && !entity->hasReachedGpuMemoryLimit() &&  entity->pendingJobsCount() > 0 )
       {
         setSceneState( Updating );
@@ -1063,8 +1063,9 @@ void Qgs3DMapScene::updateSceneState()
                       .arg( mUsedGpuMemory )
                       .arg( mMaxAvailableGpuMemory ), QGS_LOG_LVL_DEBUG );
 
-    for ( QgsMapLayer *layer : mLayerEntities.keys() )
+    for ( auto it = mLayerEntities.begin(); it != mLayerEntities.end(); ++it )
     {
+      QgsMapLayer *layer = it.key();
       Qt3DCore::QEntity *qtEntity = mLayerEntities[layer];
       Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( qtEntity );
       if ( entity && entity->isEnabled() )
@@ -1383,11 +1384,12 @@ void Qgs3DMapScene::on3DAxisSettingsChanged()
 QList<QString> Qgs3DMapScene::frozenLayers() const
 {
   QList<QString> out;
-  for ( QgsMapLayer *l : mLayerEntities.keys() )
+  for ( auto it = mLayerEntities.begin(); it != mLayerEntities.end(); ++it )
   {
-    Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( mLayerEntities[l] );
+    QgsMapLayer *layer = it.key();
+    Qgs3DMapSceneEntity *entity = dynamic_cast<Qgs3DMapSceneEntity *>( mLayerEntities[layer] );
     if ( entity && entity->hasReachedGpuMemoryLimit() )
-      out << l->name();
+      out << layer->name();
   }
   return out;
 }
