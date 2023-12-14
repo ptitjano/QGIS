@@ -28,8 +28,6 @@
 
 #include <queue>
 
-/// BDE TO REMOVE:
-#define QGISDEBUG 1
 ///@cond PRIVATE
 
 static QString _logHeader( const QString &layerName )
