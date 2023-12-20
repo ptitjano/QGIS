@@ -310,7 +310,7 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
     Qgs3DAxis *m3DAxis = nullptr;
 
     //! max gpu memory available for this 3D scene (at scene creation)
-    double mMaxAvailableGpuMemory = 0.0;
+    double mMaxAvailableGpuMemory = 500.0;
     //! current gpu memory used by this 3D scene
     double mUsedGpuMemory = 0.0;
 };
