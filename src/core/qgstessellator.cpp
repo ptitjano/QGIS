@@ -623,7 +623,7 @@ void QgsTessellator::addPolygon( const QgsPolygon &polygon, float extrusionHeigh
       {
         // Failed to fix that. It could be a really tiny geometry... or maybe they gave us
         // geometry in unprojected lat/lon coordinates
-        QgsMessageLog::logMessage( QObject::tr( "geometry's coordinates are too close to each other and simplification failed - skipping" ), QObject::tr( "3D" ) );
+        // QgsMessageLog::logMessage( QObject::tr( "geometry's coordinates are too close to each other and simplification failed - skipping" ), QObject::tr( "3D" ) );
         return;
       }
       else

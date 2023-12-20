@@ -19,6 +19,9 @@
 #include "qgschunklist_p.h"
 #include "qgschunkloader_p.h"
 #include <Qt3DCore/QEntity>
+#include "qgslogger.h"
+
+#define CHECK_NULL(field) if(field!=nullptr) { QgsLogger::debug(QStringLiteral( "Node %1 should have null field: '" #field "'.").arg( mNodeId.text() ), QGS_LOG_LVL_WARNING, __FILE__, __FUNCTION__, __LINE__); } field=nullptr
 
 ///@cond PRIVATE
 
@@ -27,7 +30,7 @@ QgsChunkNode::QgsChunkNode( const QgsChunkNodeId &nodeId, const QgsAABB &bbox, f
   , mError( error )
   , mNodeId( nodeId )
   , mParent( parent )
-  , mState( Skeleton )
+  , mState( QgsChunkNode::Skeleton )
   , mLoaderQueueEntry( nullptr )
   , mReplacementQueueEntry( nullptr )
   , mLoader( nullptr )
@@ -39,15 +42,24 @@ QgsChunkNode::QgsChunkNode( const QgsChunkNodeId &nodeId, const QgsAABB &bbox, f
 
 QgsChunkNode::~QgsChunkNode()
 {
-  Q_ASSERT( mState == Skeleton );
-  Q_ASSERT( !mLoaderQueueEntry );
-  Q_ASSERT( !mReplacementQueueEntry );
-  Q_ASSERT( !mLoader ); // should be deleted when removed from loader queue
-  Q_ASSERT( !mEntity ); // should be deleted when removed from replacement queue
-  Q_ASSERT( !mUpdater );
-  Q_ASSERT( !mUpdaterFactory );
-
+  if ( mState != QgsChunkNode::Skeleton )
+  {
+    QgsDebugMsgLevel( QStringLiteral( "Node %1 should be in state Skeleton but is state: '%2'" )
+                      .arg( mNodeId.text() )
+                      .arg( mState ), QGS_LOG_LVL_WARNING );
+  }
   qDeleteAll( mChildren );
+
+  if ( mEntity )
+    mEntity->deleteLater();
+  CHECK_NULL( mEntity ); // should be deleted when removed from replacement queue
+
+  CHECK_NULL( mUpdater );
+  CHECK_NULL( mUpdaterFactory );
+
+  if ( mReplacementQueueEntry )
+    delete mReplacementQueueEntry; // own by us
+  CHECK_NULL( mReplacementQueueEntry );
 }
 
 bool QgsChunkNode::allChildChunksResident( QTime currentTime ) const
@@ -98,7 +110,7 @@ QList<QgsChunkNode *> QgsChunkNode::descendants()
 
 void QgsChunkNode::setQueuedForLoad( QgsChunkListEntry *entry )
 {
-  Q_ASSERT( mState == Skeleton );
+  Q_ASSERT( mState == QgsChunkNode::Skeleton );
   Q_ASSERT( !mLoaderQueueEntry );
   Q_ASSERT( !mLoader );
 
@@ -108,10 +120,9 @@ void QgsChunkNode::setQueuedForLoad( QgsChunkListEntry *entry )
 
 void QgsChunkNode::cancelQueuedForLoad()
 {
-  Q_ASSERT( mState == QueuedForLoad );
+  Q_ASSERT( mState == QgsChunkNode::QueuedForLoad );
   Q_ASSERT( mLoaderQueueEntry );
 
-  delete mLoaderQueueEntry;
   mLoaderQueueEntry = nullptr;
 
   mState = QgsChunkNode::Skeleton;
@@ -119,11 +130,11 @@ void QgsChunkNode::cancelQueuedForLoad()
 
 void QgsChunkNode::setLoading( QgsChunkLoader *chunkLoader )
 {
-  Q_ASSERT( mState == QueuedForLoad );
+  Q_ASSERT( mState == QgsChunkNode::QueuedForLoad );
   Q_ASSERT( !mLoader );
   Q_ASSERT( mLoaderQueueEntry );
 
-  mState = Loading;
+  mState = QgsChunkNode::Loading;
   mLoader = chunkLoader;
   mLoaderQueueEntry = nullptr;
 }
@@ -159,15 +170,27 @@ void QgsChunkNode::setLoaded( Qt3DCore::QEntity *newEntity )
 
 void QgsChunkNode::unloadChunk()
 {
-  Q_ASSERT( mState == QgsChunkNode::Loaded );
-  Q_ASSERT( mEntity );
-  Q_ASSERT( mReplacementQueueEntry );
+  if ( mState != QgsChunkNode::Loaded )
+  {
+    QgsDebugMsgLevel( QStringLiteral( "Node %1 should be in state Loaded but is state: '%2'" )
+                      .arg( mNodeId.text() )
+                      .arg( mState ), QGS_LOG_LVL_WARNING );
+  }
+  else
+  {
+    Q_ASSERT( mState == QgsChunkNode::Loaded );
+    Q_ASSERT( mEntity );
+    Q_ASSERT( mReplacementQueueEntry );
+  }
 
-  delete mEntity;
+  if ( mEntity )
+    mEntity->deleteLater();
   mEntity = nullptr;
 
-  delete mReplacementQueueEntry;
+  if ( mReplacementQueueEntry )
+    delete mReplacementQueueEntry; // own by us
   mReplacementQueueEntry = nullptr;
+
   mState = QgsChunkNode::Skeleton;
 }
 
@@ -180,23 +203,22 @@ void QgsChunkNode::setQueuedForUpdate( QgsChunkListEntry *entry, QgsChunkQueueJo
   Q_ASSERT( !mUpdater );
   Q_ASSERT( !mUpdaterFactory );
 
-  mState = QueuedForUpdate;
+  mState = QgsChunkNode::QueuedForUpdate;
   mLoaderQueueEntry = entry;
   mUpdaterFactory = updateJobFactory;
 }
 
 void QgsChunkNode::cancelQueuedForUpdate()
 {
-  Q_ASSERT( mState == QueuedForUpdate );
+  Q_ASSERT( mState == QgsChunkNode::QueuedForUpdate );
   Q_ASSERT( mEntity );
   Q_ASSERT( mLoaderQueueEntry );
   Q_ASSERT( mUpdaterFactory );
   Q_ASSERT( !mUpdater );
 
-  mState = Loaded;
+  mState = QgsChunkNode::Loaded;
   mUpdaterFactory = nullptr;  // not owned by the node
 
-  delete mLoaderQueueEntry;
   mLoaderQueueEntry = nullptr;
 }
 
@@ -209,7 +231,7 @@ void QgsChunkNode::setUpdating()
   Q_ASSERT( !mUpdater );
   Q_ASSERT( mUpdaterFactory );
 
-  mState = Updating;
+  mState = QgsChunkNode::Updating;
   mUpdater = mUpdaterFactory->createJob( this );
   mUpdaterFactory = nullptr;  // not owned by the node
   mLoaderQueueEntry = nullptr;
@@ -223,7 +245,7 @@ void QgsChunkNode::cancelUpdating()
 
   mUpdater = nullptr;  // not owned by chunk node
 
-  mState = Loaded;
+  mState = QgsChunkNode::Loaded;
 }
 
 void QgsChunkNode::setUpdated()
@@ -236,6 +258,28 @@ void QgsChunkNode::setUpdated()
   mUpdater = nullptr;   // not owned by chunk node
 
   mState = QgsChunkNode::Loaded;
+}
+
+void QgsChunkNode::freeze()
+{
+  if ( state() == QgsChunkNode::QueuedForUpdate )
+    cancelQueuedForUpdate();
+  else if ( state() == QgsChunkNode::QueuedForLoad )
+    cancelQueuedForLoad();
+  else if ( state() == QgsChunkNode::Loading )
+    cancelLoading();
+  else if ( state() == QgsChunkNode::Updating )
+    cancelUpdating();
+}
+
+void QgsChunkNode::freezeAllChildren()
+{
+  freeze();
+  for ( int i = 0; i < childCount(); ++i )
+  {
+    QgsChunkNode *child = mChildren[i];
+    child->freezeAllChildren();
+  }
 }
 
 void QgsChunkNode::setExactBbox( const QgsAABB &box )

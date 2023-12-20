@@ -29,15 +29,30 @@
 
 class QFile;
 
+// There was no defined value to log WARNING or FATAL message. To preserve the current code base using QgsDebugMsgLevel
+// the WARNING value can not be in the good order. This induces a choice: if QGIS_DEBUG is 0 (ie. critical),
+// we will also display the WARNING messages.
+// TODO: enum for python users?
+#define QGS_LOG_LVL_FATAL -1
+#define QGS_LOG_LVL_CRITICAL 0
+#define QGS_LOG_LVL_WARNING 500
+#define QGS_LOG_LVL_INFO 1
+#define QGS_LOG_LVL_DEBUG 2
+#define QGS_LOG_LVL_TRACE 3
+
 #ifdef QGISDEBUG
-#define QgsDebugError(str) QgsLogger::debug(QString(str), 0, __FILE__, __FUNCTION__, __LINE__)
-#define QgsDebugMsgLevel(str, level) if ( level <= QgsLogger::debugLevel() ) { QgsLogger::debug(QString(str), (level), __FILE__, __FUNCTION__, __LINE__); }(void)(0)
+#define QgsDebugError(str) QgsLogger::debug(QString(str), QGS_LOG_LVL_CRITICAL, __FILE__, __FUNCTION__, __LINE__)
+#define QgsDebugMsgLevel(str, level) if ( level <= QgsLogger::debugLevel() || level == QGS_LOG_LVL_WARNING ) { QgsLogger::debug(QString(str), (level), __FILE__, __FUNCTION__, __LINE__); }(void)(0)
 #define QgsDebugCall QgsScopeLogger _qgsScopeLogger(__FILE__, __FUNCTION__, __LINE__)
 #else
 #define QgsDebugCall do {} while(false)
 #define QgsDebugError(str) do {} while(false)
 #define QgsDebugMsgLevel(str, level) do {} while(false)
 #endif
+
+#define LOG_FORMAT_LEGACY "%{file}:%{line} : (%{function}) [thread:%{qthreadptr}] %{message}"
+#define LOG_FORMAT_PRETTY "%{time yyyy-MM-ddThh:mm:ss.zzz} [%{qthreadptr}] %{if-debug}DEBUG%{endif}%{if-info}INFO %{endif}%{if-warning}WARN %{endif}%{if-critical}ERROR%{endif}%{if-fatal}FATAL%{endif} %{file}:%{line}(%{function}) - %{message}"
+#define LOG_FORMAT_PIPED "%{time yyyy-MM-ddThh:mm:ss.zzz} | %{if-debug}DEBUG%{endif}%{if-info}INFO %{endif}%{if-warning}WARN %{endif}%{if-critical}ERROR%{endif}%{if-fatal}FATAL%{endif} | %{qthreadptr} | %{function}(%{file}:%{line}) | %{message}"
 
 /**
  * \ingroup core
@@ -56,10 +71,14 @@ class QFile;
  * QGIS_LOG_FILE may contain a file name. If set, all messages will be appended
  * to this file rather than to stdout.
 */
-
 class CORE_EXPORT QgsLogger
 {
   public:
+
+    // TODO: With c++20 we could use [source_location](https://en.cppreference.com/w/cpp/utility/source_location)
+    // to retrieve file, line and function params for warning, critical, etc. functions.
+
+    // TODO: should be renammed as logMessage (for example) and add a new function to do debug as info, warning, critical, etc.
 
     /**
      * Goes to qDebug.
@@ -69,28 +88,31 @@ class CORE_EXPORT QgsLogger
      * \param function function where the message comes from
      * \param line place in file where the message comes from
     */
-    static void debug( const QString &msg, int debuglevel = 1, const char *file = nullptr, const char *function = nullptr, int line = -1 );
+    static void debug( const QString &msg, int debuglevel = QGS_LOG_LVL_DEBUG, const char *file = nullptr, const char *function = nullptr, int line = -1 );
 
     //! Similar to the previous method, but prints a variable int-value pair
-    static void debug( const QString &var, int val, int debuglevel = 1, const char *file = nullptr, const char *function = nullptr, int line = -1 );
+    static void debug( const QString &var, int val, int debuglevel = QGS_LOG_LVL_DEBUG, const char *file = nullptr, const char *function = nullptr, int line = -1 );
 
     /**
      * Similar to the previous method, but prints a variable double-value pair
      * \note not available in Python bindings
      */
-    static void debug( const QString &var, double val, int debuglevel = 1, const char *file = nullptr, const char *function = nullptr, int line = -1 ) SIP_SKIP SIP_SKIP;
+    static void debug( const QString &var, double val, int debuglevel = QGS_LOG_LVL_DEBUG, const char *file = nullptr, const char *function = nullptr, int line = -1 ) SIP_SKIP SIP_SKIP;
 
     /**
      * Prints out a variable/value pair for types with overloaded operator<<
      * \note not available in Python bindings
      */
     template <typename T> static void debug( const QString &var, T val, const char *file = nullptr, const char *function = nullptr,
-        int line = -1, int debuglevel = 1 ) SIP_SKIP SIP_SKIP
+        int line = -1, int debuglevel = QGS_LOG_LVL_DEBUG ) SIP_SKIP SIP_SKIP
     {
       std::ostringstream os;
       os << var.toLocal8Bit().data() << " = " << val;
       debug( var, os.str().c_str(), file, function, line, debuglevel );
     }
+
+    //! Goes to qInfo.
+    static void info( const QString &msg );
 
     //! Goes to qWarning.
     static void warning( const QString &msg );
@@ -100,6 +122,27 @@ class CORE_EXPORT QgsLogger
 
     //! Goes to qFatal.
     static void fatal( const QString &msg );
+
+    /**
+     * Tries to dump stack trace through c++filt
+     */
+    static void dumpBacktrace( unsigned int depth ) SIP_SKIP;
+
+    /**
+     * Hook into the qWarning/qFatal mechanism so that we can channel messages
+     * from libpng to the user.
+     *
+     * Some JPL WMS images tend to overload the libpng 1.2.2 implementation
+     * somehow (especially when zoomed in)
+     * and it would be useful for the user to know why their picture turned up blank
+     *
+     * Based on qInstallMsgHandler example code in the Qt documentation.
+     *
+     */
+    static void qtMessageHandler( QtMsgType type, const QMessageLogContext &context, const QString &msg ) SIP_SKIP;
+
+    //! Handle qgis crash
+    static void qgisCrash( int signal ) SIP_SKIP;
 
     /**
      * Reads the environment variable QGIS_DEBUG and converts it to int. If QGIS_DEBUG is not set,
@@ -112,14 +155,16 @@ class CORE_EXPORT QgsLogger
       return sDebugLevel;
     }
 
-    //! Logs the message passed in to the logfile defined in QGIS_LOG_FILE if any.
-    static void logMessageToFile( const QString &message );
-
     /**
      * Reads the environment variable QGIS_LOG_FILE. Returns NULL if the variable is not set,
      * otherwise returns a file name for writing log messages to.
     */
     static QString logFile();
+
+    /**
+     * Returns the log format used by qgis.
+    */
+    static QString logFormat();
 
   private:
     static void init();
@@ -140,11 +185,11 @@ class CORE_EXPORT QgsScopeLogger // clazy:exclude=rule-of-three
       , _func( func )
       , _line( line )
     {
-      QgsLogger::debug( QStringLiteral( "Entering." ), 2, _file, _func, _line );
+      QgsLogger::debug( QStringLiteral( "Entering." ), QGS_LOG_LVL_DEBUG, _file, _func, _line );
     }
     ~QgsScopeLogger()
     {
-      QgsLogger::debug( QStringLiteral( "Leaving." ), 2, _file, _func, _line );
+      QgsLogger::debug( QStringLiteral( "Leaving." ), QGS_LOG_LVL_DEBUG, _file, _func, _line );
     }
   private:
     const char *_file = nullptr;

@@ -32,7 +32,6 @@
 #include <QMatrix4x4>
 
 #include "qgsrange.h"
-#include "qgssettings.h"
 
 #define SIP_NO_FILE
 
@@ -49,13 +48,10 @@ class Qgs3DMapSceneEntity : public Qt3DCore::QEntity
     //! Constructs a chunked entity
     Qgs3DMapSceneEntity( Qt3DCore::QNode *parent = nullptr )
       : Qt3DCore::QEntity( parent )
-    {
-      const QgsSettings settings;
-      mGpuMemoryLimit = settings.value( QStringLiteral( "map3d/gpuMemoryLimit" ), 500.0, QgsSettings::App ).toDouble();
-    }
+    {}
 
     //! Records some bits about the scene (context for handleSceneUpdate() method)
-    struct SceneState
+    struct SceneContext
     {
       QVector3D cameraPos;   //!< Camera position
       float cameraFov;       //!< Field of view (in degrees)
@@ -63,8 +59,15 @@ class Qgs3DMapSceneEntity : public Qt3DCore::QEntity
       QMatrix4x4 viewProjectionMatrix; //!< For frustum culling
     };
 
-    //! Called when e.g. camera changes and entity may need updated
-    virtual void handleSceneUpdate( const SceneState &state ) { Q_UNUSED( state ) }
+    /**
+     * Called when e.g. camera changes and entity may need updated
+     * \param availableGpuMemory remaining gpu memory for the 3D scene
+     */
+    virtual void handleSceneUpdate( const SceneContext &sceneContext, double availableGpuMemory )
+    {
+      Q_UNUSED( sceneContext )
+      Q_UNUSED( availableGpuMemory )
+    }
 
     //! Returns number of jobs pending for this entity until it is fully loaded/updated in the current view
     virtual int pendingJobsCount() const { return 0; }
@@ -75,32 +78,35 @@ class Qgs3DMapSceneEntity : public Qt3DCore::QEntity
     //! Returns the near to far plane range for the entity using the specified \a viewMatrix
     virtual QgsRange<float> getNearFarPlaneRange( const QMatrix4x4 &viewMatrix ) const { Q_UNUSED( viewMatrix ) return QgsRange<float>( 1e9, 0 ); }
 
-
-    //! Sets the limit of the GPU memory used to render the entity
-    void setGpuMemoryLimit( double gpuMemoryLimit ) { mGpuMemoryLimit = gpuMemoryLimit; }
-
-    //! Returns the limit of the GPU memory used to render the entity in megabytes
-    double gpuMemoryLimit() const { return mGpuMemoryLimit; }
+    /**
+     * Returns the GPU memory currently used to render the entity in megabytes
+     * \since QGIS 3.34
+     */
+    virtual double usedGpuMemory() const { return 0.0; }
 
     //! Returns whether the entity has reached GPU memory limit
     bool hasReachedGpuMemoryLimit() const { return mHasReachedGpuMemoryLimit; }
 
-  protected:
+    //! Updates layer name in which this entity in included
+    virtual void setLayerName( const QString &layerName ) { mLayerName = layerName; }
+    //! Returns layer name in which this entity in included
+    virtual QString layerName() const  { return mLayerName; }
+
     //! Sets whether the GPU memory limit has been reached
-    void setHasReachedGpuMemoryLimit( bool reached ) { mHasReachedGpuMemoryLimit = reached; }
+    virtual void setHasReachedGpuMemoryLimit( bool reached ) { mHasReachedGpuMemoryLimit = reached; }
 
   signals:
     //! Emitted when the number of pending jobs changes (some jobs have finished or some jobs have been just created)
     void pendingJobsCountChanged();
 
     //! Emitted when a new 3D entity has been created. Other components can use that to do extra work
-    void newEntityCreated( Qt3DCore::QEntity *entity );
+    void newEntityCreated( Qt3DCore::QEntity *entity, double usedGpuSize = std::numeric_limits<double>::quiet_NaN() );
 
   protected:
-    //! Limit how much GPU memory this entity can use
-    double mGpuMemoryLimit = 500.0; // in megabytes
     //! Whether the entity is currently over the GPU memory limit (used to report a warning to the user)
     bool mHasReachedGpuMemoryLimit = false;
+    //! Layer name in which this entity in included
+    QString mLayerName = "unknown";
 };
 
 /// @endcond

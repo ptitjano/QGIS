@@ -31,7 +31,7 @@
 
 #include <Qt3DCore/QTransform>
 #include <Qt3DRender/QGeometryRenderer>
-
+#include "qgs3dmapsettings.h"
 
 ///@cond PRIVATE
 
@@ -167,11 +167,9 @@ void QgsTerrainEntity::invalidateMapImages()
   QgsEventTracing::addEvent( QgsEventTracing::Instant, QStringLiteral( "3D" ), QStringLiteral( "Invalidate textures" ) );
 
   // handle active nodes
-
   updateNodes( mActiveNodes, mUpdateJobFactory.get() );
 
   // handle inactive nodes afterwards
-
   QList<QgsChunkNode *> inactiveNodes;
   const QList<QgsChunkNode *> descendants = mRootNode->descendants();
   for ( QgsChunkNode *node : descendants )
@@ -228,8 +226,8 @@ TerrainMapUpdateJob::TerrainMapUpdateJob( QgsTerrainTextureGenerator *textureGen
   , mTextureGenerator( textureGenerator )
 {
   QgsTerrainTileEntity *entity = qobject_cast<QgsTerrainTileEntity *>( node->entity() );
-  connect( textureGenerator, &QgsTerrainTextureGenerator::tileReady, this, &TerrainMapUpdateJob::onTileReady );
-  mJobId = textureGenerator->render( entity->textureImage()->imageExtent(), node->tileId(), entity->textureImage()->imageDebugText() );
+  connect( mTextureGenerator, &QgsTerrainTextureGenerator::tileReady, this, &TerrainMapUpdateJob::onTileReady );
+  mJobId = mTextureGenerator->render( entity->textureImage()->imageExtent(), node->tileId(), entity->textureImage()->imageDebugText() );
 }
 
 void TerrainMapUpdateJob::cancel()
@@ -250,4 +248,42 @@ void TerrainMapUpdateJob::onTileReady( int jobId, const QImage &image )
   }
 }
 
+
+// -----------
+
+QgsTerrainLayer3DRenderer::QgsTerrainLayer3DRenderer()
+{
+}
+
+QString QgsTerrainLayer3DRenderer::type() const
+{
+  return "terrain";
+}
+
+QgsTerrainLayer3DRenderer *QgsTerrainLayer3DRenderer::clone() const
+{
+  return new QgsTerrainLayer3DRenderer();
+}
+
+Qt3DCore::QEntity *QgsTerrainLayer3DRenderer::createEntity( const Qgs3DMapSettings &map3DSettings ) const
+{
+//  qDebug() << "=============== QgsTerrainLayer3DRenderer::createEntity";
+  QgsTerrainEntity *terrainEntity = nullptr;
+  if ( map3DSettings.terrainRenderingEnabled() && map3DSettings.terrainGenerator() )
+  {
+    double tile0width = map3DSettings.terrainGenerator()->rootChunkExtent().width();
+    int maxZoomLevel = Qgs3DUtils::maxZoomLevel( tile0width, map3DSettings.mapTileResolution(), map3DSettings.maxTerrainGroundError() );
+    QgsAABB rootBbox = map3DSettings.terrainGenerator()->rootChunkBbox( map3DSettings );
+    float rootError = map3DSettings.terrainGenerator()->rootChunkError( map3DSettings );
+    const QgsAABB clippingBbox = Qgs3DUtils::mapToWorldExtent( map3DSettings.extent(), rootBbox.zMin, rootBbox.zMax, map3DSettings.origin() );
+//    qDebug() << "=============== QgsTerrainLayer3DRenderer::createEntity will setup quadtree";
+    map3DSettings.terrainGenerator()->setupQuadtree( rootBbox, rootError, maxZoomLevel, clippingBbox );
+
+//    qDebug() << "=============== QgsTerrainLayer3DRenderer::createEntity will create terrain";
+    terrainEntity = new QgsTerrainEntity( map3DSettings );
+    terrainEntity->setShowBoundingBoxes( map3DSettings.showTerrainBoundingBoxes() );
+  }
+//  qDebug() << "=============== QgsTerrainLayer3DRenderer::createEntity done!";
+  return terrainEntity;
+}
 /// @endcond

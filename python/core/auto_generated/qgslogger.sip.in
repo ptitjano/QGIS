@@ -13,6 +13,7 @@
 
 
 
+
 class QgsLogger
 {
 %Docstring(signature="appended")
@@ -37,7 +38,9 @@ to this file rather than to stdout.
 %End
   public:
 
-    static void debug( const QString &msg, int debuglevel = 1, const char *file = 0, const char *function = 0, int line = -1 );
+
+
+    static void debug( const QString &msg, int debuglevel = QGS_LOG_LVL_DEBUG, const char *file = 0, const char *function = 0, int line = -1 );
 %Docstring
 Goes to qDebug.
 
@@ -48,12 +51,17 @@ Goes to qDebug.
 :param line: place in file where the message comes from
 %End
 
-    static void debug( const QString &var, int val, int debuglevel = 1, const char *file = 0, const char *function = 0, int line = -1 );
+    static void debug( const QString &var, int val, int debuglevel = QGS_LOG_LVL_DEBUG, const char *file = 0, const char *function = 0, int line = -1 );
 %Docstring
 Similar to the previous method, but prints a variable int-value pair
 %End
 
 
+
+    static void info( const QString &msg );
+%Docstring
+Goes to qInfo.
+%End
 
     static void warning( const QString &msg );
 %Docstring
@@ -70,21 +78,24 @@ Goes to qCritical.
 Goes to qFatal.
 %End
 
+
+
+
     static int debugLevel();
 %Docstring
 Reads the environment variable QGIS_DEBUG and converts it to int. If QGIS_DEBUG is not set,
 the function returns 1 if QGISDEBUG is defined and 0 if not.
 %End
 
-    static void logMessageToFile( const QString &message );
-%Docstring
-Logs the message passed in to the logfile defined in QGIS_LOG_FILE if any.
-%End
-
     static QString logFile();
 %Docstring
 Reads the environment variable QGIS_LOG_FILE. Returns NULL if the variable is not set,
 otherwise returns a file name for writing log messages to.
+%End
+
+    static QString logFormat();
+%Docstring
+Returns the log format used by qgis.
 %End
 
 };

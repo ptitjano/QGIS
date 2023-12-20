@@ -29,6 +29,7 @@
 #include "qgs3dnavigationwidget.h"
 #include "qgssettings.h"
 #include "qgstemporalcontroller.h"
+#include "qgs3dmapcanvaswidget.h"
 
 Qgs3DMapCanvas::Qgs3DMapCanvas( QWidget *parent )
   : QWidget( parent )
@@ -117,6 +118,17 @@ void Qgs3DMapCanvas::setMap( Qgs3DMapSettings *map )
     mScene->deleteLater();
   }
   mScene = newScene;
+
+  // update scene name
+  if ( parent() && dynamic_cast<Qgs3DMapCanvasWidget *>( parent() ) )
+  {
+    Qgs3DMapCanvasWidget *parentWidget = dynamic_cast<Qgs3DMapCanvasWidget *>( parent() );
+    mScene->setObjectName( parentWidget->canvasName() );
+  }
+
+  // read defaut gpu memory in 3d map settings
+  mScene->readAvailableGpuMemory();
+
   connect( mScene, &Qgs3DMapScene::fpsCountChanged, this, &Qgs3DMapCanvas::fpsCountChanged );
   connect( mScene, &Qgs3DMapScene::fpsCounterEnabledChanged, this, &Qgs3DMapCanvas::fpsCounterEnabledChanged );
   connect( mScene, &Qgs3DMapScene::viewed2DExtentFrom3DChanged, this, &Qgs3DMapCanvas::viewed2DExtentFrom3DChanged );

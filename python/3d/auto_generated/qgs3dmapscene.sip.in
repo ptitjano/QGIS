@@ -13,7 +13,6 @@
 
 
 
-
 class Qgs3DMapScene : QObject
 {
 %Docstring(signature="appended")
@@ -31,7 +30,7 @@ Entity that encapsulates our 3D scene - contains all other entities (such as ter
 %End
   public:
 
-    QgsCameraController *cameraController();
+    QgsCameraController *cameraController() const;
 %Docstring
 Returns camera controller
 %End
@@ -49,16 +48,11 @@ Resets camera view to show the extent ``extent`` (top view)
 .. versionadded:: 3.26
 %End
 
-    QVector<QgsPointXY> viewFrustum2DExtent();
+    QVector<QgsPointXY> viewFrustum2DExtent() const;
 %Docstring
 Calculates the 2D extent viewed by the 3D camera as the vertices of the viewed trapezoid
 
 .. versionadded:: 3.26
-%End
-
-    int terrainPendingJobsCount() const;
-%Docstring
-Returns number of pending jobs of the terrain entity
 %End
 
     int totalPendingJobsCount() const;
@@ -70,6 +64,7 @@ Returns number of pending jobs for all chunked entities
 
     enum SceneState
     {
+      Canceled,
       Ready,
       Updating,
     };
@@ -79,7 +74,7 @@ Returns number of pending jobs for all chunked entities
 Returns the current state of the scene
 %End
 
-    float worldSpaceError( float epsilon, float distance );
+    float worldSpaceError( float epsilon, float distance ) const;
 %Docstring
 Given screen error (in pixels) and distance from camera (in 3D world coordinates), this function
 estimates the error in world space. Takes into account camera's field of view and the screen (3D view) size.
@@ -93,7 +88,7 @@ Exports the scene according to the scene export settings
 
 
 
-    QgsRectangle sceneExtent();
+    QgsRectangle sceneExtent() const;
 %Docstring
 Returns the scene extent in the map's CRS
 
@@ -120,6 +115,23 @@ Returns the 3D map settings.
 .. versionadded:: 3.30
 %End
 
+    double usedGpuMemory() const;
+%Docstring
+Returns the used gpu memory for this 3D scene
+%End
+    double maxAvailableGpuMemory() const;
+%Docstring
+Returns the max available gpu memory for this 3D scene
+%End
+    QList<QString> frozenLayers() const;
+%Docstring
+Returns frozen layer name list
+%End
+    void readAvailableGpuMemory();
+%Docstring
+Reads available gpu memory from settings or gpu card
+%End
+
     static QMap< QString, Qgs3DMapScene * > openScenes();
 %Docstring
 Returns a map of 3D map scenes (by name) open in the QGIS application.
@@ -136,10 +148,6 @@ Returns a map of 3D map scenes (by name) open in the QGIS application.
     void terrainEntityChanged();
 %Docstring
 Emitted when the current terrain entity is replaced by a new one
-%End
-    void terrainPendingJobsCountChanged();
-%Docstring
-Emitted when the number of terrain's pending jobs changes
 %End
 
     void totalPendingJobsCountChanged();

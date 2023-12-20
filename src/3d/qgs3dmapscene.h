@@ -22,6 +22,7 @@
 
 #include "qgsrectangle.h"
 #include "qgscameracontroller.h"
+#include "qgs3dmapsceneentity_p.h"
 
 #ifndef SIP_RUN
 namespace Qt3DRender
@@ -57,8 +58,6 @@ class QgsShadowRenderingFrameGraph;
 class QgsPostprocessingEntity;
 class QgsChunkNode;
 class QgsDoubleRange;
-class Qgs3DMapSceneEntity;
-
 
 /**
  * \ingroup 3d
@@ -80,13 +79,13 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
     Qgs3DMapScene( Qgs3DMapSettings &map, QgsAbstract3DEngine *engine ) SIP_SKIP;
 
     //! Returns camera controller
-    QgsCameraController *cameraController() { return mCameraController; }
+    QgsCameraController *cameraController() const { return mCameraController; }
 
     /**
      * Returns terrain entity (may be temporarily NULLPTR)
      * \note Not available in Python bindings
      */
-    QgsTerrainEntity *terrainEntity() SIP_SKIP { return mTerrain; }
+    QgsTerrainEntity *terrainEntity() const SIP_SKIP;
 
     //! Resets camera view to show the whole scene (top view)
     void viewZoomFull();
@@ -103,10 +102,7 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
      *
      * \since QGIS 3.26
      */
-    QVector<QgsPointXY> viewFrustum2DExtent();
-
-    //! Returns number of pending jobs of the terrain entity
-    int terrainPendingJobsCount() const;
+    QVector<QgsPointXY> viewFrustum2DExtent() const;
 
     /**
      * Returns number of pending jobs for all chunked entities
@@ -117,6 +113,7 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
     //! Enumeration of possible states of the 3D scene
     enum SceneState
     {
+      Canceled,  //!< The scene load has been canceled
       Ready,     //!< The scene is fully loaded/updated
       Updating,  //!< The scene is still being loaded/updated
     };
@@ -128,7 +125,7 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
      * Given screen error (in pixels) and distance from camera (in 3D world coordinates), this function
      * estimates the error in world space. Takes into account camera's field of view and the screen (3D view) size.
      */
-    float worldSpaceError( float epsilon, float distance );
+    float worldSpaceError( float epsilon, float distance ) const;
 
     //! Exports the scene according to the scene export settings
     void exportScene( const Qgs3DMapExportSettings &exportSettings );
@@ -145,7 +142,7 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
      *
      * \since QGIS 3.32
      */
-    QList<QgsMapLayer *> layers() SIP_SKIP { return mLayerEntities.keys(); }
+    QList<QgsMapLayer *> layers() const SIP_SKIP { return mLayerEntities.keys(); }
 
     /**
      * Returns the entity belonging to \a layer
@@ -159,7 +156,7 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
      *
      * \since QGIS 3.20
      */
-    QgsRectangle sceneExtent();
+    QgsRectangle sceneExtent() const;
 
     /**
      * Returns the scene's elevation range
@@ -174,14 +171,14 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
      *
      * \since QGIS 3.26
      */
-    Qgs3DAxis *get3DAxis() SIP_SKIP { return m3DAxis; }
+    Qgs3DAxis *get3DAxis() const SIP_SKIP { return m3DAxis; }
 
     /**
      * Returns the abstract 3D engine
      *
      * \since QGIS 3.26
      */
-    QgsAbstract3DEngine *engine() SIP_SKIP { return mEngine; }
+    QgsAbstract3DEngine *engine() const SIP_SKIP { return mEngine; }
 
     /**
      * Returns the 3D map settings.
@@ -189,6 +186,15 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
      * \since QGIS 3.30
      */
     Qgs3DMapSettings *mapSettings() const { return &mMap; }
+
+    //! Returns the used gpu memory for this 3D scene
+    double usedGpuMemory() const { return mUsedGpuMemory;}
+    //! Returns the max available gpu memory for this 3D scene
+    double maxAvailableGpuMemory() const { return mMaxAvailableGpuMemory;}
+    //! Returns frozen layer name list
+    QList<QString> frozenLayers() const;
+    //! Reads available gpu memory from settings or gpu card
+    void readAvailableGpuMemory();
 
     /**
      * Returns a map of 3D map scenes (by name) open in the QGIS application.
@@ -207,8 +213,6 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
   signals:
     //! Emitted when the current terrain entity is replaced by a new one
     void terrainEntityChanged();
-    //! Emitted when the number of terrain's pending jobs changes
-    void terrainPendingJobsCountChanged();
 
     /**
      * Emitted when the total number of pending jobs changes
@@ -277,9 +281,10 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
     void addCameraRotationCenterEntity( QgsCameraController *controller );
     void setSceneState( SceneState state );
     void updateSceneState();
-    void updateScene();
+    void updateScene( bool forceUpdate = false );
     void finalizeNewEntity( Qt3DCore::QEntity *newEntity );
     int maximumTextureSize() const;
+    Qgs3DMapSceneEntity::SceneContext buildSceneContext( ) const;
 
   private:
     Qgs3DMapSettings &mMap;
@@ -287,8 +292,7 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
     //! Provides a way to have a synchronous function executed each frame
     Qt3DLogic::QFrameAction *mFrameAction = nullptr;
     QgsCameraController *mCameraController = nullptr;
-    QgsTerrainEntity *mTerrain = nullptr;
-    QList<Qgs3DMapSceneEntity *> mSceneEntities;
+    QgsMapLayer *mTerrainLayer = nullptr;
     //! Entity that shows view center - useful for debugging camera issues
     Qt3DCore::QEntity *mEntityCameraViewCenter = nullptr;
     //! Keeps track of entities that belong to a particular layer
@@ -305,5 +309,9 @@ class _3D_EXPORT Qgs3DMapScene : public QObject
     //! 3d axis visualization
     Qgs3DAxis *m3DAxis = nullptr;
 
+    //! max gpu memory available for this 3D scene (at scene creation)
+    double mMaxAvailableGpuMemory = 500.0;
+    //! current gpu memory used by this 3D scene
+    double mUsedGpuMemory = 0.0;
 };
 #endif // QGS3DMAPSCENE_H

@@ -30,11 +30,14 @@ class TestQgsLogger(unittest.TestCase):
 
     def testLogger(self):
         try:
+            os.environ["QGIS_LOG_FORMAT"] = "%{type}: %{message}"
             myFile = os.fdopen(myFileHandle, "w")
             myFile.write("QGIS Logger Unit Test\n")
             myFile.close()
             myLogger = QgsLogger()
-            myLogger.debug('This is a debug')
+            # debug has 'info' type due to sip bug in reading default value for `debuglevel`. We force it temporarily.
+            myLogger.debug('This is a debug', 2)
+            myLogger.info('This is a info')
             myLogger.warning('This is a warning')
             myLogger.critical('This is critical')
             # myLogger.fatal('Aaaargh...fatal');  #kills QGIS not testable
@@ -42,9 +45,10 @@ class TestQgsLogger(unittest.TestCase):
             myText = myFile.readlines()
             myFile.close()
             myExpectedText = ['QGIS Logger Unit Test\n',
-                              'This is a debug\n',
-                              'This is a warning\n',
-                              'This is critical\n']
+                              'debug: This is a debug\n',
+                              'info: This is a info\n',
+                              'warning: This is a warning\n',
+                              'critical: This is critical\n']
             myMessage = ('Expected:\n---\n%s\n---\nGot:\n---\n%s\n---\n' %
                          (myExpectedText, myText))
             self.assertEqual(myText, myExpectedText, myMessage)

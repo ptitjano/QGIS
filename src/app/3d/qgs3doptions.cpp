@@ -58,6 +58,7 @@ Qgs3DOptionsWidget::Qgs3DOptionsWidget( QWidget *parent )
 
   mGpuMemoryLimit->setClearValue( 500 );
   mGpuMemoryLimit->setValue( settings.value( QStringLiteral( "map3d/gpuMemoryLimit" ), 500.0, QgsSettings::App ).toDouble() );
+  mReadMemoryFromGpuCard->setChecked( settings.value( QStringLiteral( "map3d/readMemoryFromGpuCard" ), true, QgsSettings::App ).toBool() );
 }
 
 QString Qgs3DOptionsWidget::helpKey() const
@@ -76,6 +77,7 @@ void Qgs3DOptionsWidget::apply()
   settings.setValue( QStringLiteral( "map3d/defaultFieldOfView" ), spinCameraFieldOfView->value(), QgsSettings::App );
 
   settings.setValue( QStringLiteral( "map3d/gpuMemoryLimit" ), mGpuMemoryLimit->value(), QgsSettings::App );
+  settings.setValue( QStringLiteral( "map3d/readMemoryFromGpuCard" ), mReadMemoryFromGpuCard->isChecked(), QgsSettings::App );
 }
 
 
