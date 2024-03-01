@@ -169,13 +169,15 @@ Qt3DRender::QFrameGraphNode *QgsFrameGraph::constructForwardRenderPass()
 
   Qt3DRender::QSortPolicy *sortPolicy = new Qt3DRender::QSortPolicy( transparentObjectsLayerFilter );
   QVector<Qt3DRender::QSortPolicy::SortType> sortTypes;
-  sortTypes.push_back( Qt3DRender::QSortPolicy::BackToFront );
+  // sortTypes.push_back( Qt3DRender::QSortPolicy::BackToFront );
+  // sortTypes.push_back( Qt3DRender::QSortPolicy::Material );
+  sortTypes.push_back( Qt3DRender::QSortPolicy::Texture );
   sortPolicy->setSortTypes( sortTypes );
 
   Qt3DRender::QRenderStateSet *transparentObjectsRenderStateSetColor = new Qt3DRender::QRenderStateSet( sortPolicy );
   {
     Qt3DRender::QDepthTest *depthTest = new Qt3DRender::QDepthTest;
-    depthTest->setDepthFunction( Qt3DRender::QDepthTest::Less );
+    depthTest->setDepthFunction( Qt3DRender::QDepthTest::LessOrEqual );
     transparentObjectsRenderStateSetColor->addRenderState( depthTest );
 
     Qt3DRender::QNoDepthMask *noDepthMask = new Qt3DRender::QNoDepthMask;
@@ -199,7 +201,7 @@ Qt3DRender::QFrameGraphNode *QgsFrameGraph::constructForwardRenderPass()
   Qt3DRender::QRenderStateSet *transparentObjectsRenderStateSetDepth = new Qt3DRender::QRenderStateSet( sortPolicy );
   {
     Qt3DRender::QDepthTest *depthTest = new Qt3DRender::QDepthTest;
-    depthTest->setDepthFunction( Qt3DRender::QDepthTest::Less );
+    depthTest->setDepthFunction( Qt3DRender::QDepthTest::LessOrEqual );
     transparentObjectsRenderStateSetDepth->addRenderState( depthTest );
 
     Qt3DRender::QColorMask *noColorMask = new Qt3DRender::QColorMask;

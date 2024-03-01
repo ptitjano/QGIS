@@ -510,6 +510,10 @@ void Qgs3DMapScene::createTerrainDeferred()
     mTerrain->setParent( this );
     mTerrain->setShowBoundingBoxes( mMap.showTerrainBoundingBoxes() );
 
+    // add terrain to the transparent layer
+    QgsFrameGraph *frameGraph = mEngine->frameGraph();
+    mTerrain->addComponent( frameGraph->transparentObjectLayer() );
+
     mSceneEntities << mTerrain;
 
     connect( mTerrain, &QgsChunkedEntity::pendingJobsCountChanged, this, &Qgs3DMapScene::totalPendingJobsCountChanged );
