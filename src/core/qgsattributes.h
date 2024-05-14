@@ -201,6 +201,32 @@ typedef QVector<QVariant> QgsAttributes;
     {
       qv->append( QVariant( QVariant::Int ) );
     }
+    else if ( PyBool_Check( obj ) )
+    {
+      const bool bool_value = PyObject_IsTrue( obj );
+      qv->append( QVariant( bool_value ) );
+    }
+    else if ( PyLong_Check( obj ) )
+    {
+      const int int_value = static_cast<int>( PyLong_AsLong( obj ) );
+      qv->append( QVariant( int_value ) );
+    }
+    else if ( PyFloat_Check( obj ) )
+    {
+      const double double_value = PyFloat_AsDouble( obj );
+      qv->append( QVariant( double_value ) );
+    }
+    else if ( PyUnicode_Check( obj ) )
+    {
+      const QString str_value = QString::fromUtf8( PyUnicode_AsUTF8( obj ) );
+      qv->append( QVariant( str_value ) );
+
+      // // const char *str = _PyUnicode_AsString(PyObject_Str(attr_name))
+      // PyObject *obj_str = PyObject_Str( obj );
+      // QString str = QString::fromUtf8( PyUnicode_AsUTF8( obj_str ) );
+      // qv->append( QVariant( str ));
+      // Py_XDECREF( obj_str );
+    }
     else
     {
       int state;
