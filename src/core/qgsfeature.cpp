@@ -14,6 +14,7 @@ email                : sherman at mrcc.com
  ***************************************************************************/
 
 #include "qgsfeature.h"
+#include "qgsattributes.h"
 #include "qgsfeature_p.h"
 #include "qgsfields.h"
 #include "qgsgeometry.h"
@@ -455,4 +456,3 @@ uint qHash( const QgsFeature &key, uint seed )
 
   return hash;
 }
-
