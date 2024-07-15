@@ -366,6 +366,8 @@ class QgsRectangle;
    */
   SERVER_EXPORT QStringList wmsOutputCrsList( const QgsProject &project );
 
+  SERVER_EXPORT QStringList wmsOutputCrsListAsOgcUrn( const QgsProject &project );
+
   /**
    * Returns the WMS Extent restriction.
    * \param project the QGIS project
