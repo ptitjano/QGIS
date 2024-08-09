@@ -1260,21 +1260,14 @@ namespace QgsWfs
         QDomElement bbElem = doc.createElement( QStringLiteral( "gml:boundedBy" ) );
         if ( format == QgsWfsParameters::Format::GML3 )
         {
-          // For WFS 1.1 we honor requested CRS and axis order
-          // Axis is not inverted if srsName starts with EPSG
-          // It needs to be an EPSG urn, e.g. urn:ogc:def:crs:EPSG::4326
-          // This follows geoserver convention
-          // See: https://docs.geoserver.org/stable/en/user/services/wfs/axis_order.html
+          // If requested SRS (srsName) is different from rect CRS (crs) we need to transform the envelope
           const QString requestSrsName = request.serverParameters().value( QStringLiteral( "SRSNAME" ) );
           const QString srsName = !requestSrsName.isEmpty() ? requestSrsName : crs.authid();
-          const bool invertAxis { mWfsParameters.versionAsNumber() >= QgsProjectVersion( 1, 1, 0 ) &&
-                                  crs.hasAxisInverted() &&
-                                  ! srsName.startsWith( QLatin1String( "EPSG:" ) ) };
+          const QgsCoordinateReferenceSystem outputCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( srsName );
 
-          // If requested SRS (srsName) is different from rect CRS (crs) we need to transform the envelope
           QgsCoordinateTransform transform;
           transform.setSourceCrs( crs );
-          transform.setDestinationCrs( QgsCoordinateReferenceSystem::fromOgcWmsCrs( srsName ) );
+          transform.setDestinationCrs( outputCrs );
           QgsRectangle crsCorrectedRect { rect ? *rect : QgsRectangle() };
 
           try
@@ -1285,6 +1278,15 @@ namespace QgsWfs
           {
             Q_UNUSED( cse )
           }
+
+          // For WFS 1.1 we honor requested CRS and axis order
+          // Axis is not inverted if srsName starts with EPSG
+          // It needs to be an EPSG urn, e.g. urn:ogc:def:crs:EPSG::4326
+          // This follows geoserver convention
+          // See: https://docs.geoserver.org/stable/en/user/services/wfs/axis_order.html
+          const bool invertAxis { mWfsParameters.versionAsNumber() >= QgsProjectVersion( 1, 1, 0 ) &&
+                                  outputCrs.hasAxisInverted() &&
+                                  !srsName.startsWith( QLatin1String( "EPSG:" ) ) };
 
           QDomElement envElem = QgsOgcUtils::rectangleToGMLEnvelope( &crsCorrectedRect, doc, srsName, invertAxis, prec );
           if ( !envElem.isNull() )
