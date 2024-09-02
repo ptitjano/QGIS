@@ -51,6 +51,7 @@
 #include "qgsshortcutsmanager.h"
 #include "qgselevationprofiletoolidentify.h"
 #include "qgselevationprofiletoolmeasure.h"
+#include "qgselevationprofiletooladdpoint.h"
 #include "qgssettingsentryimpl.h"
 #include "qgssettingstree.h"
 #include "qgsmaplayerproxymodel.h"
@@ -187,6 +188,7 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   mZoomTool = new QgsPlotToolZoom( mCanvas );
   mXAxisZoomTool = new QgsPlotToolXAxisZoom( mCanvas );
   mIdentifyTool = new QgsElevationProfileToolIdentify( mCanvas );
+  mAddPointTool = new QgsElevationProfileToolAddPoint( mCanvas );
 
   mCanvas->setTool( mIdentifyTool );
 
@@ -486,6 +488,26 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   connect( mDockableWidgetHelper, &QgsDockableWidgetHelper::closed, this, [this]() {
     close();
   } );
+
+  toolBar->addSeparator();
+
+  // auto mBtnaddPoint = new QToolButton();
+  // mBtnaddPoint->setAutoRaise( true );  // useless: feature is automatically turned on when a button is used inside a QToolBar
+  // mBtnaddPoint->setToolTip( tr( "Add Point Feature" ) );
+  // mBtnaddPoint->setEnabled( false );
+
+  // toolBar->addWidget( mBtnaddPoint );
+
+  QAction *addPointToolAction = new QAction( tr( "Add Point Feature" ), this );
+  addPointToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionaddPoint.svg" ) ) );
+  addPointToolAction->setCheckable( true );
+  addPointToolAction->setChecked( false );
+  addPointToolAction->setEnabled( true );
+  mAddPointTool->setAction( addPointToolAction );
+
+  connect( addPointToolAction, &QAction::triggered, mPanTool, [ = ] { mCanvas->setTool( mAddPointTool ); } );
+
+  toolBar->addAction( addPointToolAction );
 
   // updating the profile plot is deferred on a timer, so that we don't trigger it too often
   mSetCurveTimer = new QTimer( this );
