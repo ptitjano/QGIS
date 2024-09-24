@@ -283,6 +283,7 @@ QgsWfs3LandingPageHandler::QgsWfs3LandingPageHandler()
 
 void QgsWfs3LandingPageHandler::handleRequest( const QgsServerApiContext &context ) const
 {
+  qDebug() << "QgsWfs3LandingPageHandler::handleRequest";
   json data
   {
     { "links", links( context ) }
@@ -309,6 +310,7 @@ void QgsWfs3LandingPageHandler::handleRequest( const QgsServerApiContext &contex
     { "type", QgsServerOgcApi::mimeType( QgsServerOgcApi::ContentType::OPENAPI3 ) },
     { "title", "API description" },
   } );
+  qDebug() << "ON WRITE ========";
   write( data, context, {{ "pageTitle", linkTitle() }, { "navigation", json::array() }} );
 }
 

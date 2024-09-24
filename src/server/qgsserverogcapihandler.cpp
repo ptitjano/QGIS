@@ -109,6 +109,7 @@ QString QgsServerOgcApiHandler::contentTypeForAccept( const QString &accept ) co
 void QgsServerOgcApiHandler::write( json &data, const QgsServerApiContext &context, const json &htmlMetadata ) const
 {
   const QgsServerOgcApi::ContentType contentType { contentTypeFromRequest( context.request() ) };
+  qDebug() << "content type" << contentType;
   switch ( contentType )
   {
     case QgsServerOgcApi::ContentType::HTML:
@@ -436,11 +437,13 @@ void QgsServerOgcApiHandler::htmlDump( const json &data, const QgsServerApiConte
 
 QgsServerOgcApi::ContentType QgsServerOgcApiHandler::contentTypeFromRequest( const QgsServerRequest *request ) const
 {
+  qDebug() << "le default" << defaultContentType();
   // Fallback to default
   QgsServerOgcApi::ContentType result { defaultContentType() };
   bool found { false };
   // First file extension ...
   const QString extension { QFileInfo( request->url().path() ).suffix().toUpper() };
+  qDebug() << "extension" << extension;
   if ( ! extension.isEmpty() )
   {
     static QMetaEnum metaEnum { QMetaEnum::fromType<QgsServerOgcApi::ContentType>() };
@@ -458,6 +461,7 @@ QgsServerOgcApi::ContentType QgsServerOgcApiHandler::contentTypeFromRequest( con
   }
   // ... then "Accept"
   const QString accept { request->header( QStringLiteral( "Accept" ) ) };
+  qDebug() << "le accept" << accept;
   if ( ! found && ! accept.isEmpty() )
   {
     const QString ctFromAccept { contentTypeForAccept( accept ) };
