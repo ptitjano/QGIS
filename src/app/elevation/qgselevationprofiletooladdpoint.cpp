@@ -49,6 +49,7 @@ Qgis::PlotToolFlags QgsElevationProfileToolAddPoint::flags() const
 
 void QgsElevationProfileToolAddPoint::plotPressEvent( QgsPlotMouseEvent *event )
 {
+  Q_UNUSED( event );
 //   if ( event->button() != Qt::LeftButton )
 //   {
 //     event->ignore();
@@ -75,6 +76,7 @@ void QgsElevationProfileToolAddPoint::plotPressEvent( QgsPlotMouseEvent *event )
 
 void QgsElevationProfileToolAddPoint::plotReleaseEvent( QgsPlotMouseEvent *event )
 {
+  Q_UNUSED( event );
 //   if ( event->button() != Qt::LeftButton )
 //   {
 //     event->ignore();
@@ -127,6 +129,7 @@ void QgsElevationProfileToolAddPoint::plotReleaseEvent( QgsPlotMouseEvent *event
 
 void QgsElevationProfileToolAddPoint::plotMoveEvent( QgsPlotMouseEvent *event )
 {
+  Q_UNUSED( event );
 //   event->ignore();
 //   if ( !mMarquee )
 //   {
@@ -147,4 +150,3 @@ void QgsElevationProfileToolAddPoint::plotMoveEvent( QgsPlotMouseEvent *event )
 
 //   mRubberBand->update( movePoint, Qt::KeyboardModifiers() );
 }
-
