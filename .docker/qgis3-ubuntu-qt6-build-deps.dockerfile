@@ -160,13 +160,14 @@ RUN  apt-get update \
 
 # HANA: client side
 # Install hdbsql tool
-RUN curl -j -k -L -H "Cookie: eula_3_2_agreed=tools.hana.ondemand.com/developer-license-3_2.txt" https://tools.hana.ondemand.com/additional/hanaclient-latest-linux-x64.tar.gz --output hanaclient-latest-linux-x64.tar.gz \
-  && tar -xvf hanaclient-latest-linux-x64.tar.gz \
-  && mkdir /usr/sap \
-  && ./client/hdbinst -a client --sapmnt=/usr/sap \
-  && rm -rf client \
-  && rm hanaclient*
-ENV PATH="/usr/sap/hdbclient:${PATH}"
+# Does not always work
+# RUN curl -j -k -L -H "Cookie: eula_3_2_agreed=tools.hana.ondemand.com/developer-license-3_2.txt" https://tools.hana.ondemand.com/additional/hanaclient-latest-linux-x64.tar.gz --output hanaclient-latest-linux-x64.tar.gz \
+#   && tar -xvf hanaclient-latest-linux-x64.tar.gz \
+#   && mkdir /usr/sap \
+#   && ./client/hdbinst -a client --sapmnt=/usr/sap \
+#   && rm -rf client \
+#   && rm hanaclient*
+# ENV PATH="/usr/sap/hdbclient:${PATH}"
 
 # MSSQL: client side
 RUN curl -sSL -O https://packages.microsoft.com/ubuntu/24.10/prod/pool/main/p/packages-microsoft-prod/packages-microsoft-prod_1.1-ubuntu24.10_all.deb
