@@ -310,6 +310,18 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   } );
   toolBar->addAction( measureToolAction );
 
+  // Add Feature Action
+  QAction *addPointToolAction = new QAction( tr( "Add Point Feature" ), this );
+  addPointToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
+  addPointToolAction->setCheckable( true );
+  addPointToolAction->setChecked( false );
+  addPointToolAction->setEnabled( true );
+  mAddPointTool->setAction( addPointToolAction );
+
+  connect( addPointToolAction, &QAction::triggered, mPanTool, [ = ] { mCanvas->setTool( mAddPointTool ); } );
+
+  toolBar->addAction( addPointToolAction );
+
   toolBar->addSeparator();
 
   QAction *exportAsPdfAction = new QAction( tr( "Export as PDF" ), this );
@@ -488,26 +500,6 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   connect( mDockableWidgetHelper, &QgsDockableWidgetHelper::closed, this, [this]() {
     close();
   } );
-
-  toolBar->addSeparator();
-
-  // auto mBtnaddPoint = new QToolButton();
-  // mBtnaddPoint->setAutoRaise( true );  // useless: feature is automatically turned on when a button is used inside a QToolBar
-  // mBtnaddPoint->setToolTip( tr( "Add Point Feature" ) );
-  // mBtnaddPoint->setEnabled( false );
-
-  // toolBar->addWidget( mBtnaddPoint );
-
-  QAction *addPointToolAction = new QAction( tr( "Add Point Feature" ), this );
-  addPointToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
-  addPointToolAction->setCheckable( true );
-  addPointToolAction->setChecked( false );
-  addPointToolAction->setEnabled( true );
-  mAddPointTool->setAction( addPointToolAction );
-
-  connect( addPointToolAction, &QAction::triggered, mPanTool, [ = ] { mCanvas->setTool( mAddPointTool ); } );
-
-  toolBar->addAction( addPointToolAction );
 
   // updating the profile plot is deferred on a timer, so that we don't trigger it too often
   mSetCurveTimer = new QTimer( this );
