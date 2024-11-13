@@ -530,7 +530,7 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( QgsElevationProfile *profi
   // toolBar->addWidget( mBtnaddPoint );
 
   QAction *addPointToolAction = new QAction( tr( "Add Point Feature" ), this );
-  addPointToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionaddPoint.svg" ) ) );
+  addPointToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
   addPointToolAction->setCheckable( true );
   addPointToolAction->setChecked( false );
   addPointToolAction->setEnabled( true );
