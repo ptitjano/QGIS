@@ -1192,15 +1192,19 @@ void QgsAppElevationProfileLayerTreeView::contextMenuEvent( QContextMenuEvent *e
   {
     QMenu *menu = new QMenu();
 
-    QAction *toggleEditingAction = new QAction( tr( "Toggle Editing" ), menu );
-    toggleEditingAction->setIcon( QgsApplication::getThemePixmap( QStringLiteral( "/mActionToggleEditing.svg" ) ) );
-    connect( toggleEditingAction, &QAction::triggered, this, [layer]
+    QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer );
+    if ( vectorLayer && vectorLayer->geometryType() == Qgis::GeometryType::Point )
     {
-      QgisApp::instance()->toggleEditing( layer );
-    } );
-    menu->addAction( toggleEditingAction );
+      QAction *toggleEditingAction = new QAction( tr( "Toggle Editing" ), menu );
+      toggleEditingAction->setIcon( QgsApplication::getThemePixmap( QStringLiteral( "/mActionToggleEditing.svg" ) ) );
+      connect( toggleEditingAction, &QAction::triggered, this, [layer]
+      {
+        QgisApp::instance()->toggleEditing( layer );
+      } );
+      menu->addAction( toggleEditingAction );
 
-    menu->addSeparator();
+      menu->addSeparator();
+    }
 
     QAction *propertiesAction = new QAction( tr( "Properties…" ), menu );
     connect( propertiesAction, &QAction::triggered, this, [layer] {
