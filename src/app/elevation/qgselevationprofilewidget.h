@@ -145,6 +145,7 @@ class QgsElevationProfileWidget : public QWidget
     void onProjectElevationPropertiesChanged();
     void showSubsectionsTriggered();
     void editSubsectionsSymbology();
+    void onLayerSelectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
 
   private:
     void setMainCanvas( QgsMapCanvas *canvas );
@@ -170,6 +171,7 @@ class QgsElevationProfileWidget : public QWidget
     QAction *mLockRatioAction = nullptr;
     QAction *mShowSubsectionsAction = nullptr;
     QAction *mSubsectionsSymbologyAction = nullptr;
+    QAction *mAddPointAction = nullptr;
     QMenu *mDistanceUnitMenu = nullptr;
 
     QgsDockableWidgetHelper *mDockableWidgetHelper = nullptr;

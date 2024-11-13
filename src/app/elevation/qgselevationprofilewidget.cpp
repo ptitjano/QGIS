@@ -22,6 +22,7 @@
 #include "qgsdockablewidgethelper.h"
 #include "qgselevationprofilemanager.h"
 #include "qgsmapcanvas.h"
+#include "qgsmaplayer.h"
 #include "qgsmaplayerelevationproperties.h"
 #include "qgsmaplayermodel.h"
 #include "qgsmaptoolprofilecurve.h"
@@ -194,6 +195,8 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( QgsElevationProfile *profi
   connect( QgsApplication::profileSourceRegistry(), &QgsProfileSourceRegistry::profileSourceRegistered, mLayerTreeView, &QgsElevationProfileLayerTreeView::addNodeForRegisteredSource );
   connect( QgsApplication::profileSourceRegistry(), &QgsProfileSourceRegistry::profileSourceUnregistered, mLayerTreeView, &QgsElevationProfileLayerTreeView::removeNodeForUnregisteredSource );
 
+  connect( mLayerTreeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &QgsElevationProfileWidget::onLayerSelectionChanged );
+
   mZoomTool = new QgsPlotToolZoom( mCanvas );
   mXAxisZoomTool = new QgsPlotToolXAxisZoom( mCanvas );
   mIdentifyTool = new QgsElevationProfileToolIdentify( mCanvas );
@@ -322,16 +325,16 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( QgsElevationProfile *profi
   toolBar->addAction( measureToolAction );
 
   // Add Feature Action
-  QAction *addPointToolAction = new QAction( tr( "Add Point Feature" ), this );
-  addPointToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
-  addPointToolAction->setCheckable( true );
-  addPointToolAction->setChecked( false );
-  addPointToolAction->setEnabled( true );
-  mAddPointTool->setAction( addPointToolAction );
+  mAddPointAction = new QAction( tr( "Add Point Feature" ), this );
+  mAddPointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
+  mAddPointAction->setCheckable( true );
+  mAddPointAction->setChecked( false );
+  mAddPointAction->setEnabled( false );
+  mAddPointTool->setAction( mAddPointAction );
 
-  connect( addPointToolAction, &QAction::triggered, mPanTool, [this] { mCanvas->setTool( mAddPointTool ); } );
+  connect( mAddPointAction, &QAction::triggered, mPanTool, [this] { mCanvas->setTool( mAddPointTool ); } );
 
-  toolBar->addAction( addPointToolAction );
+  toolBar->addAction( mAddPointAction );
 
   toolBar->addSeparator();
 
@@ -1427,8 +1430,7 @@ void QgsAppElevationProfileLayerTreeView::contextMenuEvent( QContextMenuEvent *e
     {
       QAction *toggleEditingAction = new QAction( tr( "Toggle Editing" ), menu );
       toggleEditingAction->setIcon( QgsApplication::getThemePixmap( QStringLiteral( "/mActionToggleEditing.svg" ) ) );
-      connect( toggleEditingAction, &QAction::triggered, this, [layer]
-      {
+      connect( toggleEditingAction, &QAction::triggered, this, [layer] {
         QgisApp::instance()->toggleEditing( layer );
       } );
       menu->addAction( toggleEditingAction );
@@ -1459,4 +1461,28 @@ void QgsAppElevationProfileLayerTreeView::contextMenuEvent( QContextMenuEvent *e
     menu->exec( mapToGlobal( event->pos() ) );
   }
   delete menu;
+}
+
+void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &, const QItemSelection & )
+{
+  const QModelIndexList selected = mLayerTreeView->selectionModel()->selectedIndexes();
+  if ( selected.size() != 1 )
+  {
+    mAddPointAction->setEnabled( false );
+    return;
+  }
+
+  bool enabled = false;
+  QModelIndex idx = selected.at( 0 );
+  if ( idx.isValid() )
+  {
+    QgsMapLayer *layer = mLayerTreeView->layerForIndex( idx );
+    if ( QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer ) )
+    {
+      const bool isPoint = vectorLayer->geometryType() == Qgis::GeometryType::Point;
+      enabled = isPoint && vectorLayer->isEditable();
+    }
+  }
+
+  mAddPointAction->setEnabled( enabled );
 }
