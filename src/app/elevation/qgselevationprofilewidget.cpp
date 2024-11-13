@@ -21,6 +21,7 @@
 #include "qgselevationprofilecanvas.h"
 #include "qgsdockablewidgethelper.h"
 #include "qgsmapcanvas.h"
+#include "qgsmaplayer.h"
 #include "qgsmaplayerelevationproperties.h"
 #include "qgsmaplayermodel.h"
 #include "qgsmaptoolprofilecurve.h"
@@ -183,6 +184,8 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
     }
   } );
 
+  connect( mLayerTreeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &QgsElevationProfileWidget::onLayerSelectionChanged );
+
   mZoomTool = new QgsPlotToolZoom( mCanvas );
   mXAxisZoomTool = new QgsPlotToolXAxisZoom( mCanvas );
   mIdentifyTool = new QgsElevationProfileToolIdentify( mCanvas );
@@ -318,7 +321,7 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   addPointToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
   addPointToolAction->setCheckable( true );
   addPointToolAction->setChecked( false );
-  addPointToolAction->setEnabled( true );
+  addPointToolAction->setEnabled( false );
   mAddPointTool->setAction( addPointToolAction );
 
   connect( addPointToolAction, &QAction::triggered, mPanTool, [ = ] { mCanvas->setTool( mAddPointTool ); } );
@@ -1168,4 +1171,28 @@ void QgsAppElevationProfileLayerTreeView::contextMenuEvent( QContextMenuEvent *e
     menu->exec( mapToGlobal( event->pos() ) );
     delete menu;
   }
+}
+
+void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &, const QItemSelection & )
+{
+  const QModelIndexList selected = mLayerTreeView->selectionModel()->selectedIndexes();
+  if ( selected.size() != 1 )
+  {
+    mAddPointAction->setEnabled( false );
+    return;
+  }
+
+  bool enabled = false;
+  QModelIndex idx = selected.at( 0 );
+  if ( idx.isValid() )
+  {
+    QgsMapLayer *layer = mLayerTreeView->indexToLayer( idx );
+    if ( QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer ) )
+    {
+      const bool isPoint = vectorLayer->geometryType() == Qgis::GeometryType::Point;
+      enabled = isPoint && vectorLayer->isEditable();
+    }
+  }
+
+  mAddPointAction->setEnabled( enabled );
 }

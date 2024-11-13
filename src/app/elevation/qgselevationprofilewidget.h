@@ -138,6 +138,7 @@ class QgsElevationProfileWidget : public QWidget
     void axisScaleLockToggled( bool active );
     void renameProfileTriggered();
     void onProjectElevationPropertiesChanged();
+    void onLayerSelectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
 
   private:
     QgsElevationProfileCanvas *mCanvas = nullptr;
@@ -159,6 +160,7 @@ class QgsElevationProfileWidget : public QWidget
     QAction *mNudgeRightAction = nullptr;
     QAction *mRenameProfileAction = nullptr;
     QAction *mLockRatioAction = nullptr;
+    QAction *mAddPointAction = nullptr;
     QMenu *mDistanceUnitMenu = nullptr;
 
     QgsDockableWidgetHelper *mDockableWidgetHelper = nullptr;
