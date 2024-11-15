@@ -23,6 +23,7 @@
 
 class QgsPlotRectangularRubberBand;
 class QgsElevationProfileCanvas;
+class QgsVectorLayer;
 
 class QgsElevationProfileToolAddPoint : public QgsPlotTool
 {
@@ -35,19 +36,20 @@ class QgsElevationProfileToolAddPoint : public QgsPlotTool
     ~QgsElevationProfileToolAddPoint() override;
 
     Qgis::PlotToolFlags flags() const override;
-    void plotPressEvent( QgsPlotMouseEvent *event ) override;
     void plotReleaseEvent( QgsPlotMouseEvent *event ) override;
-    void plotMoveEvent( QgsPlotMouseEvent *event ) override;
+
+    void setLayer( QgsVectorLayer *layer );
+
+  private slots:
+
+    void toggleAction();
+    void onLayerDestroyed( QObject *layer );
+
   private:
 
-    // //! Start position for mouse press
-    // QPointF mMousePressStartPos;
-    // QgsPointXY mSnappedMousePressStartPos;
 
-    // bool mMarquee = false;
 
-    // //! Rubber band item
-    // std::unique_ptr< QgsPlotRectangularRubberBand > mRubberBand;
+    QgsVectorLayer *mLayer = nullptr;
 
 };
 

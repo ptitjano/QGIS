@@ -1218,20 +1218,17 @@ void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &,
   if ( selected.size() != 1 )
   {
     mAddPointAction->setEnabled( false );
+    mAddPointTool->setLayer( nullptr );
     return;
   }
 
-  bool enabled = false;
   QModelIndex idx = selected.at( 0 );
   if ( idx.isValid() )
   {
     QgsMapLayer *layer = mLayerTreeView->indexToLayer( idx );
     if ( QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer ) )
     {
-      const bool isPoint = vectorLayer->geometryType() == Qgis::GeometryType::Point;
-      enabled = isPoint && vectorLayer->isEditable();
+      mAddPointTool->setLayer( vectorLayer );
     }
   }
-
-  mAddPointAction->setEnabled( enabled );
 }
