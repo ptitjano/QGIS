@@ -16,6 +16,8 @@
  ***************************************************************************/
 
 #include "qgselevationprofiletooladdpoint.h"
+#include "qgsfeature.h"
+#include "qgslogger.h"
 #include "qgsplotcanvas.h"
 #include "qgsplotmouseevent.h"
 #include "qgsapplication.h"
@@ -27,17 +29,13 @@
 #include "qgisapp.h"
 #include "qgsvectorlayer.h"
 #include "qgsrasterlayer.h"
-#include "qgsmeshlayer.h"
-#include "qgspointcloudlayer.h"
+#include "qgsfeatureaction.h"
+#include "qgssettingsregistrycore.h"
 
 QgsElevationProfileToolAddPoint::QgsElevationProfileToolAddPoint( QgsElevationProfileCanvas *canvas )
   : QgsPlotTool( canvas, tr( "Add Point Feature" ) )
 {
-//   setCursor( QgsApplication::getThemeCursor( QgsApplication::Cursor::Identify ) );
-
-//   mRubberBand.reset( new QgsPlotRectangularRubberBand( canvas ) );
-//   mRubberBand->setBrush( QBrush( QColor( 254, 178, 76, 63 ) ) );
-//   mRubberBand->setPen( QPen( QBrush( QColor( 254, 58, 29, 100 ) ), 0 ) );
+  setCursor( QgsApplication::getThemeCursor( QgsApplication::Cursor::CapturePoint ) );
 }
 
 QgsElevationProfileToolAddPoint::~QgsElevationProfileToolAddPoint() = default;
@@ -47,106 +45,105 @@ Qgis::PlotToolFlags QgsElevationProfileToolAddPoint::flags() const
   return Qgis::PlotToolFlag::ShowContextMenu;
 }
 
-void QgsElevationProfileToolAddPoint::plotPressEvent( QgsPlotMouseEvent *event )
-{
-  Q_UNUSED( event );
-//   if ( event->button() != Qt::LeftButton )
-//   {
-//     event->ignore();
-//     return;
-//   }
-
-//   // don't allow the band to be dragged outside of the plot area
-//   const QRectF plotArea = qgis::down_cast< QgsElevationProfileCanvas * >( mCanvas )->plotArea();
-//   if ( !plotArea.contains( event->pos() ) )
-//   {
-//     mMousePressStartPos = constrainPointToRect( event->pos(), plotArea );
-//     mSnappedMousePressStartPos = mMousePressStartPos;
-//   }
-//   else
-//   {
-//     mMousePressStartPos = event->pos();
-//     mSnappedMousePressStartPos = event->snappedPoint();
-//   }
-
-//   mMarquee = true;
-
-//   mRubberBand->start( mMousePressStartPos, Qt::KeyboardModifiers() );
-}
-
 void QgsElevationProfileToolAddPoint::plotReleaseEvent( QgsPlotMouseEvent *event )
 {
-  Q_UNUSED( event );
-//   if ( event->button() != Qt::LeftButton )
-//   {
-//     event->ignore();
-//     return;
-//   }
+  event->ignore();
+  if ( event->button() != Qt::LeftButton )
+  {
+    return;
+  }
 
+  if ( !mLayer )
+  {
+    return;
+  }
 
-//   QgsMapToolIdentifyAction *identifyTool2D = QgisApp::instance()->identifyMapTool();
-//   identifyTool2D->clearResults();
+  const Qgis::WkbType layerWKBType = mLayer->wkbType();
 
-//   const bool clickOnly = !isClickAndDrag( mMousePressStartPos.toPoint(), event->pos() );
-//   mRubberBand->finish( event->pos() );
-//   mMarquee = false;
-//   QVector<QgsProfileIdentifyResults> results;
-//   if ( !clickOnly )
-//   {
-//     // don't allow the band to be dragged outside of the plot area
-//     const QRectF plotArea = qgis::down_cast< QgsElevationProfileCanvas * >( mCanvas )->plotArea();
-//     QPointF end;
-//     if ( !plotArea.contains( event->pos() ) )
-//     {
-//       end = constrainPointToRect( event->pos(), plotArea );
-//     }
-//     else
-//     {
-//       end = event->snappedPoint().toQPointF();
-//     }
+  const QgsGeometry geometry( std::make_unique<QgsPoint>( event->mapPoint() ) );
+  QgsGeometry layerGeometry;
+  double defaultZ = QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->value();
+  double defaultM = QgsSettingsRegistryCore::settingsDigitizingDefaultMValue->value();
+  QVector<QgsGeometry> layerGeometries = geometry.coerceToType( layerWKBType, defaultZ, defaultM );
+  if ( layerGeometries.count() > 0 )
+  {
+    layerGeometry = layerGeometries.at( 0 );
+  }
 
-//     results = qgis::down_cast< QgsElevationProfileCanvas * >( mCanvas )->identify( QRectF( mSnappedMousePressStartPos.toQPointF(), end ) );
-//   }
-//   else
-//   {
-//     results = qgis::down_cast< QgsElevationProfileCanvas * >( mCanvas )->identify( mSnappedMousePressStartPos.toQPointF() );
-//   }
+  if ( layerGeometry.wkbType() != layerWKBType && layerGeometry.wkbType() != QgsWkbTypes::linearType( layerWKBType ) )
+  {
+    QgsDebugError( QStringLiteral( "The digitized geometry type (%1) does not correspond to the layer geometry type (%2)." ).arg( QgsWkbTypes::displayString( layerGeometry.wkbType() ), QgsWkbTypes::displayString( layerWKBType ) ) );
+    return;
+  }
 
-//   if ( results.empty() )
-//     return;
+  QgsCoordinateTransform transform( mCanvas->crs(), mLayer->crs3D(), QgsProject::instance()->transformContext() );
+  transform.setBallparkTransformsAreAppropriate( true );
+  try
+  {
+    layerGeometry.transform( transform, Qgis::TransformDirection::Forward, true );
+  }
+  catch ( QgsCsException &cse )
+  {
+    Q_UNUSED( cse )
+    QgsDebugError( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
+    return;
+  }
 
-//   QList<QgsMapToolIdentify::IdentifyResult> identifyResults;
-//   for ( const QgsProfileIdentifyResults &result : std::as_const( results ) )
-//   {
-//     if ( QgsMapLayer *layer = result.layer() )
-//     {
-//       identifyTool2D->fromElevationProfileLayerIdentificationToIdentifyResults( layer, result.results(), identifyResults );
-//     }
-//   }
+  QgsFeature feature( mLayer->fields(), 0 );
+  feature.setGeometry( layerGeometry );
+  feature.setValid( true );
 
-//   identifyTool2D->showIdentifyResults( identifyResults );
+  QgsFeatureAction *action = new QgsFeatureAction( tr( "add feature" ), feature, mLayer, QUuid(), -1, this );
+  const QgsFeatureAction::AddFeatureResult res = action->addFeature( QgsAttributeMap(), true, nullptr, false, nullptr );
+  if ( res != QgsFeatureAction::AddFeatureResult::Success )
+  {
+    QgsDebugError( QStringLiteral( "Unable to create new feature" ) );
+  }
+  delete action;
 }
 
-void QgsElevationProfileToolAddPoint::plotMoveEvent( QgsPlotMouseEvent *event )
+void QgsElevationProfileToolAddPoint::setLayer( QgsVectorLayer *layer )
 {
-  Q_UNUSED( event );
-//   event->ignore();
-//   if ( !mMarquee )
-//   {
-//     return;
-//   }
+  if ( layer == mLayer )
+  {
+    return;
+  }
 
-//   // don't allow the band to be dragged outside of the plot area
-//   const QRectF plotArea = qgis::down_cast< QgsElevationProfileCanvas * >( mCanvas )->plotArea();
-//   QPointF movePoint;
-//   if ( !plotArea.contains( event->pos() ) )
-//   {
-//     movePoint = constrainPointToRect( event->pos(), plotArea );
-//   }
-//   else
-//   {
-//     movePoint = event->snappedPoint().toQPointF();
-//   }
+  if ( mLayer )
+  {
+    disconnect( mLayer, &QgsVectorLayer::editingStarted, this, &QgsElevationProfileToolAddPoint::toggleAction );
+    disconnect( mLayer, &QgsVectorLayer::editingStopped, this, &QgsElevationProfileToolAddPoint::toggleAction );
+    // disconnect( mLayer, &QgsVectorLayer::destroyed, this, &QgsGeometryValidationDock::onLayerDestroyed );
+  }
 
-//   mRubberBand->update( movePoint, Qt::KeyboardModifiers() );
+  mLayer = layer;
+
+  if ( mLayer )
+  {
+    connect( mLayer, &QgsVectorLayer::editingStarted, this, &QgsElevationProfileToolAddPoint::toggleAction );
+    connect( mLayer, &QgsVectorLayer::editingStopped, this, &QgsElevationProfileToolAddPoint::toggleAction );
+  }
+
+  toggleAction();
+}
+
+void QgsElevationProfileToolAddPoint::toggleAction()
+{
+  if ( mLayer )
+  {
+    if ( QAction *addPointAction = action() )
+    {
+      const bool isPoint = mLayer->geometryType() == Qgis::GeometryType::Point;
+      const bool canAddFeatures = mLayer->dataProvider()->capabilities() & Qgis::VectorProviderCapability::AddFeatures;
+      addPointAction->setEnabled( isPoint && canAddFeatures && mLayer->isEditable() );
+    }
+  }
+}
+
+void QgsElevationProfileToolAddPoint::onLayerDestroyed( QObject *layer )
+{
+  if ( layer == mLayer )
+  {
+    mLayer = nullptr;
+  }
 }
