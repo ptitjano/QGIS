@@ -68,9 +68,14 @@ namespace QgsWms
       void executeRequest( const QgsServerRequest &request, QgsServerResponse &response,
                            const QgsProject *project ) override
       {
+        qDebug() << "= WMS EXECUTE REQUEST";
+        auto t0 = std::chrono::high_resolution_clock::now();
+
         // Get the request
         const QgsWmsRequest wmsRequest( request );
         const QString req = wmsRequest.wmsParameters().request();
+        auto t1 = std::chrono::high_resolution_clock::now();
+        qDebug() << "= GET REQUEST" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
 
         if ( req.isEmpty() )
         {
@@ -98,7 +103,11 @@ namespace QgsWms
           }
           else
           {
+            qDebug() << "= ON GET MAP";
+            auto t2 = std::chrono::high_resolution_clock::now();
             writeGetMap( mServerIface, project, request, response );
+            auto t3 = std::chrono::high_resolution_clock::now();
+            qDebug() << "= GET MAP OK" << std::chrono::duration_cast<std::chrono::milliseconds>( t3 - t2 ).count();
           }
         }
         else if ( QSTR_COMPARE( req, "GetFeatureInfo" ) )

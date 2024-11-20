@@ -548,6 +548,8 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
         }
         else
         {
+          qDebug() << "ON SERVICE";
+          auto t30 = std::chrono::high_resolution_clock::now();
           // Project is mandatory for OWS at this point
           if ( ! project )
           {
@@ -559,13 +561,21 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
             const QString value = QString( "attachment; filename=\"%1\"" ).arg( params.fileName() );
             requestHandler.setResponseHeader( QStringLiteral( "Content-Disposition" ), value );
           }
+          auto t31 = std::chrono::high_resolution_clock::now();
+          qDebug() << "PREPARE SERVICE" << std::chrono::duration_cast<std::chrono::milliseconds>( t31 - t30 ).count();
 
-          qDebug() << "on service";
+
+          auto t32 = std::chrono::high_resolution_clock::now();
           // Lookup for service
           QgsService *service = sServiceRegistry->getService( params.service(), params.version() );
+          auto t33 = std::chrono::high_resolution_clock::now();
+          qDebug() << "LOOKUP SERVICE" << std::chrono::duration_cast<std::chrono::milliseconds>( t33 - t32 ).count();
           if ( service )
           {
+            auto t34 = std::chrono::high_resolution_clock::now();
             service->executeRequest( request, responseDecorator, project );
+            auto t35 = std::chrono::high_resolution_clock::now();
+            qDebug() << "EXECUTE SERVICE" << std::chrono::duration_cast<std::chrono::milliseconds>( t35 - t34 ).count();
           }
           else
           {

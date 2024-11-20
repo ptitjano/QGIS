@@ -38,6 +38,7 @@ namespace QgsWms
                                  QStringLiteral( "Please add the value of the VERSION parameter" ), 501 );
     }
 
+    auto t0 = std::chrono::high_resolution_clock::now();
     // prepare render context
     QgsWmsRenderContext context( project, serverIface );
     context.setFlag( QgsWmsRenderContext::UpdateExtent );
@@ -51,10 +52,21 @@ namespace QgsWms
     context.setParameters( request.wmsParameters() );
     context.setSocketFeedback( response.feedback() );
 
+    auto t1 = std::chrono::high_resolution_clock::now();
+    qDebug() << "== GET MAP PREPARE CONTEXT" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
+
+    auto t2 = std::chrono::high_resolution_clock::now();
     // rendering
     QgsRenderer renderer( context );
-    std::unique_ptr<QImage> result( renderer.getMap() );
+    auto t3 = std::chrono::high_resolution_clock::now();
+    qDebug() << "== GET MAP RENDERING 1" << std::chrono::duration_cast<std::chrono::milliseconds>( t3 - t2 ).count();
 
+    auto t4 = std::chrono::high_resolution_clock::now();
+    std::unique_ptr<QImage> result( renderer.getMap() );
+    auto t5 = std::chrono::high_resolution_clock::now();
+    qDebug() << "== GET MAP RENDERING 2" << std::chrono::duration_cast<std::chrono::milliseconds>( t5 - t4 ).count();
+
+    auto t6 = std::chrono::high_resolution_clock::now();
     if ( result )
     {
       const QString format = request.parameters().value( QStringLiteral( "FORMAT" ), QStringLiteral( "PNG" ) );
@@ -64,5 +76,7 @@ namespace QgsWms
     {
       throw QgsException( QStringLiteral( "Failed to compute GetMap image" ) );
     }
+    auto t7 = std::chrono::high_resolution_clock::now();
+    qDebug() << "== GET MAP WRITE IMAGE" << std::chrono::duration_cast<std::chrono::milliseconds>( t7 - t6 ).count();
   }
 } // namespace QgsWms
