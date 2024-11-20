@@ -1075,27 +1075,43 @@ namespace QgsWms
     }
 
     // init layer restorer before doing anything
+    auto t0 = std::chrono::high_resolution_clock::now();
     std::unique_ptr<QgsWmsRestorer> restorer;
     restorer.reset( new QgsWmsRestorer( mContext ) );
+    auto t1 = std::chrono::high_resolution_clock::now();
+    qDebug() << "=== INIT" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
 
     // configure layers
+    auto t2 = std::chrono::high_resolution_clock::now();
     QList<QgsMapLayer *> layers = mContext.layersToRender();
 
     QgsMapSettings mapSettings;
     mapSettings.setFlag( Qgis::MapSettingsFlag::RenderBlocking );
     configureLayers( layers, &mapSettings );
+    auto t3 = std::chrono::high_resolution_clock::now();
+    qDebug() << "=== CONFIGURE LAYERS" << std::chrono::duration_cast<std::chrono::milliseconds>( t3 - t2 ).count();
 
     // create the output image and the painter
+    auto t4 = std::chrono::high_resolution_clock::now();
     std::unique_ptr<QPainter> painter;
     std::unique_ptr<QImage> image( createImage( mContext.mapSize() ) );
+    auto t5 = std::chrono::high_resolution_clock::now();
+    qDebug() << "=== CREATE OUTPUT IMAGE AND PAINTER" << std::chrono::duration_cast<std::chrono::milliseconds>( t5 - t4 ).count();
 
     // configure map settings (background, DPI, ...)
+    auto t6 = std::chrono::high_resolution_clock::now();
     configureMapSettings( image.get(), mapSettings );
+    auto t7 = std::chrono::high_resolution_clock::now();
+    qDebug() << "=== CONFIGURE MAP SETTINGS" << std::chrono::duration_cast<std::chrono::milliseconds>( t7 - t6 ).count();
 
     // add layers to map settings
+    auto t8 = std::chrono::high_resolution_clock::now();
     mapSettings.setLayers( layers );
+    auto t9 = std::chrono::high_resolution_clock::now();
+    qDebug() << "=== ADD LAYERS TO MAP SETTINGS" << std::chrono::duration_cast<std::chrono::milliseconds>( t9 - t8 ).count();
 
     // rendering step for layers
+    auto t10 = std::chrono::high_resolution_clock::now();
     QPainter *renderedPainter = layersRendering( mapSettings, *image );
     if ( !renderedPainter ) // job has been canceled
     {
@@ -1103,17 +1119,28 @@ namespace QgsWms
     }
 
     painter.reset( renderedPainter );
+    auto t11 = std::chrono::high_resolution_clock::now();
+    qDebug() << "=== RENDERING STEP FOR LAYERS" << std::chrono::duration_cast<std::chrono::milliseconds>( t11 - t10 ).count();
 
     // rendering step for annotations
+    auto t12 = std::chrono::high_resolution_clock::now();
     annotationsRendering( painter.get(), mapSettings );
+    auto t13 = std::chrono::high_resolution_clock::now();
+    qDebug() << "=== RENDERING STEP FOR ANNOTATIONS" << std::chrono::duration_cast<std::chrono::milliseconds>( t13 - t12 ).count();
 
     // painting is terminated
+    auto t14 = std::chrono::high_resolution_clock::now();
     painter->end();
+    auto t15 = std::chrono::high_resolution_clock::now();
+    qDebug() << "=== RENDERING IS TERMINATED" << std::chrono::duration_cast<std::chrono::milliseconds>( t15 - t14 ).count();
 
     // scale output image if necessary (required by WMS spec)
+    auto t16 = std::chrono::high_resolution_clock::now();
     QImage *scaledImage = scaleImage( image.get() );
     if ( scaledImage )
       image.reset( scaledImage );
+    auto t17 = std::chrono::high_resolution_clock::now();
+    qDebug() << "=== RESCALING" << std::chrono::duration_cast<std::chrono::milliseconds>( t17 - t16 ).count();
 
     // return
     return image.release();
