@@ -52,6 +52,7 @@
 #include <fcgi_stdio.h>
 #include <cstdlib>
 
+#include <chrono>
 
 // Server status static initializers.
 // Default values are for C++, SIP bindings will override their
@@ -399,9 +400,15 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
 
     const QgsScopedRuntimeProfile profiler { QStringLiteral( "handleRequest" ), QStringLiteral( "server" ) };
 
+    auto t0 = std::chrono::high_resolution_clock::now();
     qApp->processEvents();
+    auto t1 = std::chrono::high_resolution_clock::now();
+    qDebug() << "processevents" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
 
+    auto t2 = std::chrono::high_resolution_clock::now();
     response.clear();
+    auto t3 = std::chrono::high_resolution_clock::now();
+    qDebug() << "response clear" << std::chrono::duration_cast<std::chrono::milliseconds>( t3 - t2 ).count();
 
     // Clean up qgis access control filter's cache to prevent side effects
     // across requests
@@ -423,7 +430,10 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
     try
     {
       // TODO: split parse input into plain parse and processing from specific services
+      auto t4 = std::chrono::high_resolution_clock::now();
       requestHandler.parseInput();
+      auto t5 = std::chrono::high_resolution_clock::now();
+      qDebug() << "parse input" << std::chrono::duration_cast<std::chrono::milliseconds>( t5 - t4 ).count();
     }
     catch ( QgsMapServiceException &e )
     {
@@ -432,12 +442,16 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
     }
 
     // Set the request handler into the interface for plugins to manipulate it
+    auto t6 = std::chrono::high_resolution_clock::now();
     sServerInterface->setRequestHandler( &requestHandler );
+    auto t7 = std::chrono::high_resolution_clock::now();
+    qDebug() << "set request handler" << std::chrono::duration_cast<std::chrono::milliseconds>( t7 - t6 ).count();
 
     // Initialize configfilepath so that is is available
     // before calling plugin methods
     // Note that plugins may still change that value using
     // setConfigFilePath() interface method
+    auto t8 = std::chrono::high_resolution_clock::now();
     if ( ! project )
     {
       const QString configFilePath = configPath( *sConfigFilePath, request.serverParameters().map() );
@@ -447,9 +461,12 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
     {
       sServerInterface->setConfigFilePath( project->fileName() );
     }
+    auto t9 = std::chrono::high_resolution_clock::now();
+    qDebug() << "project" << std::chrono::duration_cast<std::chrono::milliseconds>( t9 - t8 ).count();
 
     // Call requestReady() method (if enabled)
     // This may also throw exceptions if there are errors in python plugins code
+    auto t10 = std::chrono::high_resolution_clock::now();
     try
     {
       responseDecorator.start();
@@ -460,12 +477,15 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
       response.sendError( 500, QStringLiteral( "Internal Server Error" ) );
       QgsMessageLog::logMessage( ex.what(), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
     }
+    auto t11 = std::chrono::high_resolution_clock::now();
+    qDebug() << "responseDecorator" << std::chrono::duration_cast<std::chrono::milliseconds>( t11 - t10 ).count();
 
     // Plugins may have set exceptions
     if ( !requestHandler.exceptionRaised() )
     {
       try
       {
+        auto t12 = std::chrono::high_resolution_clock::now();
         const QgsServerParameters params = request.serverParameters();
         printRequestParameters( params.toMap(), logLevel );
 
@@ -482,6 +502,11 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           }
         }
 
+        auto t13 = std::chrono::high_resolution_clock::now();
+        qDebug() << "request parameters" << std::chrono::duration_cast<std::chrono::milliseconds>( t13 - t12 ).count();
+
+        auto t14 = std::chrono::high_resolution_clock::now();
+
         // Set the current project instance
         QgsProject::setInstance( const_cast<QgsProject *>( project ) );
 
@@ -494,9 +519,17 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
           sServerInterface->setConfigFilePath( QString() );
         }
 
+        auto t15 = std::chrono::high_resolution_clock::now();
+        qDebug() << "project - set instance" << std::chrono::duration_cast<std::chrono::milliseconds>( t15 - t14 ).count();
+
+        auto t16 = std::chrono::high_resolution_clock::now();
+
         // Call projectReady() method (if enabled)
         // This may also throw exceptions if there are errors in python plugins code
         responseDecorator.ready();
+
+        auto t17 = std::chrono::high_resolution_clock::now();
+        qDebug() << "response decorator ready" << std::chrono::duration_cast<std::chrono::milliseconds>( t17 - t16 ).count();
 
         // Note that at this point we still might not have set a valid project.
         // There are APIs that work without a project (e.g. the landing page catalog API that
@@ -504,6 +537,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
 
         // Dispatcher: if SERVICE is set, we assume a OWS service, if not, let's try an API
         // TODO: QGIS 4 fix the OWS services and treat them as APIs
+        auto t18 = std::chrono::high_resolution_clock::now();
         QgsServerApi *api = nullptr;
 
         if ( params.service().isEmpty() && ( api = sServiceRegistry->apiForRequest( request ) ) )
@@ -537,6 +571,8 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
                                           QStringLiteral( "Service unknown or unsupported. Current supported services (case-sensitive): WMS WFS WCS WMTS SampleService, or use a WFS3 (OGC API Features) endpoint" ) );
           }
         }
+        auto t19 = std::chrono::high_resolution_clock::now();
+        qDebug() << "execute request" << std::chrono::duration_cast<std::chrono::milliseconds>( t19 - t18 ).count();
       }
       catch ( QgsServerException &ex )
       {
@@ -552,6 +588,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
       }
     }
 
+    auto t20 = std::chrono::high_resolution_clock::now();
     // Terminate the response
     // This may also throw exceptions if there are errors in python plugins code
     try
@@ -564,10 +601,15 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
       response.sendError( 500, QStringLiteral( "Internal Server Error" ) );
       QgsMessageLog::logMessage( ex.what(), QStringLiteral( "Server" ), Qgis::MessageLevel::Critical );
     }
+    auto t21 = std::chrono::high_resolution_clock::now();
+    qDebug() << "response decorator" << std::chrono::duration_cast<std::chrono::milliseconds>( t21 - t20 ).count();
 
+    auto t22 = std::chrono::high_resolution_clock::now();
     // We are done using requestHandler in plugins, make sure we don't access
     // to a deleted request handler from Python bindings
     sServerInterface->clearRequestHandler();
+    auto t23 = std::chrono::high_resolution_clock::now();
+    qDebug() << "clear 0" << std::chrono::duration_cast<std::chrono::milliseconds>( t23 - t22 ).count();
   }
 
   if ( logLevel == Qgis::MessageLevel::Info )
@@ -600,13 +642,15 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
     }
   }
 
-
+  auto t24 = std::chrono::high_resolution_clock::now();
   // Clear the profiler content after each request
   QgsApplication::profiler()->clear( QStringLiteral( "startup" ) );
   QgsApplication::profiler()->clear( QStringLiteral( "projectload" ) );
   QgsApplication::profiler()->clear( QStringLiteral( "rendering" ) );
   QgsApplication::profiler()->clear( QStringLiteral( "server" ) );
 
+  auto t25 = std::chrono::high_resolution_clock::now();
+  qDebug() << "clear final" << std::chrono::duration_cast<std::chrono::milliseconds>( t25 - t24 ).count();
 
 }
 
