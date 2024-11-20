@@ -542,6 +542,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
 
         if ( params.service().isEmpty() && ( api = sServiceRegistry->apiForRequest( request ) ) )
         {
+          qDebug() << "on api";
           const QgsServerApiContext context { api->rootPath(), &request, &responseDecorator, project, sServerInterface };
           api->executeRequest( context );
         }
@@ -559,6 +560,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
             requestHandler.setResponseHeader( QStringLiteral( "Content-Disposition" ), value );
           }
 
+          qDebug() << "on service";
           // Lookup for service
           QgsService *service = sServiceRegistry->getService( params.service(), params.version() );
           if ( service )
