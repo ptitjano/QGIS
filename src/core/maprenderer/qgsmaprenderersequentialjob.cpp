@@ -51,6 +51,7 @@ QgsMapRendererSequentialJob::~QgsMapRendererSequentialJob()
 
 void QgsMapRendererSequentialJob::startPrivate()
 {
+  qDebug() << "IU =================================================================================================";
   if ( isActive() )
     return; // do nothing if we are already running
 

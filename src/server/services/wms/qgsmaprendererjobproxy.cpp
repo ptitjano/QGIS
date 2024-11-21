@@ -84,15 +84,26 @@ namespace QgsWms
     }
     else
     {
+      auto t0 = std::chrono::high_resolution_clock::now();
       mPainter.reset( new QPainter( image ) );
+      auto t1 = std::chrono::high_resolution_clock::now();
+      qDebug() << "===== PROXY RESET" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
+
+      auto t2 = std::chrono::high_resolution_clock::now();
       QgsMapRendererCustomPainterJob renderJob( mapSettings, mPainter.get() );
       if ( feedback )
         QObject::connect( feedback, &QgsFeedback::canceled, &renderJob, &QgsMapRendererCustomPainterJob::cancel );
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
       renderJob.setFeatureFilterProvider( mFeatureFilterProvider );
 #endif
+      auto t3 = std::chrono::high_resolution_clock::now();
+      qDebug() << "===== PROXY INIT" << std::chrono::duration_cast<std::chrono::milliseconds>( t3 - t2 ).count();
+
+      auto t4 = std::chrono::high_resolution_clock::now();
       if ( !feedback || !feedback->isCanceled() )
         renderJob.renderSynchronously();
+      auto t5 = std::chrono::high_resolution_clock::now();
+      qDebug() << "===== PROXY RENDER SYNCHRONE" << std::chrono::duration_cast<std::chrono::milliseconds>( t5 - t4 ).count();
 
       mErrors = renderJob.errors();
 

@@ -3432,6 +3432,7 @@ namespace QgsWms
 
   QPainter *QgsRenderer::layersRendering( const QgsMapSettings &mapSettings, QImage &image ) const
   {
+    auto t0 = std::chrono::high_resolution_clock::now();
     QPainter *painter = nullptr;
 
     QgsFeatureFilterProviderGroup filters;
@@ -3440,11 +3441,25 @@ namespace QgsWms
     mContext.accessControl()->resolveFilterFeatures( mapSettings.layers() );
     filters.addProvider( mContext.accessControl() );
 #endif
+    auto t1 = std::chrono::high_resolution_clock::now();
+    qDebug() << "==== INIT" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
+
+    auto t2 = std::chrono::high_resolution_clock::now();
     QgsMapRendererJobProxy renderJob( mContext.settings().parallelRendering(), mContext.settings().maxThreads(), &filters );
+    auto t3 = std::chrono::high_resolution_clock::now();
+    qDebug() << "==== CREATE RENDER JOB" << std::chrono::duration_cast<std::chrono::milliseconds>( t3 - t2 ).count() << "x" << mContext.settings().parallelRendering() << "x" << mContext.settings().maxThreads();
 
+    auto t4 = std::chrono::high_resolution_clock::now();
     renderJob.render( mapSettings, &image, mContext.socketFeedback() );
-    painter = renderJob.takePainter();
+    auto t5 = std::chrono::high_resolution_clock::now();
+    qDebug() << "==== RENDER" << std::chrono::duration_cast<std::chrono::milliseconds>( t5 - t4 ).count();
 
+    auto t6 = std::chrono::high_resolution_clock::now();
+    painter = renderJob.takePainter();
+    auto t7 = std::chrono::high_resolution_clock::now();
+    qDebug() << "==== TAKE PAINTER" << std::chrono::duration_cast<std::chrono::milliseconds>( t7 - t6 ).count();
+
+    auto t8 = std::chrono::high_resolution_clock::now();
     if ( !renderJob.errors().isEmpty() )
     {
       const QgsMapRendererJob::Error e = renderJob.errors().at( 0 );
@@ -3463,6 +3478,8 @@ namespace QgsWms
       }
       throw QgsException( errorMessage );
     }
+    auto t9 = std::chrono::high_resolution_clock::now();
+    qDebug() << "==== FINALISATION" << std::chrono::duration_cast<std::chrono::milliseconds>( t9 - t8 ).count();
 
     return painter;
   }

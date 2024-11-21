@@ -78,6 +78,7 @@ QgsMapRendererCustomPainterJob::~QgsMapRendererCustomPainterJob()
 
 void QgsMapRendererCustomPainterJob::startPrivate()
 {
+  qDebug() << "========= JE SUIS CUSTOM ================";
   if ( isActive() )
     return;
 
@@ -217,8 +218,16 @@ void QgsMapRendererCustomPainterJob::waitForFinishedWithEventLoop( QEventLoop::P
 void QgsMapRendererCustomPainterJob::renderSynchronously()
 {
   mRenderSynchronously = true;
+  auto t0 = std::chrono::high_resolution_clock::now();
   start();
+  auto t1 = std::chrono::high_resolution_clock::now();
+  qDebug() << "====== PROXY JOB START" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
+
+  auto t2 = std::chrono::high_resolution_clock::now();
   futureFinished();
+  auto t3 = std::chrono::high_resolution_clock::now();
+  qDebug() << "====== PROXY JOB FURTURE FINISHED" << std::chrono::duration_cast<std::chrono::milliseconds>( t3 - t2 ).count();
+
   mRenderSynchronously = false;
 }
 

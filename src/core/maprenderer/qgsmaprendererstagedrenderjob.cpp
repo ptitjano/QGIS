@@ -40,6 +40,7 @@ QgsMapRendererStagedRenderJob::~QgsMapRendererStagedRenderJob()
 
 void QgsMapRendererStagedRenderJob::startPrivate()
 {
+  qDebug() << "CELUI LA =================================";
   mRenderingStart.start();
   mErrors.clear();
 
