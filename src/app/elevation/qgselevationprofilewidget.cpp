@@ -332,7 +332,7 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( QgsElevationProfile *profi
   mAddPointAction->setEnabled( false );
   mAddPointTool->setAction( mAddPointAction );
 
-  connect( mAddPointAction, &QAction::triggered, mPanTool, [this] { mCanvas->setTool( mAddPointTool ); } );
+  connect( mAddPointAction, &QAction::triggered, this, [this] { mCanvas->setTool( mAddPointTool ); } );
 
   toolBar->addAction( mAddPointAction );
 
@@ -1465,21 +1465,21 @@ void QgsAppElevationProfileLayerTreeView::contextMenuEvent( QContextMenuEvent *e
 
 void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &, const QItemSelection & )
 {
-  const QModelIndexList selected = mLayerTreeView->selectionModel()->selectedIndexes();
-  if ( selected.size() != 1 )
-  {
-    mAddPointAction->setEnabled( false );
-    mAddPointTool->setLayer( nullptr );
+  QItemSelectionModel *selectModel = mLayerTreeView->selectionModel();
+  if ( !selectModel )
     return;
-  }
 
-  QModelIndex idx = selected.at( 0 );
-  if ( idx.isValid() )
+  const QModelIndexList selected = selectModel->selectedIndexes();
+  if ( selected.size() == 1 )
   {
-    QgsMapLayer *layer = mLayerTreeView->layerForIndex( idx );
+    QgsMapLayer *layer = mLayerTreeView->layerForIndex( selected.at( 0 ) );
     if ( QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer ) )
     {
       mAddPointTool->setLayer( vectorLayer );
+      return;
     }
   }
+
+  mCanvas->setTool( mIdentifyTool );
+  mAddPointTool->setLayer( nullptr );
 }
