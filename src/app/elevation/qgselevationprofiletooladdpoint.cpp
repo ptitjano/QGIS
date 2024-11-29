@@ -16,6 +16,7 @@
  ***************************************************************************/
 
 #include "qgselevationprofiletooladdpoint.h"
+#include "moc_qgselevationprofiletooladdpoint.cpp"
 #include "qgsfeature.h"
 #include "qgslogger.h"
 #include "qgsmessagebar.h"
