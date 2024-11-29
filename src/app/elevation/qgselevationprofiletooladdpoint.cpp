@@ -18,6 +18,7 @@
 #include "qgselevationprofiletooladdpoint.h"
 #include "qgsfeature.h"
 #include "qgslogger.h"
+#include "qgsmessagebar.h"
 #include "qgsplotcanvas.h"
 #include "qgsplotmouseevent.h"
 #include "qgsapplication.h"
@@ -61,6 +62,12 @@ void QgsElevationProfileToolAddPoint::plotReleaseEvent( QgsPlotMouseEvent *event
   const Qgis::WkbType layerWKBType = mLayer->wkbType();
 
   const QgsGeometry geometry( std::make_unique<QgsPoint>( event->mapPoint() ) );
+  if ( geometry.isNull() || geometry.isEmpty() )
+  {
+    QgisApp::instance()->messageBar()->pushWarning( tr( "Add point" ), tr( "Could not add point with no geometry" ) );
+    return;
+  }
+
   QgsGeometry layerGeometry;
   double defaultZ = QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->value();
   double defaultM = QgsSettingsRegistryCore::settingsDigitizingDefaultMValue->value();
