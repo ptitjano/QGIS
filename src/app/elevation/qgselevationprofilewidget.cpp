@@ -262,13 +262,13 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
 
   toolBar->addSeparator();
 
-  QAction *identifyToolAction = new QAction( tr( "Identify Features" ), this );
-  identifyToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionIdentify.svg" ) ) );
-  identifyToolAction->setCheckable( true );
-  identifyToolAction->setChecked( true );
-  mIdentifyTool->setAction( identifyToolAction );
-  connect( identifyToolAction, &QAction::triggered, mPanTool, [ = ] { mCanvas->setTool( mIdentifyTool ); } );
-  toolBar->addAction( identifyToolAction );
+  mAddPointAction = new QAction( tr( "Identify Features" ), this );
+  mAddPointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionIdentify.svg" ) ) );
+  mAddPointAction->setCheckable( true );
+  mAddPointAction->setChecked( true );
+  mIdentifyTool->setAction( mAddPointAction );
+  connect( mAddPointAction, &QAction::triggered, mPanTool, [ = ] { mCanvas->setTool( mIdentifyTool ); } );
+  toolBar->addAction( mAddPointAction );
 
   QAction *panToolAction = new QAction( tr( "Pan" ), this );
   panToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionPan.svg" ) ) );
@@ -317,16 +317,16 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   toolBar->addAction( measureToolAction );
 
   // Add Feature Action
-  QAction *addPointToolAction = new QAction( tr( "Add Point Feature" ), this );
-  addPointToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
-  addPointToolAction->setCheckable( true );
-  addPointToolAction->setChecked( false );
-  addPointToolAction->setEnabled( false );
-  mAddPointTool->setAction( addPointToolAction );
+  mAddPointAction = new QAction( tr( "Add Point Feature" ), this );
+  mAddPointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
+  mAddPointAction->setCheckable( true );
+  mAddPointAction->setChecked( false );
+  mAddPointAction->setEnabled( false );
+  mAddPointTool->setAction( mAddPointAction );
 
-  connect( addPointToolAction, &QAction::triggered, mPanTool, [ = ] { mCanvas->setTool( mAddPointTool ); } );
+  connect( mAddPointAction, &QAction::triggered, this, [ = ] { mCanvas->setTool( mAddPointTool ); } );
 
-  toolBar->addAction( addPointToolAction );
+  toolBar->addAction( mAddPointAction );
 
   toolBar->addSeparator();
 
@@ -1175,21 +1175,22 @@ void QgsAppElevationProfileLayerTreeView::contextMenuEvent( QContextMenuEvent *e
 
 void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &, const QItemSelection & )
 {
-  const QModelIndexList selected = mLayerTreeView->selectionModel()->selectedIndexes();
-  if ( selected.size() != 1 )
-  {
-    mAddPointAction->setEnabled( false );
-    mAddPointTool->setLayer( nullptr );
+  QItemSelectionModel *selectModel = mLayerTreeView->selectionModel();
+  if ( !selectModel )
     return;
-  }
 
+  const QModelIndexList selected = selectModel->selectedIndexes();
   QModelIndex idx = selected.at( 0 );
-  if ( idx.isValid() )
+  if ( selected.size() == 1 && idx.isValid() )
   {
     QgsMapLayer *layer = mLayerTreeView->indexToLayer( idx );
     if ( QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer ) )
     {
       mAddPointTool->setLayer( vectorLayer );
+      return;
     }
   }
+
+  mCanvas->setTool( mIdentifyTool );
+  mAddPointTool->setLayer( nullptr );
 }
