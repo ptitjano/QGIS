@@ -129,14 +129,19 @@ void QgsElevationProfileToolAddPoint::setLayer( QgsVectorLayer *layer )
 
 void QgsElevationProfileToolAddPoint::toggleAction()
 {
+  QAction *addPointAction = action();
+  if ( !addPointAction )
+    return;
+
   if ( mLayer )
   {
-    if ( QAction *addPointAction = action() )
-    {
-      const bool isPoint = mLayer->geometryType() == Qgis::GeometryType::Point;
-      const bool canAddFeatures = mLayer->dataProvider()->capabilities() & Qgis::VectorProviderCapability::AddFeatures;
-      addPointAction->setEnabled( isPoint && canAddFeatures && mLayer->isEditable() );
-    }
+    const bool isPoint = mLayer->geometryType() == Qgis::GeometryType::Point;
+    const bool canAddFeatures = mLayer->dataProvider()->capabilities() & Qgis::VectorProviderCapability::AddFeatures;
+    addPointAction->setEnabled( isPoint && canAddFeatures && mLayer->isEditable() );
+  }
+  else
+  {
+    addPointAction->setEnabled( false );
   }
 }
 
