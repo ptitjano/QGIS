@@ -569,17 +569,17 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
         break;
       }
 
-      //   if ( !fet.hasGeometry() || fet.geometry().isEmpty() )
-      //     continue; // skip features without geometry
+      if ( !fet.hasGeometry() || fet.geometry().isEmpty() )
+        continue; // skip features without geometry
 
-      //   if ( clipEngine && !clipEngine->intersects( fet.geometry().constGet() ) )
-      //     continue; // skip features outside of clipping region
+      if ( clipEngine && !clipEngine->intersects( fet.geometry().constGet() ) )
+        continue; // skip features outside of clipping region
 
-      //   if ( mApplyClipGeometries )
-      //     context.setFeatureClipGeometry( mClipFeatureGeom );
+      if ( mApplyClipGeometries )
+        context.setFeatureClipGeometry( mClipFeatureGeom );
 
-      //   if ( ! mNoSetLayerExpressionContext )
-      //     context.expressionContext().setFeature( fet );
+      if ( ! mNoSetLayerExpressionContext )
+        context.expressionContext().setFeature( fet );
 
       //   const bool featureIsSelected = isMainRenderer && context.showSelection() && mSelectedFeatureIds.contains( fet.id() );
       //   bool drawMarker = isMainRenderer && ( mDrawVertexMarkers && context.drawEditingInformation() && ( !mVertexMarkerOnlyForSelection || featureIsSelected ) );
