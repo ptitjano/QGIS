@@ -238,6 +238,7 @@ Qgis::MapLayerRendererFlags QgsVectorLayerRenderer::flags() const
 bool QgsVectorLayerRenderer::render()
 {
   qDebug() << "========= QgsVectorLayerRenderer::render" << mRenderers.size();
+  auto t0 = std::chrono::high_resolution_clock::now();
   if ( mGeometryType == Qgis::GeometryType::Null || mGeometryType == Qgis::GeometryType::Unknown )
   {
     mReadyToCompose = true;
@@ -267,6 +268,9 @@ bool QgsVectorLayerRenderer::render()
     mElapsedTimer.start();
   }
 
+  auto t1 = std::chrono::high_resolution_clock::now();
+  qDebug() << "========= QgsVectorLayerRenderer::render init" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
+  auto t2 = std::chrono::high_resolution_clock::now();
   bool res = true;
   int rendererIndex = 0;
   for ( const std::unique_ptr< QgsFeatureRenderer > &renderer : mRenderers )
@@ -277,6 +281,8 @@ bool QgsVectorLayerRenderer::render()
     }
     res = renderInternal( renderer.get(), rendererIndex++ ) && res;
   }
+  auto t3 = std::chrono::high_resolution_clock::now();
+  qDebug() << "========= QgsVectorLayerRenderer::render renderinternal" << std::chrono::duration_cast<std::chrono::milliseconds>( t3 - t2 ).count();
 
   mReadyToCompose = true;
   return res && !renderContext()->renderingStopped();
@@ -285,6 +291,8 @@ bool QgsVectorLayerRenderer::render()
 bool QgsVectorLayerRenderer::renderInternal( QgsFeatureRenderer *renderer, int rendererIndex )
 {
   const bool isMainRenderer = renderer == mRenderer;
+  qDebug() << "========== QgsVectorLayerRenderer::renderinternal" << isMainRenderer;
+  auto t0 = std::chrono::high_resolution_clock::now();
 
   QgsRenderContext &context = *renderContext();
   context.setSymbologyReferenceScale( renderer->referenceScale() );
@@ -490,7 +498,12 @@ bool QgsVectorLayerRenderer::renderInternal( QgsFeatureRenderer *renderer, int r
     renderingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Rendering" ), QStringLiteral( "rendering" ) );
   }
 
-  if ( ( renderer->capabilities() & QgsFeatureRenderer::SymbolLevels ) && renderer->usingSymbolLevels() )
+  auto t1 = std::chrono::high_resolution_clock::now();
+  qDebug() << "========== QgsVectorLayerRenderer::renderinternal prepare finished" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
+  auto t2 = std::chrono::high_resolution_clock::now();
+
+  const bool levels = ( renderer->capabilities() & QgsFeatureRenderer::SymbolLevels ) && renderer->usingSymbolLevels();
+  if ( levels )
     drawRendererLevels( renderer, fit );
   else
     drawRenderer( renderer, fit );
@@ -500,12 +513,19 @@ bool QgsVectorLayerRenderer::renderInternal( QgsFeatureRenderer *renderer, int r
     mErrors.append( QStringLiteral( "Data source invalid" ) );
   }
 
+  auto t3 = std::chrono::high_resolution_clock::now();
+  qDebug() << "========== QgsVectorLayerRenderer::renderinternal draw renderer finished" << std::chrono::duration_cast<std::chrono::milliseconds>( t3 - t2 ).count();
+  auto t4 = std::chrono::high_resolution_clock::now();
+
   if ( usingEffect )
   {
     renderer->paintEffect()->end( context );
   }
 
   context.expressionContext().setFeedback( nullptr );
+  auto t5 = std::chrono::high_resolution_clock::now();
+  qDebug() << "========== QgsVectorLayerRenderer::renderinternal post finished" << std::chrono::duration_cast<std::chrono::milliseconds>( t5 - t4 ).count();
+
   return true;
 }
 
@@ -522,6 +542,8 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
   QgsRenderContext &context = *renderContext();
   context.expressionContext().appendScope( symbolScope );
 
+  qDebug() << "=========== QgsVectorLayerRenderer::drawRenderer on clip ?" << mApplyClipFilter << "skip symbol rendering" << context.testFlag( Qgis::RenderContextFlag::SkipSymbolRendering );
+
   std::unique_ptr< QgsGeometryEngine > clipEngine;
   if ( mApplyClipFilter )
   {
@@ -532,6 +554,7 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
   if ( mSelectionSymbol && isMainRenderer )
     mSelectionSymbol->startRender( context, mFields );
 
+  auto t0 = std::chrono::high_resolution_clock::now();
   QgsFeature fet;
   while ( fit.nextFeature( fet ) )
   {
@@ -634,6 +657,8 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
                      .arg( fet.id() ).arg( cse.what() ) );
     }
   }
+  auto t1 = std::chrono::high_resolution_clock::now();
+  qDebug() << "=========== QgsVectorLayerRenderer::drawRenderer fetch finished" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
 
   delete context.expressionContext().popScope();
 
