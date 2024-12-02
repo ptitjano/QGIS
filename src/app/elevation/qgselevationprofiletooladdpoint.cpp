@@ -66,7 +66,8 @@ void QgsElevationProfileToolAddPoint::plotReleaseEvent( QgsPlotMouseEvent *event
   const QgsGeometry geometry( std::make_unique<QgsPoint>( mapPoint ) );
   if ( geometry.isNull() || geometry.isEmpty() )
   {
-    QgisApp::instance()->messageBar()->pushWarning( tr( "Add point" ), tr( "Could not add point with no geometry" ) );
+    QgisApp::instance()->messageBar()->pushWarning( tr( "Add point" ), tr( "Could not add point: no profile curve" ) );
+    QgsDebugError( QStringLiteral( "Could not add point with no geometry" ) );
     return;
   }
 
