@@ -145,7 +145,7 @@ bool QgsFeatureRenderer::renderFeature( const QgsFeature &feature, QgsRenderCont
   if ( !symbol )
     return false;
 
-  renderFeatureWithSymbol( feature, symbol, context, layer, selected, drawVertexMarker );
+  // renderFeatureWithSymbol( feature, symbol, context, layer, selected, drawVertexMarker );
   return true;
 }
 
