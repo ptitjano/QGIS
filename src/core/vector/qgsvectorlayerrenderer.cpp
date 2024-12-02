@@ -581,12 +581,11 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
       if ( ! mNoSetLayerExpressionContext )
         context.expressionContext().setFeature( fet );
 
-      //   const bool featureIsSelected = isMainRenderer && context.showSelection() && mSelectedFeatureIds.contains( fet.id() );
-      //   bool drawMarker = isMainRenderer && ( mDrawVertexMarkers && context.drawEditingInformation() && ( !mVertexMarkerOnlyForSelection || featureIsSelected ) );
-      //   qDebug() << "IDIOT" << featureIsSelected << "x" << drawMarker;
+      const bool featureIsSelected = isMainRenderer && context.showSelection() && mSelectedFeatureIds.contains( fet.id() );
+      bool drawMarker = isMainRenderer && ( mDrawVertexMarkers && context.drawEditingInformation() && ( !mVertexMarkerOnlyForSelection || featureIsSelected ) );
 
-      //   // render feature
-      //   bool rendered = false;
+      // render feature
+      bool rendered = false;
       //   if ( !context.testFlag( Qgis::RenderContextFlag::SkipSymbolRendering ) )
       //   {
       //     if ( featureIsSelected && mSelectionSymbol )
