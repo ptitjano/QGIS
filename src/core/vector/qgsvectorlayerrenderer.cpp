@@ -586,26 +586,26 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
 
       // render feature
       bool rendered = false;
-      //   if ( !context.testFlag( Qgis::RenderContextFlag::SkipSymbolRendering ) )
-      //   {
-      //     if ( featureIsSelected && mSelectionSymbol )
-      //     {
-      //       // note: here we pass "false" for the selected argument, as we don't want to change
-      //       // the user's defined selection symbol colors or settings in any way
-      //       mSelectionSymbol->renderFeature( fet, context, -1, false, drawMarker );
-      //       rendered = renderer->willRenderFeature( fet, context );
-      //     }
-      //     else
-      //     {
-      //       rendered = renderer->renderFeature( fet, context, -1, featureIsSelected, drawMarker );
-      //     }
-      //   }
-      //   else
-      //   {
-      //     rendered = renderer->willRenderFeature( fet, context );
-      //   }
+      if ( !context.testFlag( Qgis::RenderContextFlag::SkipSymbolRendering ) )
+      {
+        if ( featureIsSelected && mSelectionSymbol )
+        {
+          // note: here we pass "false" for the selected argument, as we don't want to change
+          // the user's defined selection symbol colors or settings in any way
+          mSelectionSymbol->renderFeature( fet, context, -1, false, drawMarker );
+          rendered = renderer->willRenderFeature( fet, context );
+        }
+        else
+        {
+          rendered = renderer->renderFeature( fet, context, -1, featureIsSelected, drawMarker );
+        }
+      }
+      else
+      {
+        rendered = renderer->willRenderFeature( fet, context );
+      }
 
-      //   // labeling - register feature
+      // labeling - register feature
       //   if ( rendered )
       //   {
       //     // as soon as first feature is rendered, we can start showing layer updates.
