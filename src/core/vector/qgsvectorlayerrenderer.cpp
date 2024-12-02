@@ -237,6 +237,7 @@ Qgis::MapLayerRendererFlags QgsVectorLayerRenderer::flags() const
 
 bool QgsVectorLayerRenderer::render()
 {
+  qDebug() << "========= QgsVectorLayerRenderer::render" << mRenderers.size();
   if ( mGeometryType == Qgis::GeometryType::Null || mGeometryType == Qgis::GeometryType::Unknown )
   {
     mReadyToCompose = true;
@@ -1049,4 +1050,3 @@ void QgsVectorLayerRenderer::prepareDiagrams( QgsVectorLayer *layer, QSet<QStrin
     }
   }
 }
-

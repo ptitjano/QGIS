@@ -78,7 +78,8 @@ QgsMapRendererCustomPainterJob::~QgsMapRendererCustomPainterJob()
 
 void QgsMapRendererCustomPainterJob::startPrivate()
 {
-  qDebug() << "========= JE SUIS CUSTOM ================";
+  qDebug() << "============ JE SUIS CUSTOM START PRIVATE ============";
+  auto t0 = std::chrono::high_resolution_clock::now();
   if ( isActive() )
     return;
 
@@ -95,33 +96,51 @@ void QgsMapRendererCustomPainterJob::startPrivate()
   QElapsedTimer prepareTime;
   prepareTime.start();
 
-  preparePainter( mPainter, mSettings.backgroundColor() );
+  auto t1 = std::chrono::high_resolution_clock::now();
+  qDebug() << "======= startprivate init" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
 
+  auto t2 = std::chrono::high_resolution_clock::now();
+  preparePainter( mPainter, mSettings.backgroundColor() );
+  auto t3 = std::chrono::high_resolution_clock::now();
+  qDebug() << "======= startprivate prepare painter" << std::chrono::duration_cast<std::chrono::milliseconds>( t3 - t2 ).count();
+
+  auto t4 = std::chrono::high_resolution_clock::now();
   mLabelingEngineV2.reset();
+  auto t5 = std::chrono::high_resolution_clock::now();
+  qDebug() << "======= startprivate labeling engine reset" << std::chrono::duration_cast<std::chrono::milliseconds>( t5 - t4 ).count();
 
   if ( mSettings.testFlag( Qgis::MapSettingsFlag::DrawLabeling ) )
   {
+    qDebug() << "======= startprivate ON DRAW LABELLING DEBUG MOI CA =======";
     mLabelingEngineV2.reset( new QgsDefaultLabelingEngine() );
     mLabelingEngineV2->setMapSettings( mSettings );
   }
 
+  auto t6 = std::chrono::high_resolution_clock::now();
   const bool canUseLabelCache = prepareLabelCache();
   mLayerJobs = prepareJobs( mPainter, mLabelingEngineV2.get() );
   mLabelJob = prepareLabelingJob( mPainter, mLabelingEngineV2.get(), canUseLabelCache );
   mSecondPassLayerJobs = prepareSecondPassJobs( mLayerJobs, mLabelJob );
+  auto t7 = std::chrono::high_resolution_clock::now();
+  qDebug() << "======= startprivate prepare suite" << std::chrono::duration_cast<std::chrono::milliseconds>( t7 - t6 ).count();
 
   QgsDebugMsgLevel( QStringLiteral( "Rendering prepared in (seconds): %1" ).arg( prepareTime.elapsed() / 1000.0 ), 4 );
 
   if ( mRenderSynchronously )
   {
+    qDebug() << "======= startprivate SYNCHRONE =======" << mPrepareOnly;
     if ( !mPrepareOnly )
     {
       // do the rendering right now!
+      auto t8 = std::chrono::high_resolution_clock::now();
       doRender();
+      auto t9 = std::chrono::high_resolution_clock::now();
+      qDebug() << "======= startprivate dorender" << std::chrono::duration_cast<std::chrono::milliseconds>( t9 - t8 ).count();
     }
     return;
   }
 
+  qDebug() << "======= startprivate ASYNCHRONE =======";
   // now we are ready to start rendering!
   connect( &mFutureWatcher, &QFutureWatcher<void>::finished, this, &QgsMapRendererCustomPainterJob::futureFinished );
 
@@ -294,6 +313,7 @@ void QgsMapRendererCustomPainterJob::staticRender( QgsMapRendererCustomPainterJo
 
 void QgsMapRendererCustomPainterJob::doRender()
 {
+  auto t0 = std::chrono::high_resolution_clock::now();
   const bool hasSecondPass = ! mSecondPassLayerJobs.empty();
   QgsDebugMsgLevel( QStringLiteral( "Starting to render layer stack." ), 5 );
   QElapsedTimer renderTime;
@@ -304,8 +324,13 @@ void QgsMapRendererCustomPainterJob::doRender()
   if ( mapShadingRenderer.isActive() )
     mainElevationMap.reset( new QgsElevationMap( mSettings.deviceOutputSize(), mSettings.devicePixelRatio() ) );
 
+  auto t1 = std::chrono::high_resolution_clock::now();
+  qDebug() << "======== dorender init" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
+
   for ( LayerRenderJob &job : mLayerJobs )
   {
+    qDebug() << "======== dorender start jobx" << job.context()->useAdvancedEffects() << "x" << job.cached;
+    auto t2 = std::chrono::high_resolution_clock::now();
     if ( job.context()->renderingStopped() )
       break;
 
@@ -320,6 +345,8 @@ void QgsMapRendererCustomPainterJob::doRender()
 
     if ( !job.cached )
     {
+      auto t10 = std::chrono::high_resolution_clock::now();
+      qDebug() << "======== dorender has preview" << job.previewRenderImage << "x" << job.previewRenderImageInitialized;
       QElapsedTimer layerTime;
       layerTime.start();
 
@@ -329,22 +356,37 @@ void QgsMapRendererCustomPainterJob::doRender()
         job.previewRenderImageInitialized = true;
       }
 
+      auto t11 = std::chrono::high_resolution_clock::now();
+      qDebug() << "======== dorender preview" << std::chrono::duration_cast<std::chrono::milliseconds>( t11 - t10 ).count();
+
+      qDebug() << "======== dorender has image" << job.img;
+      auto t12 = std::chrono::high_resolution_clock::now();
       if ( job.img )
       {
         job.img->fill( 0 );
         job.imageInitialized = true;
       }
+      auto t13 = std::chrono::high_resolution_clock::now();
+      qDebug() << "======== dorender img" << std::chrono::duration_cast<std::chrono::milliseconds>( t13 - t12 ).count();
 
+      auto t14 = std::chrono::high_resolution_clock::now();
       job.completed = job.renderer->render();
+      auto t15 = std::chrono::high_resolution_clock::now();
+      qDebug() << "======== dorender render" << std::chrono::duration_cast<std::chrono::milliseconds>( t15 - t14 ).count();
 
+      qDebug() << "======== dorender has picture" << job.picture.get();
+      auto t16 = std::chrono::high_resolution_clock::now();
       if ( job.picture )
       {
         job.renderer->renderContext()->painter()->end();
       }
+      auto t17 = std::chrono::high_resolution_clock::now();
+      qDebug() << "======== dorender picture" << std::chrono::duration_cast<std::chrono::milliseconds>( t17 - t16 ).count();
 
       job.renderingTime += layerTime.elapsed();
     }
 
+    auto t18 = std::chrono::high_resolution_clock::now();
     if ( ! hasSecondPass && job.img )
     {
       // If we flattened this layer for alternate blend modes, composite it now
@@ -361,11 +403,16 @@ void QgsMapRendererCustomPainterJob::doRender()
     }
 
     emit layerRendered( job.layerId );
+    auto t19 = std::chrono::high_resolution_clock::now();
+    auto t3 = std::chrono::high_resolution_clock::now();
+    qDebug() << "======== dorender picture" << std::chrono::duration_cast<std::chrono::milliseconds>( t19 - t18 ).count();
+    qDebug() << "======== dorender jobx" << std::chrono::duration_cast<std::chrono::milliseconds>( t3 - t2 ).count();
   }
 
   emit renderingLayersFinished();
   QgsDebugMsgLevel( QStringLiteral( "Done rendering map layers" ), 5 );
 
+  auto t4 = std::chrono::high_resolution_clock::now();
   if ( mapShadingRenderer.isActive() &&  mainElevationMap )
   {
     QImage image( mainElevationMap->rawElevationImage().size(), QImage::Format_RGB32 );
@@ -378,6 +425,10 @@ void QgsMapRendererCustomPainterJob::doRender()
     mPainter->restore();
   }
 
+  auto t5 = std::chrono::high_resolution_clock::now();
+  qDebug() << "======== dorender elevation" << mapShadingRenderer.isActive() << "x" << mainElevationMap.get() << "x" << std::chrono::duration_cast<std::chrono::milliseconds>( t5 - t4 ).count();
+
+  auto t6 = std::chrono::high_resolution_clock::now();
   if ( mSettings.testFlag( Qgis::MapSettingsFlag::DrawLabeling ) && !mLabelJob.context.renderingStopped() )
   {
     if ( !mLabelJob.cached )
@@ -412,7 +463,13 @@ void QgsMapRendererCustomPainterJob::doRender()
       mLabelJob.participatingLayers = participatingLabelLayers( mLabelingEngineV2.get() );
     }
   }
+  auto t7 = std::chrono::high_resolution_clock::now();
+  qDebug() << "======== dorender drawlabeling" << mSettings.testFlag( Qgis::MapSettingsFlag::DrawLabeling ) << "x" << mLabelJob.context.renderingStopped() << "x" << std::chrono::duration_cast<std::chrono::milliseconds>( t7 - t6 ).count();
 
+  qDebug() << "======== dorender has second pass" << hasSecondPass;
+
+
+  auto t8 = std::chrono::high_resolution_clock::now();
   if ( ! hasSecondPass )
   {
     if ( mLabelJob.img && mLabelJob.complete )
@@ -490,6 +547,9 @@ void QgsMapRendererCustomPainterJob::doRender()
       }
     }
   }
+
+  auto t9 = std::chrono::high_resolution_clock::now();
+  qDebug() << "======== dorender finalisation" << std::chrono::duration_cast<std::chrono::milliseconds>( t9 - t8 ).count();
 
   QgsDebugMsgLevel( QStringLiteral( "Rendering completed in (seconds): %1" ).arg( renderTime.elapsed() / 1000.0 ), 2 );
 }
