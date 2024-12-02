@@ -606,52 +606,52 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
       }
 
       // labeling - register feature
-      //   if ( rendered )
-      //   {
-      //     // as soon as first feature is rendered, we can start showing layer updates.
-      //     // but if we are blocking render updates (so that a previously cached image is being shown), we wait
-      //     // at most e.g. 3 seconds before we start forcing progressive updates.
-      //     if ( !mBlockRenderUpdates || mElapsedTimer.elapsed() > MAX_TIME_TO_USE_CACHED_PREVIEW_IMAGE )
-      //     {
-      //       mReadyToCompose = true;
-      //     }
+      if ( rendered )
+      {
+        // as soon as first feature is rendered, we can start showing layer updates.
+        // but if we are blocking render updates (so that a previously cached image is being shown), we wait
+        // at most e.g. 3 seconds before we start forcing progressive updates.
+        if ( !mBlockRenderUpdates || mElapsedTimer.elapsed() > MAX_TIME_TO_USE_CACHED_PREVIEW_IMAGE )
+        {
+          mReadyToCompose = true;
+        }
 
-      //     // new labeling engine
-      //     if ( isMainRenderer && context.labelingEngine() && ( mLabelProvider || mDiagramProvider ) )
-      //     {
-      //       const quint64 startLabelTime = timer.elapsed();
-      //       QgsGeometry obstacleGeometry;
-      //       QgsSymbolList symbols = renderer->originalSymbolsForFeature( fet, context );
-      //       QgsSymbol *symbol = nullptr;
-      //       if ( !symbols.isEmpty() && fet.geometry().type() == Qgis::GeometryType::Point )
-      //       {
-      //         obstacleGeometry = QgsVectorLayerLabelProvider::getPointObstacleGeometry( fet, context, symbols );
-      //       }
+        // new labeling engine
+        if ( isMainRenderer && context.labelingEngine() && ( mLabelProvider || mDiagramProvider ) )
+        {
+          const quint64 startLabelTime = timer.elapsed();
+          QgsGeometry obstacleGeometry;
+          QgsSymbolList symbols = renderer->originalSymbolsForFeature( fet, context );
+          QgsSymbol *symbol = nullptr;
+          if ( !symbols.isEmpty() && fet.geometry().type() == Qgis::GeometryType::Point )
+          {
+            obstacleGeometry = QgsVectorLayerLabelProvider::getPointObstacleGeometry( fet, context, symbols );
+          }
 
-      //       if ( !symbols.isEmpty() )
-      //       {
-      //         symbol = symbols.at( 0 );
-      //         QgsExpressionContextUtils::updateSymbolScope( symbol, symbolScope );
-      //       }
+          if ( !symbols.isEmpty() )
+          {
+            symbol = symbols.at( 0 );
+            QgsExpressionContextUtils::updateSymbolScope( symbol, symbolScope );
+          }
 
-      //       if ( mApplyLabelClipGeometries )
-      //         context.setFeatureClipGeometry( mLabelClipFeatureGeom );
+          if ( mApplyLabelClipGeometries )
+            context.setFeatureClipGeometry( mLabelClipFeatureGeom );
 
-      //       if ( mLabelProvider )
-      //       {
-      //         mLabelProvider->registerFeature( fet, context, obstacleGeometry, symbol );
-      //       }
-      //       if ( mDiagramProvider )
-      //       {
-      //         mDiagramProvider->registerFeature( fet, context, obstacleGeometry );
-      //       }
+          if ( mLabelProvider )
+          {
+            mLabelProvider->registerFeature( fet, context, obstacleGeometry, symbol );
+          }
+          if ( mDiagramProvider )
+          {
+            mDiagramProvider->registerFeature( fet, context, obstacleGeometry );
+          }
 
-      //       if ( mApplyLabelClipGeometries )
-      //         context.setFeatureClipGeometry( QgsGeometry() );
+          if ( mApplyLabelClipGeometries )
+            context.setFeatureClipGeometry( QgsGeometry() );
 
-      //       totalLabelTime += ( timer.elapsed() - startLabelTime );
-      //     }
-      //   }
+          totalLabelTime += ( timer.elapsed() - startLabelTime );
+        }
+      }
     }
     catch ( const QgsCsException &cse )
     {
