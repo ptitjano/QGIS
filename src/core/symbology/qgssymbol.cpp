@@ -1605,257 +1605,257 @@ void QgsSymbol::renderFeature( const QgsFeature &feature, QgsRenderContext &cont
   // Step 1 - collect the set of painter coordinate geometries to render.
   // We do this upfront, because we only want to ever do this once, regardless how many symbol layers we need to render.
 
-  // struct PointInfo
-  // {
-  //   QPointF renderPoint;
-  //   const QgsPoint *originalGeometry = nullptr;
-  // };
-  // QVector< PointInfo > pointsToRender;
+  struct PointInfo
+  {
+    QPointF renderPoint;
+    const QgsPoint *originalGeometry = nullptr;
+  };
+  QVector< PointInfo > pointsToRender;
 
-  // struct LineInfo
-  // {
-  //   QPolygonF renderLine;
-  //   const QgsCurve *originalGeometry = nullptr;
-  // };
-  // QVector< LineInfo > linesToRender;
+  struct LineInfo
+  {
+    QPolygonF renderLine;
+    const QgsCurve *originalGeometry = nullptr;
+  };
+  QVector< LineInfo > linesToRender;
 
-  // struct PolygonInfo
-  // {
-  //   QPolygonF renderExterior;
-  //   QVector< QPolygonF > renderRings;
-  //   const QgsCurvePolygon *originalGeometry = nullptr;
-  //   int originalPartIndex = 0;
-  // };
-  // QVector< PolygonInfo > polygonsToRender;
+  struct PolygonInfo
+  {
+    QPolygonF renderExterior;
+    QVector< QPolygonF > renderRings;
+    const QgsCurvePolygon *originalGeometry = nullptr;
+    int originalPartIndex = 0;
+  };
+  QVector< PolygonInfo > polygonsToRender;
 
-  // std::function< void ( const QgsAbstractGeometry *, int partIndex )> getPartGeometry;
-  // getPartGeometry = [&pointsToRender, &linesToRender, &polygonsToRender, &getPartGeometry, &context, &clippingEnabled, &markers, &feature, &usingSegmentizedGeometry, this]( const QgsAbstractGeometry * part, int partIndex = 0 )
-  // {
-  //   Q_UNUSED( feature )
+  std::function< void ( const QgsAbstractGeometry *, int partIndex )> getPartGeometry;
+  getPartGeometry = [&pointsToRender, &linesToRender, &polygonsToRender, &getPartGeometry, &context, &clippingEnabled, &markers, &feature, &usingSegmentizedGeometry, this]( const QgsAbstractGeometry * part, int partIndex = 0 )
+  {
+    Q_UNUSED( feature )
 
-  //   if ( !part )
-  //     return;
+    if ( !part )
+      return;
 
-  //   // geometry preprocessing
-  //   QgsGeometry temporaryGeometryContainer;
-  //   const QgsAbstractGeometry *processedGeometry = nullptr;
+    // geometry preprocessing
+    QgsGeometry temporaryGeometryContainer;
+    const QgsAbstractGeometry *processedGeometry = nullptr;
 
-  //   const bool isMultiPart = qgsgeometry_cast< const QgsGeometryCollection * >( part ) && qgsgeometry_cast< const QgsGeometryCollection * >( part )->numGeometries() > 1;
+    const bool isMultiPart = qgsgeometry_cast< const QgsGeometryCollection * >( part ) && qgsgeometry_cast< const QgsGeometryCollection * >( part )->numGeometries() > 1;
 
-  //   if ( !isMultiPart )
-  //   {
-  //     // segmentize curved geometries
-  //     const bool needsSegmentizing = QgsWkbTypes::isCurvedType( part->wkbType() ) || part->hasCurvedSegments();
-  //     if ( needsSegmentizing )
-  //     {
-  //       std::unique_ptr< QgsAbstractGeometry > segmentizedPart( part->segmentize( context.segmentationTolerance(), context.segmentationToleranceType() ) );
-  //       if ( !segmentizedPart )
-  //       {
-  //         return;
-  //       }
-  //       temporaryGeometryContainer.set( segmentizedPart.release() );
-  //       processedGeometry = temporaryGeometryContainer.constGet();
-  //       usingSegmentizedGeometry = true;
-  //     }
-  //     else
-  //     {
-  //       // no segmentation required
-  //       processedGeometry = part;
-  //     }
+    if ( !isMultiPart )
+    {
+      // segmentize curved geometries
+      const bool needsSegmentizing = QgsWkbTypes::isCurvedType( part->wkbType() ) || part->hasCurvedSegments();
+      if ( needsSegmentizing )
+      {
+        std::unique_ptr< QgsAbstractGeometry > segmentizedPart( part->segmentize( context.segmentationTolerance(), context.segmentationToleranceType() ) );
+        if ( !segmentizedPart )
+        {
+          return;
+        }
+        temporaryGeometryContainer.set( segmentizedPart.release() );
+        processedGeometry = temporaryGeometryContainer.constGet();
+        usingSegmentizedGeometry = true;
+      }
+      else
+      {
+        // no segmentation required
+        processedGeometry = part;
+      }
 
-  //     // Simplify the geometry, if needed.
-  //     if ( context.vectorSimplifyMethod().forceLocalOptimization() )
-  //     {
-  //       const int simplifyHints = context.vectorSimplifyMethod().simplifyHints();
-  //       const QgsMapToPixelSimplifier simplifier( simplifyHints, context.vectorSimplifyMethod().tolerance(),
-  //           context.vectorSimplifyMethod().simplifyAlgorithm() );
+      // Simplify the geometry, if needed.
+      if ( context.vectorSimplifyMethod().forceLocalOptimization() )
+      {
+        const int simplifyHints = context.vectorSimplifyMethod().simplifyHints();
+        const QgsMapToPixelSimplifier simplifier( simplifyHints, context.vectorSimplifyMethod().tolerance(),
+            context.vectorSimplifyMethod().simplifyAlgorithm() );
 
-  //       std::unique_ptr< QgsAbstractGeometry > simplified( simplifier.simplify( processedGeometry ) );
-  //       if ( simplified )
-  //       {
-  //         temporaryGeometryContainer.set( simplified.release() );
-  //         processedGeometry = temporaryGeometryContainer.constGet();
-  //       }
-  //     }
+        std::unique_ptr< QgsAbstractGeometry > simplified( simplifier.simplify( processedGeometry ) );
+        if ( simplified )
+        {
+          temporaryGeometryContainer.set( simplified.release() );
+          processedGeometry = temporaryGeometryContainer.constGet();
+        }
+      }
 
-  //     // clip geometry to render context clipping regions
-  //     if ( !context.featureClipGeometry().isEmpty() )
-  //     {
-  //       // apply feature clipping from context to the rendered geometry only -- just like the render time simplification,
-  //       // we should NEVER apply this to the geometry attached to the feature itself. Doing so causes issues with certain
-  //       // renderer settings, e.g. if polygons are being rendered using a rule based renderer based on the feature's area,
-  //       // then we need to ensure that the original feature area is used instead of the clipped area..
-  //       QgsGeos geos( processedGeometry );
-  //       std::unique_ptr< QgsAbstractGeometry > clippedGeom( geos.intersection( context.featureClipGeometry().constGet() ) );
-  //       if ( clippedGeom )
-  //       {
-  //         temporaryGeometryContainer.set( clippedGeom.release() );
-  //         processedGeometry = temporaryGeometryContainer.constGet();
-  //       }
-  //     }
-  //   }
-  //   else
-  //   {
-  //     // for multipart geometries, the processing is deferred till we're rendering the actual part...
-  //     processedGeometry = part;
-  //   }
+      // clip geometry to render context clipping regions
+      if ( !context.featureClipGeometry().isEmpty() )
+      {
+        // apply feature clipping from context to the rendered geometry only -- just like the render time simplification,
+        // we should NEVER apply this to the geometry attached to the feature itself. Doing so causes issues with certain
+        // renderer settings, e.g. if polygons are being rendered using a rule based renderer based on the feature's area,
+        // then we need to ensure that the original feature area is used instead of the clipped area..
+        QgsGeos geos( processedGeometry );
+        std::unique_ptr< QgsAbstractGeometry > clippedGeom( geos.intersection( context.featureClipGeometry().constGet() ) );
+        if ( clippedGeom )
+        {
+          temporaryGeometryContainer.set( clippedGeom.release() );
+          processedGeometry = temporaryGeometryContainer.constGet();
+        }
+      }
+    }
+    else
+    {
+      // for multipart geometries, the processing is deferred till we're rendering the actual part...
+      processedGeometry = part;
+    }
 
-  //   if ( !processedGeometry )
-  //   {
-  //     // shouldn't happen!
-  //     QgsDebugError( QStringLiteral( "No processed geometry to render for part!" ) );
-  //     return;
-  //   }
+    if ( !processedGeometry )
+    {
+      // shouldn't happen!
+      QgsDebugError( QStringLiteral( "No processed geometry to render for part!" ) );
+      return;
+    }
 
-  //   switch ( QgsWkbTypes::flatType( processedGeometry->wkbType() ) )
-  //   {
-  //     case Qgis::WkbType::Point:
-  //     {
-  //       if ( mType != Qgis::SymbolType::Marker )
-  //       {
-  //         QgsDebugMsgLevel( QStringLiteral( "point can be drawn only with marker symbol!" ), 2 );
-  //         break;
-  //       }
+    switch ( QgsWkbTypes::flatType( processedGeometry->wkbType() ) )
+    {
+      case Qgis::WkbType::Point:
+      {
+        if ( mType != Qgis::SymbolType::Marker )
+        {
+          QgsDebugMsgLevel( QStringLiteral( "point can be drawn only with marker symbol!" ), 2 );
+          break;
+        }
 
-  //       PointInfo info;
-  //       info.originalGeometry = qgsgeometry_cast< const QgsPoint * >( part );
-  //       info.renderPoint = _getPoint( context, *info.originalGeometry );
-  //       pointsToRender << info;
-  //       break;
-  //     }
+        PointInfo info;
+        info.originalGeometry = qgsgeometry_cast< const QgsPoint * >( part );
+        info.renderPoint = _getPoint( context, *info.originalGeometry );
+        pointsToRender << info;
+        break;
+      }
 
-  //     case Qgis::WkbType::LineString:
-  //     {
-  //       if ( mType != Qgis::SymbolType::Line )
-  //       {
-  //         QgsDebugMsgLevel( QStringLiteral( "linestring can be drawn only with line symbol!" ), 2 );
-  //         break;
-  //       }
+      case Qgis::WkbType::LineString:
+      {
+        if ( mType != Qgis::SymbolType::Line )
+        {
+          QgsDebugMsgLevel( QStringLiteral( "linestring can be drawn only with line symbol!" ), 2 );
+          break;
+        }
 
-  //       LineInfo info;
-  //       info.originalGeometry = qgsgeometry_cast<const QgsCurve *>( part );
-  //       info.renderLine = _getLineString( context, *qgsgeometry_cast<const QgsCurve *>( processedGeometry ), clippingEnabled );
-  //       linesToRender << info;
-  //       break;
-  //     }
+        LineInfo info;
+        info.originalGeometry = qgsgeometry_cast<const QgsCurve *>( part );
+        info.renderLine = _getLineString( context, *qgsgeometry_cast<const QgsCurve *>( processedGeometry ), clippingEnabled );
+        linesToRender << info;
+        break;
+      }
 
-  //     case Qgis::WkbType::Polygon:
-  //     case Qgis::WkbType::Triangle:
-  //     {
-  //       QPolygonF pts;
-  //       if ( mType != Qgis::SymbolType::Fill )
-  //       {
-  //         QgsDebugMsgLevel( QStringLiteral( "polygon can be drawn only with fill symbol!" ), 2 );
-  //         break;
-  //       }
+      case Qgis::WkbType::Polygon:
+      case Qgis::WkbType::Triangle:
+      {
+        QPolygonF pts;
+        if ( mType != Qgis::SymbolType::Fill )
+        {
+          QgsDebugMsgLevel( QStringLiteral( "polygon can be drawn only with fill symbol!" ), 2 );
+          break;
+        }
 
-  //       PolygonInfo info;
-  //       info.originalGeometry = qgsgeometry_cast<const QgsCurvePolygon *>( part );
-  //       info.originalPartIndex = partIndex;
-  //       if ( !qgsgeometry_cast<const QgsPolygon *>( processedGeometry )->exteriorRing() )
-  //       {
-  //         QgsDebugError( QStringLiteral( "cannot render polygon with no exterior ring" ) );
-  //         break;
-  //       }
+        PolygonInfo info;
+        info.originalGeometry = qgsgeometry_cast<const QgsCurvePolygon *>( part );
+        info.originalPartIndex = partIndex;
+        if ( !qgsgeometry_cast<const QgsPolygon *>( processedGeometry )->exteriorRing() )
+        {
+          QgsDebugError( QStringLiteral( "cannot render polygon with no exterior ring" ) );
+          break;
+        }
 
-  //       _getPolygon( info.renderExterior, info.renderRings, context, *qgsgeometry_cast<const QgsPolygon *>( processedGeometry ), clippingEnabled, mForceRHR );
-  //       polygonsToRender << info;
-  //       break;
-  //     }
+        _getPolygon( info.renderExterior, info.renderRings, context, *qgsgeometry_cast<const QgsPolygon *>( processedGeometry ), clippingEnabled, mForceRHR );
+        polygonsToRender << info;
+        break;
+      }
 
-  //     case Qgis::WkbType::MultiPoint:
-  //     {
-  //       const QgsMultiPoint *mp = qgsgeometry_cast< const QgsMultiPoint * >( processedGeometry );
-  //       markers.reserve( mp->numGeometries() );
-  //     }
-  //     [[fallthrough]];
-  //     case Qgis::WkbType::MultiCurve:
-  //     case Qgis::WkbType::MultiLineString:
-  //     case Qgis::WkbType::GeometryCollection:
-  //     {
-  //       const QgsGeometryCollection *geomCollection = qgsgeometry_cast<const QgsGeometryCollection *>( processedGeometry );
+      case Qgis::WkbType::MultiPoint:
+      {
+        const QgsMultiPoint *mp = qgsgeometry_cast< const QgsMultiPoint * >( processedGeometry );
+        markers.reserve( mp->numGeometries() );
+      }
+      [[fallthrough]];
+      case Qgis::WkbType::MultiCurve:
+      case Qgis::WkbType::MultiLineString:
+      case Qgis::WkbType::GeometryCollection:
+      {
+        const QgsGeometryCollection *geomCollection = qgsgeometry_cast<const QgsGeometryCollection *>( processedGeometry );
 
-  //       const unsigned int num = geomCollection->numGeometries();
-  //       for ( unsigned int i = 0; i < num; ++i )
-  //       {
-  //         if ( context.renderingStopped() )
-  //           break;
+        const unsigned int num = geomCollection->numGeometries();
+        for ( unsigned int i = 0; i < num; ++i )
+        {
+          if ( context.renderingStopped() )
+            break;
 
-  //         getPartGeometry( geomCollection->geometryN( i ), i );
-  //       }
-  //       break;
-  //     }
+          getPartGeometry( geomCollection->geometryN( i ), i );
+        }
+        break;
+      }
 
-  //     case Qgis::WkbType::MultiSurface:
-  //     case Qgis::WkbType::MultiPolygon:
-  //     {
-  //       if ( mType != Qgis::SymbolType::Fill )
-  //       {
-  //         QgsDebugMsgLevel( QStringLiteral( "multi-polygon can be drawn only with fill symbol!" ), 2 );
-  //         break;
-  //       }
+      case Qgis::WkbType::MultiSurface:
+      case Qgis::WkbType::MultiPolygon:
+      {
+        if ( mType != Qgis::SymbolType::Fill )
+        {
+          QgsDebugMsgLevel( QStringLiteral( "multi-polygon can be drawn only with fill symbol!" ), 2 );
+          break;
+        }
 
-  //       QPolygonF pts;
+        QPolygonF pts;
 
-  //       const QgsGeometryCollection *geomCollection = dynamic_cast<const QgsGeometryCollection *>( processedGeometry );
-  //       const unsigned int num = geomCollection->numGeometries();
+        const QgsGeometryCollection *geomCollection = dynamic_cast<const QgsGeometryCollection *>( processedGeometry );
+        const unsigned int num = geomCollection->numGeometries();
 
-  //       // Sort components by approximate area (probably a bit faster than using
-  //       // area() )
-  //       std::map<double, QList<unsigned int> > thisAreaToPartNum;
-  //       for ( unsigned int i = 0; i < num; ++i )
-  //       {
-  //         const QgsRectangle r( geomCollection->geometryN( i )->boundingBox() );
-  //         thisAreaToPartNum[ r.width() * r.height()] << i;
-  //       }
+        // Sort components by approximate area (probably a bit faster than using
+        // area() )
+        std::map<double, QList<unsigned int> > thisAreaToPartNum;
+        for ( unsigned int i = 0; i < num; ++i )
+        {
+          const QgsRectangle r( geomCollection->geometryN( i )->boundingBox() );
+          thisAreaToPartNum[ r.width() * r.height()] << i;
+        }
 
-  //       // Draw starting with larger parts down to smaller parts, so that in
-  //       // case of a part being incorrectly inside another part, it is drawn
-  //       // on top of it (#15419)
-  //       std::map<double, QList<unsigned int> >::const_reverse_iterator iter = thisAreaToPartNum.rbegin();
-  //       for ( ; iter != thisAreaToPartNum.rend(); ++iter )
-  //       {
-  //         const QList<unsigned int> &listPartIndex = iter->second;
-  //         for ( int idx = 0; idx < listPartIndex.size(); ++idx )
-  //         {
-  //           const unsigned i = listPartIndex[idx];
-  //           getPartGeometry( geomCollection->geometryN( i ), i );
-  //         }
-  //       }
-  //       break;
-  //     }
+        // Draw starting with larger parts down to smaller parts, so that in
+        // case of a part being incorrectly inside another part, it is drawn
+        // on top of it (#15419)
+        std::map<double, QList<unsigned int> >::const_reverse_iterator iter = thisAreaToPartNum.rbegin();
+        for ( ; iter != thisAreaToPartNum.rend(); ++iter )
+        {
+          const QList<unsigned int> &listPartIndex = iter->second;
+          for ( int idx = 0; idx < listPartIndex.size(); ++idx )
+          {
+            const unsigned i = listPartIndex[idx];
+            getPartGeometry( geomCollection->geometryN( i ), i );
+          }
+        }
+        break;
+      }
 
-  //     case Qgis::WkbType::PolyhedralSurface:
-  //     case Qgis::WkbType::TIN:
-  //     {
-  //       const QgsPolyhedralSurface *polySurface = qgsgeometry_cast<const QgsPolyhedralSurface *>( processedGeometry );
+      case Qgis::WkbType::PolyhedralSurface:
+      case Qgis::WkbType::TIN:
+      {
+        const QgsPolyhedralSurface *polySurface = qgsgeometry_cast<const QgsPolyhedralSurface *>( processedGeometry );
 
-  //       const int num = polySurface->numPatches();
-  //       for ( int i = 0; i < num; ++i )
-  //       {
-  //         if ( context.renderingStopped() )
-  //           break;
+        const int num = polySurface->numPatches();
+        for ( int i = 0; i < num; ++i )
+        {
+          if ( context.renderingStopped() )
+            break;
 
-  //         getPartGeometry( polySurface->patchN( i ), i );
-  //       }
-  //       break;
-  //     }
+          getPartGeometry( polySurface->patchN( i ), i );
+        }
+        break;
+      }
 
-  //     default:
-  //       QgsDebugError( QStringLiteral( "feature %1: unsupported wkb type %2/%3 for rendering" )
-  //                      .arg( feature.id() )
-  //                      .arg( QgsWkbTypes::displayString( part->wkbType() ) )
-  //                      .arg( static_cast< quint32>( part->wkbType() ), 0, 16 ) );
-  //   }
-  // };
+      default:
+        QgsDebugError( QStringLiteral( "feature %1: unsupported wkb type %2/%3 for rendering" )
+                       .arg( feature.id() )
+                       .arg( QgsWkbTypes::displayString( part->wkbType() ) )
+                       .arg( static_cast< quint32>( part->wkbType() ), 0, 16 ) );
+    }
+  };
 
-  // // Use the simplified type ref when rendering -- this avoids some unnecessary cloning/geometry modification
-  // // (e.g. if the original geometry is a compound curve containing only a linestring curve, we don't have
-  // // to segmentize the geometry before rendering)
-  // getPartGeometry( geom.constGet()->simplifiedTypeRef(), 0 );
+  // Use the simplified type ref when rendering -- this avoids some unnecessary cloning/geometry modification
+  // (e.g. if the original geometry is a compound curve containing only a linestring curve, we don't have
+  // to segmentize the geometry before rendering)
+  getPartGeometry( geom.constGet()->simplifiedTypeRef(), 0 );
 
-  // // If we're drawing using symbol levels, we only draw buffers for the bottom most level
-  // const bool usingBuffer = ( layer == -1 || layer == 0 ) && mBufferSettings && mBufferSettings->enabled() && mBufferSettings->fillSymbol();
+  // If we're drawing using symbol levels, we only draw buffers for the bottom most level
+  const bool usingBuffer = ( layer == -1 || layer == 0 ) && mBufferSettings && mBufferSettings->enabled() && mBufferSettings->fillSymbol();
 
   // // step 2 - determine which layers to render
   // std::vector< int > allLayers;
