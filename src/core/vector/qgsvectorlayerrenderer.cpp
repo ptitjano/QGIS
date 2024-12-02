@@ -542,7 +542,7 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
   QgsRenderContext &context = *renderContext();
   context.expressionContext().appendScope( symbolScope );
 
-  qDebug() << "=========== QgsVectorLayerRenderer::drawRenderer on clip ?" << mApplyClipFilter << "skip symbol rendering" << context.testFlag( Qgis::RenderContextFlag::SkipSymbolRendering );
+  qDebug() << "=========== QgsVectorLayerRenderer::drawRenderer on clip ?" << mApplyClipFilter << "skip symbol rendering" << context.testFlag( Qgis::RenderContextFlag::SkipSymbolRendering ) << "mapplyclipgeom" << mApplyClipGeometries;
 
   std::unique_ptr< QgsGeometryEngine > clipEngine;
   if ( mApplyClipFilter )
@@ -556,6 +556,9 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
 
   auto t0 = std::chrono::high_resolution_clock::now();
   QgsFeature fet;
+  // int i = 0;
+  // auto t20 = std::chrono::high_resolution_clock::now();
+  // auto t21 = std::chrono::high_resolution_clock::now();
   while ( fit.nextFeature( fet ) )
   {
     try
@@ -566,89 +569,90 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
         break;
       }
 
-      if ( !fet.hasGeometry() || fet.geometry().isEmpty() )
-        continue; // skip features without geometry
+      //   if ( !fet.hasGeometry() || fet.geometry().isEmpty() )
+      //     continue; // skip features without geometry
 
-      if ( clipEngine && !clipEngine->intersects( fet.geometry().constGet() ) )
-        continue; // skip features outside of clipping region
+      //   if ( clipEngine && !clipEngine->intersects( fet.geometry().constGet() ) )
+      //     continue; // skip features outside of clipping region
 
-      if ( mApplyClipGeometries )
-        context.setFeatureClipGeometry( mClipFeatureGeom );
+      //   if ( mApplyClipGeometries )
+      //     context.setFeatureClipGeometry( mClipFeatureGeom );
 
-      if ( ! mNoSetLayerExpressionContext )
-        context.expressionContext().setFeature( fet );
+      //   if ( ! mNoSetLayerExpressionContext )
+      //     context.expressionContext().setFeature( fet );
 
-      const bool featureIsSelected = isMainRenderer && context.showSelection() && mSelectedFeatureIds.contains( fet.id() );
-      bool drawMarker = isMainRenderer && ( mDrawVertexMarkers && context.drawEditingInformation() && ( !mVertexMarkerOnlyForSelection || featureIsSelected ) );
+      //   const bool featureIsSelected = isMainRenderer && context.showSelection() && mSelectedFeatureIds.contains( fet.id() );
+      //   bool drawMarker = isMainRenderer && ( mDrawVertexMarkers && context.drawEditingInformation() && ( !mVertexMarkerOnlyForSelection || featureIsSelected ) );
+      //   qDebug() << "IDIOT" << featureIsSelected << "x" << drawMarker;
 
-      // render feature
-      bool rendered = false;
-      if ( !context.testFlag( Qgis::RenderContextFlag::SkipSymbolRendering ) )
-      {
-        if ( featureIsSelected && mSelectionSymbol )
-        {
-          // note: here we pass "false" for the selected argument, as we don't want to change
-          // the user's defined selection symbol colors or settings in any way
-          mSelectionSymbol->renderFeature( fet, context, -1, false, drawMarker );
-          rendered = renderer->willRenderFeature( fet, context );
-        }
-        else
-        {
-          rendered = renderer->renderFeature( fet, context, -1, featureIsSelected, drawMarker );
-        }
-      }
-      else
-      {
-        rendered = renderer->willRenderFeature( fet, context );
-      }
+      //   // render feature
+      //   bool rendered = false;
+      //   if ( !context.testFlag( Qgis::RenderContextFlag::SkipSymbolRendering ) )
+      //   {
+      //     if ( featureIsSelected && mSelectionSymbol )
+      //     {
+      //       // note: here we pass "false" for the selected argument, as we don't want to change
+      //       // the user's defined selection symbol colors or settings in any way
+      //       mSelectionSymbol->renderFeature( fet, context, -1, false, drawMarker );
+      //       rendered = renderer->willRenderFeature( fet, context );
+      //     }
+      //     else
+      //     {
+      //       rendered = renderer->renderFeature( fet, context, -1, featureIsSelected, drawMarker );
+      //     }
+      //   }
+      //   else
+      //   {
+      //     rendered = renderer->willRenderFeature( fet, context );
+      //   }
 
-      // labeling - register feature
-      if ( rendered )
-      {
-        // as soon as first feature is rendered, we can start showing layer updates.
-        // but if we are blocking render updates (so that a previously cached image is being shown), we wait
-        // at most e.g. 3 seconds before we start forcing progressive updates.
-        if ( !mBlockRenderUpdates || mElapsedTimer.elapsed() > MAX_TIME_TO_USE_CACHED_PREVIEW_IMAGE )
-        {
-          mReadyToCompose = true;
-        }
+      //   // labeling - register feature
+      //   if ( rendered )
+      //   {
+      //     // as soon as first feature is rendered, we can start showing layer updates.
+      //     // but if we are blocking render updates (so that a previously cached image is being shown), we wait
+      //     // at most e.g. 3 seconds before we start forcing progressive updates.
+      //     if ( !mBlockRenderUpdates || mElapsedTimer.elapsed() > MAX_TIME_TO_USE_CACHED_PREVIEW_IMAGE )
+      //     {
+      //       mReadyToCompose = true;
+      //     }
 
-        // new labeling engine
-        if ( isMainRenderer && context.labelingEngine() && ( mLabelProvider || mDiagramProvider ) )
-        {
-          const quint64 startLabelTime = timer.elapsed();
-          QgsGeometry obstacleGeometry;
-          QgsSymbolList symbols = renderer->originalSymbolsForFeature( fet, context );
-          QgsSymbol *symbol = nullptr;
-          if ( !symbols.isEmpty() && fet.geometry().type() == Qgis::GeometryType::Point )
-          {
-            obstacleGeometry = QgsVectorLayerLabelProvider::getPointObstacleGeometry( fet, context, symbols );
-          }
+      //     // new labeling engine
+      //     if ( isMainRenderer && context.labelingEngine() && ( mLabelProvider || mDiagramProvider ) )
+      //     {
+      //       const quint64 startLabelTime = timer.elapsed();
+      //       QgsGeometry obstacleGeometry;
+      //       QgsSymbolList symbols = renderer->originalSymbolsForFeature( fet, context );
+      //       QgsSymbol *symbol = nullptr;
+      //       if ( !symbols.isEmpty() && fet.geometry().type() == Qgis::GeometryType::Point )
+      //       {
+      //         obstacleGeometry = QgsVectorLayerLabelProvider::getPointObstacleGeometry( fet, context, symbols );
+      //       }
 
-          if ( !symbols.isEmpty() )
-          {
-            symbol = symbols.at( 0 );
-            QgsExpressionContextUtils::updateSymbolScope( symbol, symbolScope );
-          }
+      //       if ( !symbols.isEmpty() )
+      //       {
+      //         symbol = symbols.at( 0 );
+      //         QgsExpressionContextUtils::updateSymbolScope( symbol, symbolScope );
+      //       }
 
-          if ( mApplyLabelClipGeometries )
-            context.setFeatureClipGeometry( mLabelClipFeatureGeom );
+      //       if ( mApplyLabelClipGeometries )
+      //         context.setFeatureClipGeometry( mLabelClipFeatureGeom );
 
-          if ( mLabelProvider )
-          {
-            mLabelProvider->registerFeature( fet, context, obstacleGeometry, symbol );
-          }
-          if ( mDiagramProvider )
-          {
-            mDiagramProvider->registerFeature( fet, context, obstacleGeometry );
-          }
+      //       if ( mLabelProvider )
+      //       {
+      //         mLabelProvider->registerFeature( fet, context, obstacleGeometry, symbol );
+      //       }
+      //       if ( mDiagramProvider )
+      //       {
+      //         mDiagramProvider->registerFeature( fet, context, obstacleGeometry );
+      //       }
 
-          if ( mApplyLabelClipGeometries )
-            context.setFeatureClipGeometry( QgsGeometry() );
+      //       if ( mApplyLabelClipGeometries )
+      //         context.setFeatureClipGeometry( QgsGeometry() );
 
-          totalLabelTime += ( timer.elapsed() - startLabelTime );
-        }
-      }
+      //       totalLabelTime += ( timer.elapsed() - startLabelTime );
+      //     }
+      //   }
     }
     catch ( const QgsCsException &cse )
     {
@@ -656,6 +660,7 @@ void QgsVectorLayerRenderer::drawRenderer( QgsFeatureRenderer *renderer, QgsFeat
       QgsDebugError( QStringLiteral( "Failed to transform a point while drawing a feature with ID '%1'. Ignoring this feature. %2" )
                      .arg( fet.id() ).arg( cse.what() ) );
     }
+
   }
   auto t1 = std::chrono::high_resolution_clock::now();
   qDebug() << "=========== QgsVectorLayerRenderer::drawRenderer fetch finished" << std::chrono::duration_cast<std::chrono::milliseconds>( t1 - t0 ).count();
