@@ -53,6 +53,7 @@
 #include "qgselevationprofiletoolidentify.h"
 #include "qgselevationprofiletoolmeasure.h"
 #include "qgselevationprofiletooladdpoint.h"
+#include "qgselevationprofiletoolmovepoint.h"
 #include "qgssettingsentryimpl.h"
 #include "qgssettingstree.h"
 #include "qgsmaplayerproxymodel.h"
@@ -192,6 +193,7 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   mXAxisZoomTool = new QgsPlotToolXAxisZoom( mCanvas );
   mIdentifyTool = new QgsElevationProfileToolIdentify( mCanvas );
   mAddPointTool = new QgsElevationProfileToolAddPoint( mCanvas );
+  mMovePointTool = new QgsElevationProfileToolMovePoint( mCanvas );
 
   mCanvas->setTool( mIdentifyTool );
 
@@ -322,6 +324,16 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   mAddPointTool->setAction( mAddPointAction );
   connect( mAddPointAction, &QAction::triggered, this, [ = ] { mCanvas->setTool( mAddPointTool ); } );
   toolBar->addAction( mAddPointAction );
+
+  // Move Feature Action
+  mMovePointAction = new QAction( tr( "Move Point Features" ), this );
+  mMovePointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionMoveFeaturePoint.svg" ) ) );
+  mMovePointAction->setCheckable( true );
+  mMovePointAction->setChecked( false );
+  mMovePointAction->setEnabled( false );
+  mMovePointTool->setAction( mMovePointAction );
+  connect( mMovePointAction, &QAction::triggered, this, [ = ] { mCanvas->setTool( mMovePointTool ); } );
+  toolBar->addAction( mMovePointAction );
 
   toolBar->addSeparator();
 
@@ -1223,11 +1235,16 @@ void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &,
     QgsMapLayer *layer = mLayerTreeView->indexToLayer( idx );
     if ( QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer ) )
     {
-      mAddPointTool->setLayer( vectorLayer );
-      return;
+      if ( vectorLayer->geometryType() == Qgis::GeometryType::Point )
+      {
+        mAddPointTool->setLayer( vectorLayer );
+        mMovePointTool->setLayer( vectorLayer );
+        return;
+      }
     }
   }
 
   mCanvas->setTool( mIdentifyTool );
   mAddPointTool->setLayer( nullptr );
+  mMovePointTool->setLayer( nullptr );
 }
