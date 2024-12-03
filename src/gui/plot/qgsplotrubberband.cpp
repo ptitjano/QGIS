@@ -17,10 +17,12 @@
 
 #include "qgsplotrubberband.h"
 #include "moc_qgsplotrubberband.cpp"
+#include "qgsguiutils.h"
 #include "qgsplotcanvas.h"
 
 #include <QGraphicsScene>
 #include <QGraphicsRectItem>
+#include <QGraphicsEllipseItem>
 #include <cmath>
 
 QgsPlotRubberBand::QgsPlotRubberBand( QgsPlotCanvas *canvas )
@@ -174,4 +176,42 @@ QRectF QgsPlotRectangularRubberBand::finish( QPointF position, Qt::KeyboardModif
     mRubberBandItem = nullptr;
   }
   return updateRect( mRubberBandStartPos, position, constrainSquare, fromCenter );
+}
+
+QgsPlotPointRubberBand::QgsPlotPointRubberBand( QgsPlotCanvas *canvas )
+  : QgsPlotRubberBand( canvas )
+{
+}
+
+void QgsPlotPointRubberBand::start( QPointF position, Qt::KeyboardModifiers )
+{
+  qreal s = QgsGuiUtils::scaleIconSize( 8 );
+  mRubberBandItem = new QGraphicsEllipseItem( position.x() - s / 2, position.y() - s / 2, s, s );
+  mRubberBandItem->setBrush( brush() );
+  mRubberBandItem->setPen( pen() );
+  canvas()->scene()->addItem( mRubberBandItem );
+  canvas()->scene()->update();
+}
+
+void QgsPlotPointRubberBand::update( QPointF position, Qt::KeyboardModifiers modifiers )
+{
+  Q_UNUSED( modifiers );
+  if ( !mRubberBandItem )
+    return;
+
+  qreal s = QgsGuiUtils::scaleIconSize( 8 );
+  mRubberBandItem->setRect( position.x() - s / 2, position.y() - s / 2, s, s );
+}
+
+QRectF QgsPlotPointRubberBand::finish( QPointF position, Qt::KeyboardModifiers modifiers )
+{
+  Q_UNUSED( modifiers );
+  Q_UNUSED( position );
+  if ( mRubberBandItem )
+  {
+    canvas()->scene()->removeItem( mRubberBandItem );
+    delete mRubberBandItem;
+    mRubberBandItem = nullptr;
+  }
+  return QRectF();
 }
