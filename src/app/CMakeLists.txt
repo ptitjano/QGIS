@@ -190,6 +190,7 @@ set(QGIS_APP_SRCS
   elevation/qgselevationprofiletoolidentify.cpp
   elevation/qgselevationprofiletoolmeasure.cpp
   elevation/qgselevationprofiletooladdpoint.cpp
+  elevation/qgselevationprofiletoolmovepoint.cpp
   elevation/qgselevationprofilewidget.cpp
   elevation/qgsmaptoolprofilecurve.cpp
   elevation/qgsmaptoolprofilecurvefromfeature.cpp
