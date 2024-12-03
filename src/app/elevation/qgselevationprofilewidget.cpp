@@ -314,15 +314,13 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   toolBar->addAction( measureToolAction );
 
   // Add Feature Action
-  mAddPointAction = new QAction( tr( "Add Point Feature" ), this );
+  mAddPointAction = new QAction( tr( "Add Point Features" ), this );
   mAddPointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
   mAddPointAction->setCheckable( true );
   mAddPointAction->setChecked( false );
   mAddPointAction->setEnabled( false );
   mAddPointTool->setAction( mAddPointAction );
-
   connect( mAddPointAction, &QAction::triggered, this, [ = ] { mCanvas->setTool( mAddPointTool ); } );
-
   toolBar->addAction( mAddPointAction );
 
   toolBar->addSeparator();
