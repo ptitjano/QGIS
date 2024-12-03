@@ -1857,7 +1857,7 @@ void QgsSymbol::renderFeature( const QgsFeature &feature, QgsRenderContext &cont
   // If we're drawing using symbol levels, we only draw buffers for the bottom most level
   const bool usingBuffer = ( layer == -1 || layer == 0 ) && mBufferSettings && mBufferSettings->enabled() && mBufferSettings->fillSymbol();
 
-  // // step 2 - determine which layers to render
+  // step 2 - determine which layers to render
   std::vector< int > allLayers;
   allLayers.reserve( mLayers.count() );
   for ( int i = 0; i < mLayers.count(); ++i )
@@ -1878,162 +1878,162 @@ void QgsSymbol::renderFeature( const QgsFeature &feature, QgsRenderContext &cont
       layerToRender.emplace_back( layer );
   }
 
-  // // step 3 - render these geometries using the desired symbol layers.
+  // step 3 - render these geometries using the desired symbol layers.
 
-  // if ( needsExpressionContext )
-  //   mSymbolRenderContext->expressionContextScope()->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "symbol_layer_count" ), mLayers.count(), true ) );
+  if ( needsExpressionContext )
+    mSymbolRenderContext->expressionContextScope()->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "symbol_layer_count" ), mLayers.count(), true ) );
 
-  // const bool maskGeometriesDisabledForSymbol = context.testFlag( Qgis::RenderContextFlag::AlwaysUseGlobalMasks )
-  //     && !mRenderHints.testFlag( Qgis::SymbolRenderHint::IsSymbolLayerSubSymbol );
+  const bool maskGeometriesDisabledForSymbol = context.testFlag( Qgis::RenderContextFlag::AlwaysUseGlobalMasks )
+      && !mRenderHints.testFlag( Qgis::SymbolRenderHint::IsSymbolLayerSubSymbol );
 
-  // // handle symbol buffers -- we do this by deferring the rendering of the symbol and redirecting
-  // // to QPictures, and then using the actual rendered shape from the QPictures to determine the buffer shape.
-  // QPainter *originalTargetPainter = nullptr;
-  // // this is an array, we need to separate out the symbol layers if we're drawing only one symbol level
-  // std::vector< QPicture > picturesForDeferredRendering;
-  // std::unique_ptr< QPainter > deferredRenderingPainter;
-  // if ( usingBuffer )
-  // {
-  //   originalTargetPainter = context.painter();
-  //   picturesForDeferredRendering.emplace_back( QPicture() );
-  //   deferredRenderingPainter = std::make_unique< QPainter >( &picturesForDeferredRendering.front() );
-  //   context.setPainter( deferredRenderingPainter.get() );
-  // }
+  // handle symbol buffers -- we do this by deferring the rendering of the symbol and redirecting
+  // to QPictures, and then using the actual rendered shape from the QPictures to determine the buffer shape.
+  QPainter *originalTargetPainter = nullptr;
+  // this is an array, we need to separate out the symbol layers if we're drawing only one symbol level
+  std::vector< QPicture > picturesForDeferredRendering;
+  std::unique_ptr< QPainter > deferredRenderingPainter;
+  if ( usingBuffer )
+  {
+    originalTargetPainter = context.painter();
+    picturesForDeferredRendering.emplace_back( QPicture() );
+    deferredRenderingPainter = std::make_unique< QPainter >( &picturesForDeferredRendering.front() );
+    context.setPainter( deferredRenderingPainter.get() );
+  }
 
-  // const bool prevExcludeBuffers = mSymbolRenderContext->renderHints().testFlag( Qgis::SymbolRenderHint::ExcludeSymbolBuffers );
-  // // disable buffers when calling subclass render methods -- we've already handled them here
-  // mSymbolRenderContext->setRenderHint( Qgis::SymbolRenderHint::ExcludeSymbolBuffers, true );
+  const bool prevExcludeBuffers = mSymbolRenderContext->renderHints().testFlag( Qgis::SymbolRenderHint::ExcludeSymbolBuffers );
+  // disable buffers when calling subclass render methods -- we've already handled them here
+  mSymbolRenderContext->setRenderHint( Qgis::SymbolRenderHint::ExcludeSymbolBuffers, true );
 
-  // for ( const int symbolLayerIndex : layerToRender )
-  // {
-  //   if ( deferredRenderingPainter && layer != -1 && symbolLayerIndex != layerToRender.front() )
-  //   {
-  //     // if we're using deferred rendering along with symbol level drawing, we
-  //     // start a new picture for each symbol layer drawn
-  //     deferredRenderingPainter->end();
-  //     picturesForDeferredRendering.emplace_back( QPicture() );
-  //     deferredRenderingPainter->begin( &picturesForDeferredRendering.back() );
-  //   }
+  for ( const int symbolLayerIndex : layerToRender )
+  {
+    if ( deferredRenderingPainter && layer != -1 && symbolLayerIndex != layerToRender.front() )
+    {
+      // if we're using deferred rendering along with symbol level drawing, we
+      // start a new picture for each symbol layer drawn
+      deferredRenderingPainter->end();
+      picturesForDeferredRendering.emplace_back( QPicture() );
+      deferredRenderingPainter->begin( &picturesForDeferredRendering.back() );
+    }
 
-  //   QgsSymbolLayer *symbolLayer = mLayers.value( symbolLayerIndex );
-  //   if ( !symbolLayer || !symbolLayer->enabled() )
-  //     continue;
+    QgsSymbolLayer *symbolLayer = mLayers.value( symbolLayerIndex );
+    if ( !symbolLayer || !symbolLayer->enabled() )
+      continue;
 
-  //   if ( needsExpressionContext )
-  //     mSymbolRenderContext->expressionContextScope()->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "symbol_layer_index" ), symbolLayerIndex + 1, true ) );
+    if ( needsExpressionContext )
+      mSymbolRenderContext->expressionContextScope()->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "symbol_layer_index" ), symbolLayerIndex + 1, true ) );
 
-  //   // if this symbol layer has associated clip masks, we need to render it to a QPicture first so that we can
-  //   // determine the actual rendered bounds of the symbol. We'll then use that to retrieve the clip masks we need
-  //   // to apply when painting the symbol via this QPicture.
-  //   const bool hasClipGeometries = !maskGeometriesDisabledForSymbol
-  //                                  && symbolLayer->flags().testFlag( Qgis::SymbolLayerFlag::CanCalculateMaskGeometryPerFeature )
-  //                                  && context.symbolLayerHasClipGeometries( symbolLayer->id() );
-  //   QPainter *previousPainter = nullptr;
-  //   std::unique_ptr< QPicture > renderedPicture;
-  //   std::unique_ptr< QPainter > picturePainter;
-  //   if ( hasClipGeometries )
-  //   {
-  //     previousPainter = context.painter();
-  //     renderedPicture = std::make_unique< QPicture >();
-  //     picturePainter = std::make_unique< QPainter >( renderedPicture.get() );
-  //     context.setPainter( picturePainter.get() );
-  //   }
+    // if this symbol layer has associated clip masks, we need to render it to a QPicture first so that we can
+    // determine the actual rendered bounds of the symbol. We'll then use that to retrieve the clip masks we need
+    // to apply when painting the symbol via this QPicture.
+    const bool hasClipGeometries = !maskGeometriesDisabledForSymbol
+                                   && symbolLayer->flags().testFlag( Qgis::SymbolLayerFlag::CanCalculateMaskGeometryPerFeature )
+                                   && context.symbolLayerHasClipGeometries( symbolLayer->id() );
+    QPainter *previousPainter = nullptr;
+    std::unique_ptr< QPicture > renderedPicture;
+    std::unique_ptr< QPainter > picturePainter;
+    if ( hasClipGeometries )
+    {
+      previousPainter = context.painter();
+      renderedPicture = std::make_unique< QPicture >();
+      picturePainter = std::make_unique< QPainter >( renderedPicture.get() );
+      context.setPainter( picturePainter.get() );
+    }
 
-  //   symbolLayer->startFeatureRender( feature, context );
+    symbolLayer->startFeatureRender( feature, context );
 
-  //   switch ( mType )
-  //   {
-  //     case Qgis::SymbolType::Marker:
-  //     {
-  //       int geometryPartNumber = 0;
-  //       for ( const PointInfo &point : std::as_const( pointsToRender ) )
-  //       {
-  //         if ( context.renderingStopped() )
-  //           break;
+    switch ( mType )
+    {
+      case Qgis::SymbolType::Marker:
+      {
+        int geometryPartNumber = 0;
+        for ( const PointInfo &point : std::as_const( pointsToRender ) )
+        {
+          if ( context.renderingStopped() )
+            break;
 
-  //         mSymbolRenderContext->setGeometryPartNum( geometryPartNumber + 1 );
-  //         if ( needsExpressionContext )
-  //           mSymbolRenderContext->expressionContextScope()->addVariable( QgsExpressionContextScope::StaticVariable( QgsExpressionContext::EXPR_GEOMETRY_PART_NUM, geometryPartNumber + 1, true ) );
+          mSymbolRenderContext->setGeometryPartNum( geometryPartNumber + 1 );
+          if ( needsExpressionContext )
+            mSymbolRenderContext->expressionContextScope()->addVariable( QgsExpressionContextScope::StaticVariable( QgsExpressionContext::EXPR_GEOMETRY_PART_NUM, geometryPartNumber + 1, true ) );
 
-  //         static_cast<QgsMarkerSymbol *>( this )->renderPoint( point.renderPoint, &feature, context, symbolLayerIndex, selected );
-  //         geometryPartNumber++;
-  //       }
+          static_cast<QgsMarkerSymbol *>( this )->renderPoint( point.renderPoint, &feature, context, symbolLayerIndex, selected );
+          geometryPartNumber++;
+        }
 
-  //       break;
-  //     }
+        break;
+      }
 
-  //     case Qgis::SymbolType::Line:
-  //     {
-  //       if ( linesToRender.empty() )
-  //         break;
+      case Qgis::SymbolType::Line:
+      {
+        if ( linesToRender.empty() )
+          break;
 
-  //       int geometryPartNumber = 0;
-  //       for ( const LineInfo &line : std::as_const( linesToRender ) )
-  //       {
-  //         if ( context.renderingStopped() )
-  //           break;
+        int geometryPartNumber = 0;
+        for ( const LineInfo &line : std::as_const( linesToRender ) )
+        {
+          if ( context.renderingStopped() )
+            break;
 
-  //         mSymbolRenderContext->setGeometryPartNum( geometryPartNumber + 1 );
-  //         if ( needsExpressionContext )
-  //           mSymbolRenderContext->expressionContextScope()->addVariable( QgsExpressionContextScope::StaticVariable( QgsExpressionContext::EXPR_GEOMETRY_PART_NUM, geometryPartNumber + 1, true ) );
+          mSymbolRenderContext->setGeometryPartNum( geometryPartNumber + 1 );
+          if ( needsExpressionContext )
+            mSymbolRenderContext->expressionContextScope()->addVariable( QgsExpressionContextScope::StaticVariable( QgsExpressionContext::EXPR_GEOMETRY_PART_NUM, geometryPartNumber + 1, true ) );
 
-  //         context.setGeometry( line.originalGeometry );
-  //         static_cast<QgsLineSymbol *>( this )->renderPolyline( line.renderLine, &feature, context, symbolLayerIndex, selected );
-  //         geometryPartNumber++;
-  //       }
-  //       break;
-  //     }
+          context.setGeometry( line.originalGeometry );
+          static_cast<QgsLineSymbol *>( this )->renderPolyline( line.renderLine, &feature, context, symbolLayerIndex, selected );
+          geometryPartNumber++;
+        }
+        break;
+      }
 
-  //     case Qgis::SymbolType::Fill:
-  //     {
-  //       for ( const PolygonInfo &info : std::as_const( polygonsToRender ) )
-  //       {
-  //         if ( context.renderingStopped() )
-  //           break;
+      case Qgis::SymbolType::Fill:
+      {
+        for ( const PolygonInfo &info : std::as_const( polygonsToRender ) )
+        {
+          if ( context.renderingStopped() )
+            break;
 
-  //         mSymbolRenderContext->setGeometryPartNum( info.originalPartIndex + 1 );
-  //         if ( needsExpressionContext )
-  //           mSymbolRenderContext->expressionContextScope()->addVariable( QgsExpressionContextScope::StaticVariable( QgsExpressionContext::EXPR_GEOMETRY_PART_NUM, info.originalPartIndex + 1, true ) );
+          mSymbolRenderContext->setGeometryPartNum( info.originalPartIndex + 1 );
+          if ( needsExpressionContext )
+            mSymbolRenderContext->expressionContextScope()->addVariable( QgsExpressionContextScope::StaticVariable( QgsExpressionContext::EXPR_GEOMETRY_PART_NUM, info.originalPartIndex + 1, true ) );
 
-  //         context.setGeometry( info.originalGeometry );
-  //         static_cast<QgsFillSymbol *>( this )->renderPolygon( info.renderExterior, ( !info.renderRings.isEmpty() ? &info.renderRings : nullptr ), &feature, context, symbolLayerIndex, selected );
-  //       }
+          context.setGeometry( info.originalGeometry );
+          static_cast<QgsFillSymbol *>( this )->renderPolygon( info.renderExterior, ( !info.renderRings.isEmpty() ? &info.renderRings : nullptr ), &feature, context, symbolLayerIndex, selected );
+        }
 
-  //       break;
-  //     }
+        break;
+      }
 
-  //     case Qgis::SymbolType::Hybrid:
-  //       break;
-  //   }
+      case Qgis::SymbolType::Hybrid:
+        break;
+    }
 
-  //   symbolLayer->stopFeatureRender( feature, context );
+    symbolLayer->stopFeatureRender( feature, context );
 
-  //   if ( hasClipGeometries )
-  //   {
-  //     // restore previous painter
-  //     context.setPainter( previousPainter );
-  //     picturePainter->end();
-  //     picturePainter.reset();
+    if ( hasClipGeometries )
+    {
+      // restore previous painter
+      context.setPainter( previousPainter );
+      picturePainter->end();
+      picturePainter.reset();
 
-  //     // determine actual rendered bounds of symbol layer, and then buffer out a little to be safe
-  //     QRectF maximalBounds = renderedPicture->boundingRect();
-  //     constexpr double BOUNDS_MARGIN = 0.05;
-  //     maximalBounds.adjust( -maximalBounds.width() * BOUNDS_MARGIN, -maximalBounds.height() * BOUNDS_MARGIN, maximalBounds.width() * BOUNDS_MARGIN, maximalBounds.height() * BOUNDS_MARGIN );
+      // determine actual rendered bounds of symbol layer, and then buffer out a little to be safe
+      QRectF maximalBounds = renderedPicture->boundingRect();
+      constexpr double BOUNDS_MARGIN = 0.05;
+      maximalBounds.adjust( -maximalBounds.width() * BOUNDS_MARGIN, -maximalBounds.height() * BOUNDS_MARGIN, maximalBounds.width() * BOUNDS_MARGIN, maximalBounds.height() * BOUNDS_MARGIN );
 
-  //     const bool hadClipping = context.painter()->hasClipping();
-  //     const QPainterPath oldClipPath = hadClipping ? context.painter()->clipPath() : QPainterPath();
+      const bool hadClipping = context.painter()->hasClipping();
+      const QPainterPath oldClipPath = hadClipping ? context.painter()->clipPath() : QPainterPath();
 
-  //     const bool isMasked = symbolLayer->installMasks( context, false, maximalBounds );
+      const bool isMasked = symbolLayer->installMasks( context, false, maximalBounds );
 
-  //     context.painter()->drawPicture( QPointF( 0, 0 ), *renderedPicture );
+      context.painter()->drawPicture( QPointF( 0, 0 ), *renderedPicture );
 
-  //     if ( isMasked )
-  //     {
-  //       context.painter()->setClipPath( oldClipPath );
-  //       context.painter()->setClipping( hadClipping );
-  //     }
-  //   }
-  // }
+      if ( isMasked )
+      {
+        context.painter()->setClipPath( oldClipPath );
+        context.painter()->setClipping( hadClipping );
+      }
+    }
+  }
 
   // // step 4 - if required, render the calculated buffer below the symbol
   // if ( usingBuffer )
