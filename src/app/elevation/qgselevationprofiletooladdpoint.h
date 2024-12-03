@@ -34,7 +34,6 @@ class QgsElevationProfileToolAddPoint : public QgsPlotTool
     QgsElevationProfileToolAddPoint( QgsElevationProfileCanvas *canvas );
     ~QgsElevationProfileToolAddPoint() override;
 
-    Qgis::PlotToolFlags flags() const override;
     void plotReleaseEvent( QgsPlotMouseEvent *event ) override;
 
     void setLayer( QgsVectorLayer *layer );

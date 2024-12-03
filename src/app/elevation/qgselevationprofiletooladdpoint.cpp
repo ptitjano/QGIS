@@ -34,11 +34,6 @@ QgsElevationProfileToolAddPoint::QgsElevationProfileToolAddPoint( QgsElevationPr
 
 QgsElevationProfileToolAddPoint::~QgsElevationProfileToolAddPoint() = default;
 
-Qgis::PlotToolFlags QgsElevationProfileToolAddPoint::flags() const
-{
-  return Qgis::PlotToolFlag::ShowContextMenu;
-}
-
 void QgsElevationProfileToolAddPoint::plotReleaseEvent( QgsPlotMouseEvent *event )
 {
   event->ignore();
