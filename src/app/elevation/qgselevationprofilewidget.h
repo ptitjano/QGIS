@@ -51,6 +51,7 @@ class QgsLayerTreeRegistryBridge;
 class QgsElevationProfileToolIdentify;
 class QgsElevationProfileToolMeasure;
 class QgsElevationProfileToolAddPoint;
+class QgsElevationProfileToolMovePoint;
 class QLabel;
 class QgsProfilePoint;
 class QgsSettingsEntryDouble;
@@ -172,6 +173,7 @@ class QgsElevationProfileWidget : public QWidget
     QAction *mShowSubsectionsAction = nullptr;
     QAction *mSubsectionsSymbologyAction = nullptr;
     QAction *mAddPointAction = nullptr;
+    QAction *mMovePointAction = nullptr;
     QMenu *mDistanceUnitMenu = nullptr;
 
     QgsDockableWidgetHelper *mDockableWidgetHelper = nullptr;
@@ -193,6 +195,7 @@ class QgsElevationProfileWidget : public QWidget
     QgsPlotToolZoom *mZoomTool = nullptr;
     QgsElevationProfileToolIdentify *mIdentifyTool = nullptr;
     QgsElevationProfileToolAddPoint *mAddPointTool = nullptr;
+    QgsElevationProfileToolMovePoint *mMovePointTool = nullptr;
 
     QgsElevationProfileToleranceWidgetSettingsAction *mToleranceSettingsAction = nullptr;
     int mBlockScaleRatioChanges = 0;
