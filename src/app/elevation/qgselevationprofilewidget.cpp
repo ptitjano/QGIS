@@ -260,13 +260,13 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
 
   toolBar->addSeparator();
 
-  mAddPointAction = new QAction( tr( "Identify Features" ), this );
-  mAddPointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionIdentify.svg" ) ) );
-  mAddPointAction->setCheckable( true );
-  mAddPointAction->setChecked( true );
-  mIdentifyTool->setAction( mAddPointAction );
-  connect( mAddPointAction, &QAction::triggered, mPanTool, [ = ] { mCanvas->setTool( mIdentifyTool ); } );
-  toolBar->addAction( mAddPointAction );
+  QAction *identifyAction = new QAction( tr( "Identify Features" ), this );
+  identifyAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionIdentify.svg" ) ) );
+  identifyAction->setCheckable( true );
+  identifyAction->setChecked( true );
+  mIdentifyTool->setAction( identifyAction );
+  connect( identifyAction, &QAction::triggered, mPanTool, [ = ] { mCanvas->setTool( mIdentifyTool ); } );
+  toolBar->addAction( identifyAction );
 
   QAction *panToolAction = new QAction( tr( "Pan" ), this );
   panToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionPan.svg" ) ) );
