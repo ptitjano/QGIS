@@ -1,9 +1,9 @@
 /***************************************************************************
-                          qgselevationprofiletoolidentify.h
+                          qgselevationprofiletooladdpoint.cpp
                           ---------------
-    begin                : April 2022
-    copyright            : (C) 2022 by Nyall Dawson
-    email                : nyall dot dawson at gmail dot com
+    begin                : September 2024
+    copyright            : (C) 2024 by Simon Lopez
+    email                : simon dot lopez at free dot fr
 ***************************************************************************/
 
 /***************************************************************************
@@ -19,7 +19,6 @@
 #define QGSELEVATIONPROFILETOOLADDPOINT_H
 
 #include "qgsplottool.h"
-#include "qgspoint.h"
 
 class QgsPlotRectangularRubberBand;
 class QgsElevationProfileCanvas;
@@ -46,8 +45,6 @@ class QgsElevationProfileToolAddPoint : public QgsPlotTool
     void onLayerDestroyed( QObject *layer );
 
   private:
-
-
 
     QgsVectorLayer *mLayer = nullptr;
 
