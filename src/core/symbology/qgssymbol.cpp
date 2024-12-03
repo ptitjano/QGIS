@@ -1858,25 +1858,25 @@ void QgsSymbol::renderFeature( const QgsFeature &feature, QgsRenderContext &cont
   const bool usingBuffer = ( layer == -1 || layer == 0 ) && mBufferSettings && mBufferSettings->enabled() && mBufferSettings->fillSymbol();
 
   // // step 2 - determine which layers to render
-  // std::vector< int > allLayers;
-  // allLayers.reserve( mLayers.count() );
-  // for ( int i = 0; i < mLayers.count(); ++i )
-  //   allLayers.emplace_back( i );
+  std::vector< int > allLayers;
+  allLayers.reserve( mLayers.count() );
+  for ( int i = 0; i < mLayers.count(); ++i )
+    allLayers.emplace_back( i );
 
-  // std::vector< int > layerToRender;
-  // if ( layer == -1 )
-  // {
-  //   layerToRender = allLayers;
-  // }
-  // else
-  // {
-  //   // if we're rendering using a buffer, then we'll need to draw ALL symbol layers in order to calculate the
-  //   // buffer shape, but then ultimately we'll ONLY draw the target layer on top.
-  //   if ( usingBuffer )
-  //     layerToRender = allLayers;
-  //   else
-  //     layerToRender.emplace_back( layer );
-  // }
+  std::vector< int > layerToRender;
+  if ( layer == -1 )
+  {
+    layerToRender = allLayers;
+  }
+  else
+  {
+    // if we're rendering using a buffer, then we'll need to draw ALL symbol layers in order to calculate the
+    // buffer shape, but then ultimately we'll ONLY draw the target layer on top.
+    if ( usingBuffer )
+      layerToRender = allLayers;
+    else
+      layerToRender.emplace_back( layer );
+  }
 
   // // step 3 - render these geometries using the desired symbol layers.
 
