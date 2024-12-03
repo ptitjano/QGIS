@@ -2091,131 +2091,131 @@ void QgsSymbol::renderFeature( const QgsFeature &feature, QgsRenderContext &cont
     QgsPainting::drawPicture( context.painter(), QPointF( 0, 0 ), picturesForDeferredRendering.front() );
   }
 
-  // // step 5 - handle post processing steps
-  // switch ( mType )
-  // {
-  //   case Qgis::SymbolType::Marker:
-  //   {
-  //     markers.reserve( pointsToRender.size() );
-  //     for ( const PointInfo &info : std::as_const( pointsToRender ) )
-  //     {
-  //       if ( context.hasRenderedFeatureHandlers() || context.testFlag( Qgis::RenderContextFlag::DrawSymbolBounds ) )
-  //       {
-  //         const QRectF bounds = static_cast<QgsMarkerSymbol *>( this )->bounds( info.renderPoint, context, feature );
-  //         if ( context.hasRenderedFeatureHandlers() )
-  //         {
-  //           renderedBoundsGeom = renderedBoundsGeom.isNull() ? QgsGeometry::fromRect( bounds )
-  //                                : QgsGeometry::collectGeometry( QVector< QgsGeometry>() << QgsGeometry::fromRect( QgsRectangle( bounds ) ) << renderedBoundsGeom );
-  //         }
-  //         if ( context.testFlag( Qgis::RenderContextFlag::DrawSymbolBounds ) )
-  //         {
-  //           //draw debugging rect
-  //           context.painter()->setPen( Qt::red );
-  //           context.painter()->setBrush( QColor( 255, 0, 0, 100 ) );
-  //           context.painter()->drawRect( bounds );
-  //         }
-  //       }
+  // step 5 - handle post processing steps
+  switch ( mType )
+  {
+    case Qgis::SymbolType::Marker:
+    {
+      markers.reserve( pointsToRender.size() );
+      for ( const PointInfo &info : std::as_const( pointsToRender ) )
+      {
+        if ( context.hasRenderedFeatureHandlers() || context.testFlag( Qgis::RenderContextFlag::DrawSymbolBounds ) )
+        {
+          const QRectF bounds = static_cast<QgsMarkerSymbol *>( this )->bounds( info.renderPoint, context, feature );
+          if ( context.hasRenderedFeatureHandlers() )
+          {
+            renderedBoundsGeom = renderedBoundsGeom.isNull() ? QgsGeometry::fromRect( bounds )
+                                 : QgsGeometry::collectGeometry( QVector< QgsGeometry>() << QgsGeometry::fromRect( QgsRectangle( bounds ) ) << renderedBoundsGeom );
+          }
+          if ( context.testFlag( Qgis::RenderContextFlag::DrawSymbolBounds ) )
+          {
+            //draw debugging rect
+            context.painter()->setPen( Qt::red );
+            context.painter()->setBrush( QColor( 255, 0, 0, 100 ) );
+            context.painter()->drawRect( bounds );
+          }
+        }
 
-  //       if ( drawVertexMarker && !usingSegmentizedGeometry )
-  //       {
-  //         markers.append( info.renderPoint );
-  //       }
-  //     }
-  //     break;
-  //   }
+        if ( drawVertexMarker && !usingSegmentizedGeometry )
+        {
+          markers.append( info.renderPoint );
+        }
+      }
+      break;
+    }
 
-  //   case Qgis::SymbolType::Line:
-  //   {
-  //     for ( const LineInfo &info : std::as_const( linesToRender ) )
-  //     {
-  //       if ( context.hasRenderedFeatureHandlers() && !info.renderLine.empty() )
-  //       {
-  //         renderedBoundsGeom = renderedBoundsGeom.isNull() ? QgsGeometry::fromQPolygonF( info.renderLine )
-  //                              : QgsGeometry::collectGeometry( QVector< QgsGeometry>() << QgsGeometry::fromQPolygonF( info.renderLine ) << renderedBoundsGeom );
-  //       }
+    case Qgis::SymbolType::Line:
+    {
+      for ( const LineInfo &info : std::as_const( linesToRender ) )
+      {
+        if ( context.hasRenderedFeatureHandlers() && !info.renderLine.empty() )
+        {
+          renderedBoundsGeom = renderedBoundsGeom.isNull() ? QgsGeometry::fromQPolygonF( info.renderLine )
+                               : QgsGeometry::collectGeometry( QVector< QgsGeometry>() << QgsGeometry::fromQPolygonF( info.renderLine ) << renderedBoundsGeom );
+        }
 
-  //       if ( drawVertexMarker && !usingSegmentizedGeometry )
-  //       {
-  //         markers << info.renderLine;
-  //       }
-  //     }
-  //     break;
-  //   }
+        if ( drawVertexMarker && !usingSegmentizedGeometry )
+        {
+          markers << info.renderLine;
+        }
+      }
+      break;
+    }
 
-  //   case Qgis::SymbolType::Fill:
-  //   {
-  //     for ( const PolygonInfo &info : std::as_const( polygonsToRender ) )
-  //     {
-  //       if ( context.hasRenderedFeatureHandlers() && !info.renderExterior.empty() )
-  //       {
-  //         renderedBoundsGeom = renderedBoundsGeom.isNull() ? QgsGeometry::fromQPolygonF( info.renderExterior )
-  //                              : QgsGeometry::collectGeometry( QVector< QgsGeometry>() << QgsGeometry::fromQPolygonF( info.renderExterior ) << renderedBoundsGeom );
-  //         // TODO: consider holes?
-  //       }
+    case Qgis::SymbolType::Fill:
+    {
+      for ( const PolygonInfo &info : std::as_const( polygonsToRender ) )
+      {
+        if ( context.hasRenderedFeatureHandlers() && !info.renderExterior.empty() )
+        {
+          renderedBoundsGeom = renderedBoundsGeom.isNull() ? QgsGeometry::fromQPolygonF( info.renderExterior )
+                               : QgsGeometry::collectGeometry( QVector< QgsGeometry>() << QgsGeometry::fromQPolygonF( info.renderExterior ) << renderedBoundsGeom );
+          // TODO: consider holes?
+        }
 
-  //       if ( drawVertexMarker && !usingSegmentizedGeometry )
-  //       {
-  //         markers << info.renderExterior;
+        if ( drawVertexMarker && !usingSegmentizedGeometry )
+        {
+          markers << info.renderExterior;
 
-  //         for ( const QPolygonF &hole : info.renderRings )
-  //         {
-  //           markers << hole;
-  //         }
-  //       }
-  //     }
-  //     break;
-  //   }
+          for ( const QPolygonF &hole : info.renderRings )
+          {
+            markers << hole;
+          }
+        }
+      }
+      break;
+    }
 
-  //   case Qgis::SymbolType::Hybrid:
-  //     break;
-  // }
+    case Qgis::SymbolType::Hybrid:
+      break;
+  }
 
-  // mSymbolRenderContext->setRenderHint( Qgis::SymbolRenderHint::ExcludeSymbolBuffers, prevExcludeBuffers );
+  mSymbolRenderContext->setRenderHint( Qgis::SymbolRenderHint::ExcludeSymbolBuffers, prevExcludeBuffers );
 
-  // if ( context.hasRenderedFeatureHandlers() && !renderedBoundsGeom.isNull() )
-  // {
-  //   QgsRenderedFeatureHandlerInterface::RenderedFeatureContext featureContext( context );
-  //   const QList< QgsRenderedFeatureHandlerInterface * > handlers = context.renderedFeatureHandlers();
-  //   for ( QgsRenderedFeatureHandlerInterface *handler : handlers )
-  //     handler->handleRenderedFeature( feature, renderedBoundsGeom, featureContext );
-  // }
+  if ( context.hasRenderedFeatureHandlers() && !renderedBoundsGeom.isNull() )
+  {
+    QgsRenderedFeatureHandlerInterface::RenderedFeatureContext featureContext( context );
+    const QList< QgsRenderedFeatureHandlerInterface * > handlers = context.renderedFeatureHandlers();
+    for ( QgsRenderedFeatureHandlerInterface *handler : handlers )
+      handler->handleRenderedFeature( feature, renderedBoundsGeom, featureContext );
+  }
 
-  // if ( drawVertexMarker )
-  // {
-  //   if ( !markers.isEmpty() && !context.renderingStopped() )
-  //   {
-  //     const auto constMarkers = markers;
-  //     for ( QPointF marker : constMarkers )
-  //     {
-  //       renderVertexMarker( marker, context, currentVertexMarkerType, currentVertexMarkerSize );
-  //     }
-  //   }
-  //   else
-  //   {
-  //     QgsCoordinateTransform ct = context.coordinateTransform();
-  //     const QgsMapToPixel &mtp = context.mapToPixel();
+  if ( drawVertexMarker )
+  {
+    if ( !markers.isEmpty() && !context.renderingStopped() )
+    {
+      const auto constMarkers = markers;
+      for ( QPointF marker : constMarkers )
+      {
+        renderVertexMarker( marker, context, currentVertexMarkerType, currentVertexMarkerSize );
+      }
+    }
+    else
+    {
+      QgsCoordinateTransform ct = context.coordinateTransform();
+      const QgsMapToPixel &mtp = context.mapToPixel();
 
-  //     QgsPoint vertexPoint;
-  //     QgsVertexId vertexId;
-  //     double x, y, z;
-  //     QPointF mapPoint;
-  //     while ( geom.constGet()->nextVertex( vertexId, vertexPoint ) )
-  //     {
-  //       //transform
-  //       x = vertexPoint.x();
-  //       y = vertexPoint.y();
-  //       z = 0.0;
-  //       if ( ct.isValid() )
-  //       {
-  //         ct.transformInPlace( x, y, z );
-  //       }
-  //       mapPoint.setX( x );
-  //       mapPoint.setY( y );
-  //       mtp.transformInPlace( mapPoint.rx(), mapPoint.ry() );
-  //       renderVertexMarker( mapPoint, context, currentVertexMarkerType, currentVertexMarkerSize );
-  //     }
-  //   }
-  // }
+      QgsPoint vertexPoint;
+      QgsVertexId vertexId;
+      double x, y, z;
+      QPointF mapPoint;
+      while ( geom.constGet()->nextVertex( vertexId, vertexPoint ) )
+      {
+        //transform
+        x = vertexPoint.x();
+        y = vertexPoint.y();
+        z = 0.0;
+        if ( ct.isValid() )
+        {
+          ct.transformInPlace( x, y, z );
+        }
+        mapPoint.setX( x );
+        mapPoint.setY( y );
+        mtp.transformInPlace( mapPoint.rx(), mapPoint.ry() );
+        renderVertexMarker( mapPoint, context, currentVertexMarkerType, currentVertexMarkerSize );
+      }
+    }
+  }
 }
 
 QgsSymbolRenderContext *QgsSymbol::symbolRenderContext()
