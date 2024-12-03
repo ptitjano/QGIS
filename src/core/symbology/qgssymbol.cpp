@@ -2035,61 +2035,61 @@ void QgsSymbol::renderFeature( const QgsFeature &feature, QgsRenderContext &cont
     }
   }
 
-  // // step 4 - if required, render the calculated buffer below the symbol
-  // if ( usingBuffer )
-  // {
-  //   deferredRenderingPainter->end();
-  //   deferredRenderingPainter.reset();
+  // step 4 - if required, render the calculated buffer below the symbol
+  if ( usingBuffer )
+  {
+    deferredRenderingPainter->end();
+    deferredRenderingPainter.reset();
 
-  //   QgsGeometryPaintDevice geometryPaintDevice;
-  //   QPainter geometryPainter( &geometryPaintDevice );
-  //   // render all the symbol layers onto the geometry painter, so we can calculate a single
-  //   // buffer for ALL of them
-  //   for ( const auto &deferredPicture : picturesForDeferredRendering )
-  //   {
-  //     QgsPainting::drawPicture( &geometryPainter, QPointF( 0, 0 ), deferredPicture );
-  //   }
-  //   geometryPainter.end();
+    QgsGeometryPaintDevice geometryPaintDevice;
+    QPainter geometryPainter( &geometryPaintDevice );
+    // render all the symbol layers onto the geometry painter, so we can calculate a single
+    // buffer for ALL of them
+    for ( const auto &deferredPicture : picturesForDeferredRendering )
+    {
+      QgsPainting::drawPicture( &geometryPainter, QPointF( 0, 0 ), deferredPicture );
+    }
+    geometryPainter.end();
 
-  //   // retrieve the shape of the rendered symbol
-  //   const QgsGeometry renderedShape( geometryPaintDevice.geometry().clone() );
+    // retrieve the shape of the rendered symbol
+    const QgsGeometry renderedShape( geometryPaintDevice.geometry().clone() );
 
-  //   context.setPainter( originalTargetPainter );
+    context.setPainter( originalTargetPainter );
 
-  //   // next, buffer out the rendered shape, and draw!
-  //   const double bufferSize = context.convertToPainterUnits( mBufferSettings->size(), mBufferSettings->sizeUnit(), mBufferSettings->sizeMapUnitScale() );
-  //   Qgis::JoinStyle joinStyle = Qgis::JoinStyle::Round;
-  //   switch ( mBufferSettings->joinStyle() )
-  //   {
-  //     case Qt::MiterJoin:
-  //     case Qt::SvgMiterJoin:
-  //       joinStyle = Qgis::JoinStyle::Miter;
-  //       break;
-  //     case Qt::BevelJoin:
-  //       joinStyle = Qgis::JoinStyle::Bevel;
-  //       break;
-  //     case Qt::RoundJoin:
-  //       joinStyle = Qgis::JoinStyle::Round;
-  //       break;
+    // next, buffer out the rendered shape, and draw!
+    const double bufferSize = context.convertToPainterUnits( mBufferSettings->size(), mBufferSettings->sizeUnit(), mBufferSettings->sizeMapUnitScale() );
+    Qgis::JoinStyle joinStyle = Qgis::JoinStyle::Round;
+    switch ( mBufferSettings->joinStyle() )
+    {
+      case Qt::MiterJoin:
+      case Qt::SvgMiterJoin:
+        joinStyle = Qgis::JoinStyle::Miter;
+        break;
+      case Qt::BevelJoin:
+        joinStyle = Qgis::JoinStyle::Bevel;
+        break;
+      case Qt::RoundJoin:
+        joinStyle = Qgis::JoinStyle::Round;
+        break;
 
-  //     case Qt::MPenJoinStyle:
-  //       break;
-  //   }
+      case Qt::MPenJoinStyle:
+        break;
+    }
 
-  //   const QgsGeometry bufferedGeometry = renderedShape.buffer( bufferSize, 8, Qgis::EndCapStyle::Round, joinStyle, 2 );
-  //   const QList<QList<QPolygonF> > polygons = QgsSymbolLayerUtils::toQPolygonF( bufferedGeometry, Qgis::SymbolType::Fill );
-  //   for ( const QList< QPolygonF > &polygon : polygons )
-  //   {
-  //     QVector< QPolygonF > rings;
-  //     for ( int i = 1; i < polygon.size(); ++i )
-  //       rings << polygon.at( i );
-  //     mBufferSettings->fillSymbol()->renderPolygon( polygon.value( 0 ), &rings, nullptr, context );
-  //   }
+    const QgsGeometry bufferedGeometry = renderedShape.buffer( bufferSize, 8, Qgis::EndCapStyle::Round, joinStyle, 2 );
+    const QList<QList<QPolygonF> > polygons = QgsSymbolLayerUtils::toQPolygonF( bufferedGeometry, Qgis::SymbolType::Fill );
+    for ( const QList< QPolygonF > &polygon : polygons )
+    {
+      QVector< QPolygonF > rings;
+      for ( int i = 1; i < polygon.size(); ++i )
+        rings << polygon.at( i );
+      mBufferSettings->fillSymbol()->renderPolygon( polygon.value( 0 ), &rings, nullptr, context );
+    }
 
-  //   // finally, draw the actual rendered symbol on top. If symbol levels are at play then this will ONLY
-  //   // be the target symbol level, not all of them.
-  //   QgsPainting::drawPicture( context.painter(), QPointF( 0, 0 ), picturesForDeferredRendering.front() );
-  // }
+    // finally, draw the actual rendered symbol on top. If symbol levels are at play then this will ONLY
+    // be the target symbol level, not all of them.
+    QgsPainting::drawPicture( context.painter(), QPointF( 0, 0 ), picturesForDeferredRendering.front() );
+  }
 
   // // step 5 - handle post processing steps
   // switch ( mType )
