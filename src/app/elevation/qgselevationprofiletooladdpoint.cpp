@@ -47,6 +47,12 @@ void QgsElevationProfileToolAddPoint::plotReleaseEvent( QgsPlotMouseEvent *event
     return;
   }
 
+  if ( !mLayer->isEditable() )
+  {
+    QgisApp::instance()->messageBar()->pushWarning( tr( "Add point" ), tr( "Could not add point: layer is not editable" ) );
+    return;
+  }
+
   const Qgis::WkbType layerWKBType = mLayer->wkbType();
 
   const QgsPoint mapPoint = mCanvas->toMapCoordinates( event->snappedPoint() );
@@ -110,7 +116,6 @@ void QgsElevationProfileToolAddPoint::setLayer( QgsVectorLayer *layer )
   {
     disconnect( mLayer, &QgsVectorLayer::editingStarted, this, &QgsElevationProfileToolAddPoint::toggleAction );
     disconnect( mLayer, &QgsVectorLayer::editingStopped, this, &QgsElevationProfileToolAddPoint::toggleAction );
-    // disconnect( mLayer, &QgsVectorLayer::destroyed, this, &QgsGeometryValidationDock::onLayerDestroyed );
   }
 
   mLayer = layer;
