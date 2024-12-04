@@ -1202,9 +1202,12 @@ void QgsAppElevationProfileLayerTreeView::contextMenuEvent( QContextMenuEvent *e
     {
       QAction *toggleEditingAction = new QAction( tr( "Toggle Editing" ), menu );
       toggleEditingAction->setIcon( QgsApplication::getThemePixmap( QStringLiteral( "/mActionToggleEditing.svg" ) ) );
-      connect( toggleEditingAction, &QAction::triggered, this, [layer]
+      toggleEditingAction->setCheckable( true );
+      toggleEditingAction->setChecked( vectorLayer->isEditable() );
+      connect( toggleEditingAction, &QAction::triggered, this, [layer, toggleEditingAction]
       {
-        QgisApp::instance()->toggleEditing( layer );
+        if ( QgisApp::instance()->toggleEditing( layer ) )
+          toggleEditingAction->setChecked( layer->isEditable() );
       } );
       menu->addAction( toggleEditingAction );
 
