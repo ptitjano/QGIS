@@ -315,6 +315,14 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   } );
   toolBar->addAction( measureToolAction );
 
+  toolBar->addSeparator();
+
+  // Add save and edit layer actions
+  mToggleEditLayerAction = new QgsElevationProfileWidgetToggleEditingLayerAction( tr( "Toggle Editing" ), this );
+  toolBar->addAction( mToggleEditLayerAction );
+  mSaveLayerAction = new QgsElevationProfileWidgetSaveLayerAction( tr( "Save Editing" ), this );
+  toolBar->addAction( mSaveLayerAction );
+
   // Add Feature Action
   mAddPointAction = new QAction( tr( "Add Point Features" ), this );
   mAddPointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
@@ -1242,6 +1250,8 @@ void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &,
       {
         mAddPointTool->setLayer( vectorLayer );
         mMovePointTool->setLayer( vectorLayer );
+        mToggleEditLayerAction->setLayer( vectorLayer );
+        mSaveLayerAction->setLayer( vectorLayer );
         return;
       }
     }
@@ -1250,4 +1260,89 @@ void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &,
   mCanvas->setTool( mIdentifyTool );
   mAddPointTool->setLayer( nullptr );
   mMovePointTool->setLayer( nullptr );
+  mToggleEditLayerAction->setLayer( nullptr );
+  mSaveLayerAction->setLayer( nullptr );
+}
+
+QgsElevationProfileWidgetToggleEditingLayerAction::QgsElevationProfileWidgetToggleEditingLayerAction( const QString &text, QWidget *parent )
+  : QAction( text, parent )
+{
+  setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionToggleEditing.svg" ) ) );
+  connect( this, &QgsElevationProfileWidgetToggleEditingLayerAction::triggered, this, [this]() { QgisApp::instance()->toggleEditing( mLayer ); } );
+  setCheckable( true );
+  handleCheckEnableStates();
+}
+
+void QgsElevationProfileWidgetToggleEditingLayerAction::setLayer( QgsVectorLayer *layer )
+{
+  if ( layer == mLayer )
+  {
+    return;
+  }
+
+  if ( mLayer )
+  {
+    disconnect( mLayer, &QgsVectorLayer::editingStarted, this, &QgsElevationProfileWidgetToggleEditingLayerAction::handleCheckEnableStates );
+    disconnect( mLayer, &QgsVectorLayer::editingStopped, this, &QgsElevationProfileWidgetToggleEditingLayerAction::handleCheckEnableStates );
+  }
+
+  mLayer = layer;
+
+  if ( mLayer )
+  {
+    connect( mLayer, &QgsVectorLayer::editingStarted, this, &QgsElevationProfileWidgetToggleEditingLayerAction::handleCheckEnableStates );
+    connect( mLayer, &QgsVectorLayer::editingStopped, this, &QgsElevationProfileWidgetToggleEditingLayerAction::handleCheckEnableStates );
+  }
+
+  handleCheckEnableStates();
+}
+
+void QgsElevationProfileWidgetToggleEditingLayerAction::handleCheckEnableStates()
+{
+  if ( mLayer && mLayer->geometryType() == Qgis::GeometryType::Point )
+  {
+    setEnabled( true );
+    setChecked( mLayer->isEditable() );
+  }
+  else
+  {
+    setEnabled( false );
+    setChecked( false );
+  }
+}
+
+QgsElevationProfileWidgetSaveLayerAction::QgsElevationProfileWidgetSaveLayerAction( const QString &text, QWidget *parent )
+  : QAction( text, parent )
+{
+  setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionSaveEdits.svg" ) ) );
+  connect( this, &QgsElevationProfileWidgetToggleEditingLayerAction::triggered, this, [this]()
+  {
+    QgisApp::instance()->saveEdits( mLayer );
+    handleEnableState();
+  } );
+  handleEnableState();
+}
+
+void QgsElevationProfileWidgetSaveLayerAction::setLayer( QgsVectorLayer *layer )
+{
+  if ( layer == mLayer )
+    return;
+
+  if ( mLayer )
+    disconnect( mLayer, &QgsVectorLayer::layerModified, this, &QgsElevationProfileWidgetSaveLayerAction::handleEnableState );
+
+  mLayer = layer;
+
+  if ( mLayer )
+    connect( mLayer, &QgsVectorLayer::layerModified, this, &QgsElevationProfileWidgetSaveLayerAction::handleEnableState );
+
+  handleEnableState();
+}
+
+void QgsElevationProfileWidgetSaveLayerAction::handleEnableState()
+{
+  if ( mLayer && mLayer->geometryType() == Qgis::GeometryType::Point )
+    setEnabled( mLayer->isModified() );
+  else
+    setEnabled( false );
 }
