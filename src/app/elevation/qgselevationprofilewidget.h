@@ -18,8 +18,6 @@
 #define QGSELEVATIONPROFILEWIDGET_H
 
 #include "qmenu.h"
-#include "qgsdockwidget.h"
-#include "qgis_app.h"
 #include "qgsgeometry.h"
 #include "qobjectuniqueptr.h"
 #include "qgselevationprofilelayertreeview.h"
@@ -61,6 +59,8 @@ class QgsSettingsEntryColor;
 class QgsMapLayerProxyModel;
 class QgsLineSymbol;
 class QgsScaleComboBox;
+class QgsElevationProfileWidgetToggleEditingLayerAction;
+class QgsElevationProfileWidgetSaveLayerAction;
 
 class QgsAppElevationProfileLayerTreeView : public QgsElevationProfileLayerTreeView
 {
@@ -174,6 +174,8 @@ class QgsElevationProfileWidget : public QWidget
     QAction *mSubsectionsSymbologyAction = nullptr;
     QAction *mAddPointAction = nullptr;
     QAction *mMovePointAction = nullptr;
+    QgsElevationProfileWidgetToggleEditingLayerAction *mToggleEditLayerAction = nullptr;
+    QgsElevationProfileWidgetSaveLayerAction *mSaveLayerAction = nullptr;
     QMenu *mDistanceUnitMenu = nullptr;
 
     QgsDockableWidgetHelper *mDockableWidgetHelper = nullptr;
@@ -235,5 +237,30 @@ class QgsElevationProfileScaleRatioWidgetSettingsAction : public QWidgetAction
     QgsScaleComboBox *mScaleRatioWidget = nullptr;
 };
 
+class QgsElevationProfileWidgetSaveLayerAction: public QAction
+{
+    Q_OBJECT
+
+  public:
+    QgsElevationProfileWidgetSaveLayerAction( const QString &text, QWidget *parent = nullptr );
+    void setLayer( QgsVectorLayer *layer );
+
+  private:
+    QgsVectorLayer *mLayer = nullptr;
+    void handleEnableState();
+};
+
+class QgsElevationProfileWidgetToggleEditingLayerAction: public QAction
+{
+    Q_OBJECT
+
+  public:
+    QgsElevationProfileWidgetToggleEditingLayerAction( const QString &text, QWidget *parent = nullptr );
+    void setLayer( QgsVectorLayer *layer );
+
+  private:
+    QgsVectorLayer *mLayer = nullptr;
+    void handleCheckEnableStates();
+};
 
 #endif // QGSELEVATIONPROFILEWIDGET_H
