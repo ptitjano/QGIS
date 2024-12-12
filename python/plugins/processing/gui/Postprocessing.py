@@ -230,14 +230,16 @@ def handleAlgorithmResults(
                 )
                 post_process_layer(output_name, layer, alg)
 
-                # Load layer to layer tree root or to a specific group
+                # Load layer to layer tree root_node or to a specific group
                 results_group = get_layer_tree_results_group(details, context)
 
                 # note here that we may not retrieve an owned layer -- eg if the
                 # output layer already exists in the destination project
                 owned_map_layer = context.temporaryLayerStore().takeMapLayer(layer)
                 if owned_map_layer:
-                    details.project.addMapLayer(owned_map_layer, False)
+                    # If the layer is part of a group, do not add it to the legend
+                    add_to_legend = results_group is None
+                    details.project.addMapLayer(owned_map_layer, add_to_legend)
 
                     # we don't add the layer to the tree yet -- that's done
                     # later, after we've sorted all added layers
@@ -282,6 +284,12 @@ def handleAlgorithmResults(
         if group is not None:
             group.insertChildNode(0, layer_node)
         else:
+            # a new node has already been created by the `addMapLayer` call
+            # move the cloned node to the correct location and the remove
+            # the first one
+            root_node = context.project().layerTreeRoot()
+            previous_layer_node = root_node.findLayer(layer_node.layerId())
+            previous_layer_group: Optional[QgsLayerTreeGroup] = None
             # no destination group for this layer, so should be placed
             # above the current layer
             if isinstance(current_selected_node, QgsLayerTreeLayer):
@@ -290,10 +298,17 @@ def handleAlgorithmResults(
                     current_selected_node
                 )
                 current_node_group.insertChildNode(current_node_index, layer_node)
+                previous_layer_group = current_node_group
             elif isinstance(current_selected_node, QgsLayerTreeGroup):
                 current_selected_node.insertChildNode(0, layer_node)
+                previous_layer_group = current_selected_node
             elif context.project():
-                context.project().layerTreeRoot().insertChildNode(0, layer_node)
+                root_node.insertChildNode(0, layer_node)
+                previous_layer_group = root_node
+
+            # remove the previous node
+            if previous_layer_group and previous_layer_node:
+                previous_layer_group.removeChildNode(previous_layer_node)
 
         if not have_set_active_layer and iface is not None:
             iface.setActiveLayer(layer_node.layer())
