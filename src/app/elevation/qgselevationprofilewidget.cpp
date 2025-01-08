@@ -269,7 +269,7 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   identifyAction->setCheckable( true );
   identifyAction->setChecked( true );
   mIdentifyTool->setAction( identifyAction );
-  connect( identifyAction, &QAction::triggered, mPanTool, [=] { mCanvas->setTool( mIdentifyTool ); } );
+  connect( identifyAction, &QAction::triggered, mIdentifyTool, [=] { mCanvas->setTool( mIdentifyTool ); } );
   toolBar->addAction( identifyAction );
 
   QAction *panToolAction = new QAction( tr( "Pan" ), this );
