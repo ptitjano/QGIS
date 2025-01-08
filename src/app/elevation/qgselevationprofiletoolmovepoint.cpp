@@ -49,7 +49,7 @@ void QgsElevationProfileToolMovePoint::plotReleaseEvent( QgsPlotMouseEvent *even
   if ( mDragging )
   {
     mRubberBand->finish( QPointF(), Qt::KeyboardModifiers() );
-    QgsGeometry geometry( std::make_unique<QgsPoint>( mCanvas->toMapCoordinates( snappedPoint ) ) );
+    QgsGeometry geometry( std::make_unique<QgsPoint>( toMapCoordinates( snappedPoint ) ) );
     mLayer->changeGeometry( mFeatureId, geometry );
   }
   else
