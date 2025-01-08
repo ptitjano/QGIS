@@ -37,6 +37,7 @@
 #include "qgsprofilepoint.h"
 #include "qgsprofilesnapping.h"
 #include "qgsexpressioncontextutils.h"
+#include "qgsvectorlayerselectionproperties.h"
 #include <QPolygonF>
 
 //
@@ -408,6 +409,11 @@ void QgsVectorLayerProfileResults::renderResultsAsIndividualFeatures( QgsProfile
   if ( !painter )
     return;
 
+  // Override project selection color if a layer selection color is defined
+  QColor selectionColor = qobject_cast<QgsVectorLayerSelectionProperties *>( mLayer->selectionProperties() )->selectionColor();
+  if ( selectionColor.isValid() )
+    context.renderContext().setSelectionColor( selectionColor );
+
   const QgsScopedQPainterState painterState( painter );
 
   painter->setBrush( Qt::NoBrush );
@@ -425,8 +431,7 @@ void QgsVectorLayerProfileResults::renderResultsAsIndividualFeatures( QgsProfile
 
   const QgsRectangle clipPathRect( clipPath.boundingRect() );
 
-  auto renderResult = [&context, &clipPathRect]( const Feature & profileFeature, QgsMarkerSymbol * markerSymbol, QgsLineSymbol * lineSymbol, QgsFillSymbol * fillSymbol )
-  {
+  auto renderResult = [&context, &clipPathRect]( const Feature &profileFeature, QgsMarkerSymbol *markerSymbol, QgsLineSymbol *lineSymbol, QgsFillSymbol *fillSymbol, bool selected ) {
     if ( profileFeature.crossSectionGeometry.isEmpty() )
       return;
 
@@ -443,14 +448,14 @@ void QgsVectorLayerProfileResults::renderResultsAsIndividualFeatures( QgsProfile
       {
         if ( const QgsPoint *point = qgsgeometry_cast< const QgsPoint * >( transformed.constGet() ) )
         {
-          markerSymbol->renderPoint( QPointF( point->x(), point->y() ), nullptr, context.renderContext() );
+          markerSymbol->renderPoint( QPointF( point->x(), point->y() ), nullptr, context.renderContext(), -1, selected );
         }
         else if ( const QgsMultiPoint *multipoint = qgsgeometry_cast< const QgsMultiPoint * >( transformed.constGet() ) )
         {
           const int numGeometries = multipoint->numGeometries();
           for ( int i = 0; i < numGeometries; ++i )
           {
-            markerSymbol->renderPoint( QPointF( multipoint->pointN( i )->x(), multipoint->pointN( i )->y() ), nullptr, context.renderContext() );
+            markerSymbol->renderPoint( QPointF( multipoint->pointN( i )->x(), multipoint->pointN( i )->y() ), nullptr, context.renderContext(), -1, selected );
           }
         }
         break;
@@ -460,14 +465,14 @@ void QgsVectorLayerProfileResults::renderResultsAsIndividualFeatures( QgsProfile
       {
         if ( const QgsLineString *line = qgsgeometry_cast< const QgsLineString * >( transformed.constGet() ) )
         {
-          lineSymbol->renderPolyline( line->asQPolygonF(), nullptr, context.renderContext() );
+          lineSymbol->renderPolyline( line->asQPolygonF(), nullptr, context.renderContext(), -1, selected );
         }
         else if ( const QgsMultiLineString *multiLinestring = qgsgeometry_cast< const QgsMultiLineString * >( transformed.constGet() ) )
         {
           const int numGeometries = multiLinestring->numGeometries();
           for ( int i = 0; i < numGeometries; ++i )
           {
-            lineSymbol->renderPolyline( multiLinestring->lineStringN( i )->asQPolygonF(), nullptr, context.renderContext() );
+            lineSymbol->renderPolyline( multiLinestring->lineStringN( i )->asQPolygonF(), nullptr, context.renderContext(), -1, selected );
           }
         }
         break;
@@ -478,14 +483,14 @@ void QgsVectorLayerProfileResults::renderResultsAsIndividualFeatures( QgsProfile
         if ( const QgsPolygon *polygon = qgsgeometry_cast< const QgsPolygon * >( transformed.constGet() ) )
         {
           if ( const QgsCurve *exterior = polygon->exteriorRing() )
-            fillSymbol->renderPolygon( exterior->asQPolygonF(), nullptr, nullptr, context.renderContext() );
+            fillSymbol->renderPolygon( exterior->asQPolygonF(), nullptr, nullptr, context.renderContext(), -1, selected );
         }
         else if ( const QgsMultiPolygon *multiPolygon = qgsgeometry_cast< const QgsMultiPolygon * >( transformed.constGet() ) )
         {
           const int numGeometries = multiPolygon->numGeometries();
           for ( int i = 0; i < numGeometries; ++i )
           {
-            fillSymbol->renderPolygon( multiPolygon->polygonN( i )->exteriorRing()->asQPolygonF(), nullptr, nullptr, context.renderContext() );
+            fillSymbol->renderPolygon( multiPolygon->polygonN( i )->exteriorRing()->asQPolygonF(), nullptr, nullptr, context.renderContext(), -1, selected );
           }
         }
         break;
@@ -539,12 +544,16 @@ void QgsVectorLayerProfileResults::renderResultsAsIndividualFeatures( QgsProfile
       fill->startRender( context.renderContext() );
 
       const QVector< Feature > profileFeatures = features.value( feature.id() );
+      const QgsFeatureIds &selectedFeatureIds = mLayer->selectedFeatureIds();
       for ( const Feature &profileFeature : profileFeatures )
       {
-        renderResult( profileFeature,
-                      rendererSymbol->type() == Qgis::SymbolType::Marker ? qgis::down_cast< QgsMarkerSymbol * >( rendererSymbol ) : marker.get(),
-                      rendererSymbol->type() == Qgis::SymbolType::Line ? qgis::down_cast< QgsLineSymbol * >( rendererSymbol )  : line.get(),
-                      rendererSymbol->type() == Qgis::SymbolType::Fill ? qgis::down_cast< QgsFillSymbol * >( rendererSymbol )  : fill.get() );
+        renderResult(
+          profileFeature,
+          rendererSymbol->type() == Qgis::SymbolType::Marker ? qgis::down_cast<QgsMarkerSymbol *>( rendererSymbol ) : marker.get(),
+          rendererSymbol->type() == Qgis::SymbolType::Line ? qgis::down_cast<QgsLineSymbol *>( rendererSymbol ) : line.get(),
+          rendererSymbol->type() == Qgis::SymbolType::Fill ? qgis::down_cast<QgsFillSymbol *>( rendererSymbol ) : fill.get(),
+          selectedFeatureIds.contains( profileFeature.featureId )
+        );
       }
 
       marker->stopRender( context.renderContext() );
@@ -568,13 +577,14 @@ void QgsVectorLayerProfileResults::renderResultsAsIndividualFeatures( QgsProfile
 
     QgsFeature feature;
     QgsFeatureIterator it = mLayer->getFeatures( req );
+    const QgsFeatureIds &selectedFeatureIds = mLayer->selectedFeatureIds();
     while ( it.nextFeature( feature ) )
     {
       context.renderContext().expressionContext().setFeature( feature );
       const QVector< Feature > profileFeatures = features.value( feature.id() );
       for ( const Feature &profileFeature : profileFeatures )
       {
-        renderResult( profileFeature, mMarkerSymbol.get(), mLineSymbol.get(), mFillSymbol.get() );
+        renderResult( profileFeature, mMarkerSymbol.get(), mLineSymbol.get(), mFillSymbol.get(), selectedFeatureIds.contains( profileFeature.featureId ) );
       }
     }
     mMarkerSymbol->stopRender( context.renderContext() );

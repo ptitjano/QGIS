@@ -578,6 +578,7 @@ void QgsElevationProfileCanvas::setupLayerConnections( QgsMapLayer *layer, bool 
         disconnect( vl, &QgsVectorLayer::featureDeleted, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         disconnect( vl, &QgsVectorLayer::geometryChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         disconnect( vl, &QgsVectorLayer::attributeValueChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
+        disconnect( vl, &QgsVectorLayer::selectionChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
       }
       else
       {
@@ -585,6 +586,7 @@ void QgsElevationProfileCanvas::setupLayerConnections( QgsMapLayer *layer, bool 
         connect( vl, &QgsVectorLayer::featureDeleted, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         connect( vl, &QgsVectorLayer::geometryChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         connect( vl, &QgsVectorLayer::attributeValueChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
+        connect( vl, &QgsVectorLayer::selectionChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
       }
       break;
     }
@@ -1381,6 +1383,7 @@ void QgsElevationProfileCanvas::render( QgsRenderContext &context, double width,
 
   context.expressionContext().appendScope( QgsExpressionContextUtils::globalScope() );
   context.expressionContext().appendScope( QgsExpressionContextUtils::projectScope( mProject ) );
+  context.setSelectionColor( mProject->selectionColor() );
 
   QgsElevationProfilePlot profilePlot( mCurrentJob );
 
