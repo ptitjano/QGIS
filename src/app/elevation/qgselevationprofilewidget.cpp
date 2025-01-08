@@ -53,6 +53,7 @@
 #include "qgselevationprofiletoolmeasure.h"
 #include "qgselevationprofiletooladdpoint.h"
 #include "qgselevationprofiletoolmovepoint.h"
+#include "qgselevationprofiletoolselectfeatures.h"
 #include "qgssettingsentryimpl.h"
 #include "qgssettingstree.h"
 #include "qgsmaplayerproxymodel.h"
@@ -190,6 +191,7 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   mIdentifyTool = new QgsElevationProfileToolIdentify( mCanvas );
   mAddPointTool = new QgsElevationProfileToolAddPoint( mCanvas );
   mMovePointTool = new QgsElevationProfileToolMovePoint( mCanvas );
+  mSelectFeaturesTool = new QgsElevationProfileToolSelectFeatures( mCanvas );
 
   mCanvas->setTool( mIdentifyTool );
 
@@ -313,7 +315,17 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
 
   toolBar->addSeparator();
 
-  // Add save and edit layer actions
+  // Select features action
+  QAction *selectFeaturesAction = new QAction( tr( "Select Features" ), this );
+  selectFeaturesAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionSelectRectangle.svg" ) ) );
+  selectFeaturesAction->setCheckable( true );
+  selectFeaturesAction->setChecked( false );
+  selectFeaturesAction->setEnabled( false );
+  mSelectFeaturesTool->setAction( selectFeaturesAction );
+  connect( selectFeaturesAction, &QAction::triggered, this, [=] { mCanvas->setTool( mSelectFeaturesTool ); } );
+  toolBar->addAction( selectFeaturesAction );
+
+  // Save and Edit layer actions
   mToggleEditLayerAction = new QgsElevationProfileWidgetToggleEditingLayerAction( tr( "Toggle Editing" ), this );
   toolBar->addAction( mToggleEditLayerAction );
   mSaveLayerAction = new QgsElevationProfileWidgetSaveLayerAction( tr( "Save Editing" ), this );
@@ -1186,6 +1198,7 @@ void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &,
     QgsMapLayer *layer = mLayerTreeView->indexToLayer( idx );
     if ( QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer ) )
     {
+      mSelectFeaturesTool->setLayer( vectorLayer );
       if ( vectorLayer->geometryType() == Qgis::GeometryType::Point )
       {
         mAddPointTool->setLayer( vectorLayer );
@@ -1200,6 +1213,7 @@ void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &,
   mCanvas->setTool( mIdentifyTool );
   mAddPointTool->setLayer( nullptr );
   mMovePointTool->setLayer( nullptr );
+  mSelectFeaturesTool->setLayer( nullptr );
   mToggleEditLayerAction->setLayer( nullptr );
   mSaveLayerAction->setLayer( nullptr );
 }
