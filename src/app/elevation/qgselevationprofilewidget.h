@@ -17,6 +17,7 @@
 #ifndef QGSELEVATIONPROFILEWIDGET_H
 #define QGSELEVATIONPROFILEWIDGET_H
 
+#include "qgselevationprofiletoolselectfeatures.h"
 #include "qmenu.h"
 #include "qgsgeometry.h"
 #include "qobjectuniqueptr.h"
@@ -189,6 +190,7 @@ class QgsElevationProfileWidget : public QWidget
     QgsElevationProfileToolIdentify *mIdentifyTool = nullptr;
     QgsElevationProfileToolAddPoint *mAddPointTool = nullptr;
     QgsElevationProfileToolMovePoint *mMovePointTool = nullptr;
+    QgsElevationProfileToolSelectFeatures *mSelectFeaturesTool = nullptr;
 
     QgsElevationProfileWidgetSettingsAction *mSettingsAction = nullptr;
 

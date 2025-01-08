@@ -66,10 +66,10 @@ class QgsAlgorithmElevationProfilePlotItem : public Qgs2DPlot
     void renderContent( QgsRenderContext &rc, const QRectF &plotArea ) override
     {
       mPlotArea = plotArea;
-
       if ( !mRenderer )
         return;
 
+      rc.setShowSelection(false); // don't render selected features with the selection rendering
       rc.painter()->translate( mPlotArea.left(), mPlotArea.top() );
       const QStringList sourceIds = mRenderer->sourceIds();
       for ( const QString &source : sourceIds )

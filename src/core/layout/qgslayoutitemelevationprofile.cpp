@@ -59,6 +59,8 @@ class QgsLayoutItemElevationProfilePlot : public Qgs2DPlot
     {
       if ( mRenderer )
       {
+        rc.setShowSelection( false ); // don't render selected features with selected rendering
+
         const double distanceMin = xMinimum() * xScale;
         const double distanceMax = xMaximum() * xScale;
         rc.painter()->translate( plotArea.left(), plotArea.top() );
