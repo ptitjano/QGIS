@@ -336,24 +336,24 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   toolBar->addAction( mSaveLayerAction );
 
   // Add Feature Action
-  mAddPointAction = new QAction( tr( "Add Point Features" ), this );
-  mAddPointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
-  mAddPointAction->setCheckable( true );
-  mAddPointAction->setChecked( false );
-  mAddPointAction->setEnabled( false );
-  mAddPointTool->setAction( mAddPointAction );
-  connect( mAddPointAction, &QAction::triggered, this, [=] { mCanvas->setTool( mAddPointTool ); } );
-  toolBar->addAction( mAddPointAction );
+  QAction *addPointAction = new QAction( tr( "Add Point Features" ), this );
+  addPointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
+  addPointAction->setCheckable( true );
+  addPointAction->setChecked( false );
+  addPointAction->setEnabled( false );
+  mAddPointTool->setAction( addPointAction );
+  connect( addPointAction, &QAction::triggered, this, [=] { mCanvas->setTool( mAddPointTool ); } );
+  toolBar->addAction( addPointAction );
 
   // Move Feature Action
-  mMovePointAction = new QAction( tr( "Move Point Features" ), this );
-  mMovePointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionMoveFeaturePoint.svg" ) ) );
-  mMovePointAction->setCheckable( true );
-  mMovePointAction->setChecked( false );
-  mMovePointAction->setEnabled( false );
-  mMovePointTool->setAction( mMovePointAction );
-  connect( mMovePointAction, &QAction::triggered, this, [=] { mCanvas->setTool( mMovePointTool ); } );
-  toolBar->addAction( mMovePointAction );
+  QAction *movePointAction = new QAction( tr( "Move Point Features" ), this );
+  movePointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionMoveFeaturePoint.svg" ) ) );
+  movePointAction->setCheckable( true );
+  movePointAction->setChecked( false );
+  movePointAction->setEnabled( false );
+  mMovePointTool->setAction( movePointAction );
+  connect( movePointAction, &QAction::triggered, this, [=] { mCanvas->setTool( mMovePointTool ); } );
+  toolBar->addAction( movePointAction );
 
   toolBar->addSeparator();
 

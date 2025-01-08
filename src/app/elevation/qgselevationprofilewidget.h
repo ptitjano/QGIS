@@ -164,8 +164,6 @@ class QgsElevationProfileWidget : public QWidget
     QAction *mLockRatioAction = nullptr;
     QAction *mShowSubsectionsAction = nullptr;
     QAction *mSubsectionsSymbologyAction = nullptr;
-    QAction *mAddPointAction = nullptr;
-    QAction *mMovePointAction = nullptr;
     QgsElevationProfileWidgetToggleEditingLayerAction *mToggleEditLayerAction = nullptr;
     QgsElevationProfileWidgetSaveLayerAction *mSaveLayerAction = nullptr;
     QMenu *mDistanceUnitMenu = nullptr;
