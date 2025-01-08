@@ -19,9 +19,12 @@
 #include "qgsabstractprofilegenerator.h"
 #include "qgselevationprofilecanvas.h"
 #include "qgsfeatureid.h"
+#include "qgsmessagebar.h"
 #include "qgsplotmouseevent.h"
 #include "qgsplotrubberband.h"
+#include "qgisapp.h"
 #include "qgspointxy.h"
+#include "qgsproject.h"
 #include <qaction.h>
 #include <qnamespace.h>
 
@@ -50,6 +53,26 @@ void QgsElevationProfileToolMovePoint::plotReleaseEvent( QgsPlotMouseEvent *even
   {
     mRubberBand->finish( QPointF(), Qt::KeyboardModifiers() );
     QgsGeometry geometry( std::make_unique<QgsPoint>( toMapCoordinates( snappedPoint ) ) );
+
+    if ( geometry.isNull() || geometry.isEmpty() )
+    {
+      QgisApp::instance()->messageBar()->pushWarning( tr( "Add point" ), tr( "Could not add point: no profile curve" ) );
+      QgsDebugError( QStringLiteral( "Could not add point with no geometry" ) );
+      return;
+    }
+    QgsCoordinateTransform transform( mCanvas->crs(), mLayer->crs3D(), QgsProject::instance()->transformContext() );
+    transform.setBallparkTransformsAreAppropriate( true );
+    try
+    {
+      geometry.transform( transform, Qgis::TransformDirection::Forward, true );
+    }
+    catch ( QgsCsException &cse )
+    {
+      Q_UNUSED( cse )
+      QgsDebugError( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
+      return;
+    }
+
     mLayer->changeGeometry( mFeatureId, geometry );
   }
   else
