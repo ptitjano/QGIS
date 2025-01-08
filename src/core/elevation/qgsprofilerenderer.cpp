@@ -315,6 +315,7 @@ QImage QgsProfilePlotRenderer::renderToImage( int width, int height, double dist
   context.setDevicePixelRatio( devicePixelRatio );
   const double mapUnitsPerPixel = ( distanceMax - distanceMin ) / width;
   context.setMapToPixel( QgsMapToPixel( mapUnitsPerPixel ) );
+  context.setShowSelection( false ); // don't show selected features rendring on image export
 
   render( context, width, height, distanceMin, distanceMax, zMin, zMax, sourceId );
   QRectF plotArea( QPointF( 0, 0 ), QPointF( width, height ) );
