@@ -18,7 +18,6 @@
 #include "qgselevationprofiletoolmovepoint.h"
 #include "qgsabstractprofilegenerator.h"
 #include "qgselevationprofilecanvas.h"
-#include "qgsfeatureid.h"
 #include "qgsmessagebar.h"
 #include "qgsplotmouseevent.h"
 #include "qgsplotrubberband.h"
@@ -96,7 +95,7 @@ void QgsElevationProfileToolMovePoint::plotMoveEvent( QgsPlotMouseEvent *event )
 
 bool QgsElevationProfileToolMovePoint::findFeature( QPointF pos )
 {
-  QVector<QgsProfileIdentifyResults> results = qgis::down_cast< QgsElevationProfileCanvas * >( mCanvas )->identify( pos );
+  QVector<QgsProfileIdentifyResults> results = qgis::down_cast<QgsElevationProfileCanvas *>( mCanvas )->identify( pos );
   for ( const auto &result : results )
   {
     if ( result.layer() != mLayer )
@@ -107,7 +106,7 @@ bool QgsElevationProfileToolMovePoint::findFeature( QPointF pos )
       if ( featureParam.contains( "id" ) )
       {
         mFeatureId = featureParam.value( "id" ).toLongLong();
-        return true;  // return as soon as a feature is found
+        return true; // return as soon as a feature is found
       }
     }
   }
