@@ -55,7 +55,7 @@ void QgsElevationProfileToolAddPoint::plotReleaseEvent( QgsPlotMouseEvent *event
 
   const Qgis::WkbType layerWKBType = mLayer->wkbType();
 
-  const QgsPoint mapPoint = mCanvas->toMapCoordinates( event->snappedPoint() );
+  const QgsPoint mapPoint = toMapCoordinates( event->snappedPoint() );
   const QgsGeometry geometry( std::make_unique<QgsPoint>( mapPoint ) );
   if ( geometry.isNull() || geometry.isEmpty() )
   {
