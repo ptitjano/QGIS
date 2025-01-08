@@ -237,7 +237,7 @@ class QgsElevationProfileScaleRatioWidgetSettingsAction : public QWidgetAction
     QgsScaleComboBox *mScaleRatioWidget = nullptr;
 };
 
-class QgsElevationProfileWidgetSaveLayerAction: public QAction
+class QgsElevationProfileWidgetSaveLayerAction : public QAction
 {
     Q_OBJECT
 
@@ -250,7 +250,7 @@ class QgsElevationProfileWidgetSaveLayerAction: public QAction
     void handleEnableState();
 };
 
-class QgsElevationProfileWidgetToggleEditingLayerAction: public QAction
+class QgsElevationProfileWidgetToggleEditingLayerAction : public QAction
 {
     Q_OBJECT
 
