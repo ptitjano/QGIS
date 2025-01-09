@@ -9,5 +9,5 @@ except (NameError, AttributeError):
     pass
 try:
     QgsPlotPointRubberBand.__group__ = ['plot']
-except NameError:
+except (NameError, AttributeError):
     pass
