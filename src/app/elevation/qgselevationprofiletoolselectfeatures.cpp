@@ -16,6 +16,7 @@
  ***************************************************************************/
 
 #include "qgselevationprofiletoolselectfeatures.h"
+#include "moc_qgselevationprofiletoolselectfeatures.cpp"
 #include "qgsabstractprofilegenerator.h"
 #include "qgselevationprofilecanvas.h"
 #include "qgsmessagebar.h"

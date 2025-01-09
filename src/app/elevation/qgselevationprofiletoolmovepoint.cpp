@@ -16,6 +16,7 @@
  ***************************************************************************/
 
 #include "qgselevationprofiletoolmovepoint.h"
+#include "moc_qgselevationprofiletoolmovepoint.cpp"
 #include "qgsabstractprofilegenerator.h"
 #include "qgselevationprofilecanvas.h"
 #include "qgsmessagebar.h"
