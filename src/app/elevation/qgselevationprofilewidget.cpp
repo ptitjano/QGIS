@@ -1217,23 +1217,25 @@ void QgsAppElevationProfileLayerTreeView::contextMenuEvent( QContextMenuEvent *e
   {
     QMenu *menu = new QMenu();
 
-    QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer );
-    const Qgis::VectorProviderCapabilities capabilities = vectorLayer->dataProvider()->capabilities();
-    const bool canAddFeatures = capabilities & Qgis::VectorProviderCapability::AddFeatures;
-    const bool canChangeGeometries = capabilities & Qgis::VectorProviderCapability::ChangeGeometries;
-    if ( ( vectorLayer && vectorLayer->geometryType() == Qgis::GeometryType::Point ) && ( capabilities & canAddFeatures || capabilities & canChangeGeometries ) )
+    if ( QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer );
+         vectorLayer && vectorLayer->geometryType() == Qgis::GeometryType::Point )
     {
-      QAction *toggleEditingAction = new QAction( tr( "Toggle Editing" ), menu );
-      toggleEditingAction->setIcon( QgsApplication::getThemePixmap( QStringLiteral( "/mActionToggleEditing.svg" ) ) );
-      toggleEditingAction->setCheckable( true );
-      toggleEditingAction->setChecked( vectorLayer->isEditable() );
-      connect( toggleEditingAction, &QAction::triggered, this, [layer, toggleEditingAction] {
-        if ( QgisApp::instance()->toggleEditing( layer ) )
-          toggleEditingAction->setChecked( layer->isEditable() );
-      } );
-      menu->addAction( toggleEditingAction );
-
-      menu->addSeparator();
+      const Qgis::VectorProviderCapabilities capabilities = vectorLayer->dataProvider()->capabilities();
+      const bool canAddFeatures = capabilities & Qgis::VectorProviderCapability::AddFeatures;
+      const bool canChangeGeometries = capabilities & Qgis::VectorProviderCapability::ChangeGeometries;
+      if ( capabilities & canAddFeatures || capabilities & canChangeGeometries )
+      {
+        QAction *toggleEditingAction = new QAction( tr( "Toggle Editing" ), menu );
+        toggleEditingAction->setIcon( QgsApplication::getThemePixmap( QStringLiteral( "/mActionToggleEditing.svg" ) ) );
+        toggleEditingAction->setCheckable( true );
+        toggleEditingAction->setChecked( vectorLayer->isEditable() );
+        connect( toggleEditingAction, &QAction::triggered, this, [layer, toggleEditingAction] {
+          if ( QgisApp::instance()->toggleEditing( layer ) )
+            toggleEditingAction->setChecked( layer->isEditable() );
+        } );
+        menu->addAction( toggleEditingAction );
+        menu->addSeparator();
+      }
     }
 
     QAction *propertiesAction = new QAction( tr( "Properties…" ), menu );
