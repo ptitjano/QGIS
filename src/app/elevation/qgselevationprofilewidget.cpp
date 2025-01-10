@@ -335,6 +335,10 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   mSaveLayerAction = new QgsElevationProfileWidgetSaveLayerAction( tr( "Save Editing" ), this );
   toolBar->addAction( mSaveLayerAction );
 
+  // Delete features action
+  mDeleteFeaturesAction = new QgsElevationProfileWidgetDeleteFeaturesAction( tr( "Delete Selected Features" ), this );
+  toolBar->addAction( mDeleteFeaturesAction );
+
   // Add Feature Action
   QAction *addPointAction = new QAction( tr( "Add Point Features" ), this );
   addPointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
@@ -1269,6 +1273,7 @@ void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &,
         mMovePointTool->setLayer( vectorLayer );
         mToggleEditLayerAction->setLayer( vectorLayer );
         mSaveLayerAction->setLayer( vectorLayer );
+        mDeleteFeaturesAction->setLayer( vectorLayer );
         return;
       }
     }
@@ -1280,6 +1285,7 @@ void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &,
   mSelectFeaturesTool->setLayer( nullptr );
   mToggleEditLayerAction->setLayer( nullptr );
   mSaveLayerAction->setLayer( nullptr );
+  mDeleteFeaturesAction->setLayer( nullptr );
 }
 
 QgsElevationProfileWidgetToggleEditingLayerAction::QgsElevationProfileWidgetToggleEditingLayerAction( const QString &text, QWidget *parent )
@@ -1363,6 +1369,49 @@ void QgsElevationProfileWidgetSaveLayerAction::handleEnableState()
 {
   if ( mLayer && mLayer->geometryType() == Qgis::GeometryType::Point )
     setEnabled( mLayer->isModified() );
+  else
+    setEnabled( false );
+}
+
+QgsElevationProfileWidgetDeleteFeaturesAction::QgsElevationProfileWidgetDeleteFeaturesAction( const QString &text, QWidget *parent )
+  : QAction( text, parent )
+{
+  setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionDeleteSelectedFeatures.svg" ) ) );
+  connect( this, &QgsElevationProfileWidgetToggleEditingLayerAction::triggered, this, [this]() {
+    QgisApp::instance()->deleteSelected( mLayer );
+    handleEnableState();
+  } );
+  handleEnableState();
+}
+
+void QgsElevationProfileWidgetDeleteFeaturesAction::setLayer( QgsVectorLayer *layer )
+{
+  if ( layer == mLayer )
+    return;
+
+  if ( mLayer )
+  {
+    disconnect( mLayer, &QgsVectorLayer::editingStarted, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+    disconnect( mLayer, &QgsVectorLayer::editingStopped, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+    disconnect( mLayer, &QgsVectorLayer::selectionChanged, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+  }
+
+  mLayer = layer;
+
+  if ( mLayer )
+  {
+    connect( mLayer, &QgsVectorLayer::editingStarted, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+    connect( mLayer, &QgsVectorLayer::editingStopped, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+    connect( mLayer, &QgsVectorLayer::selectionChanged, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+  }
+
+  handleEnableState();
+}
+
+void QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState()
+{
+  if ( mLayer && mLayer->geometryType() == Qgis::GeometryType::Point )
+    setEnabled( mLayer->isEditable() && mLayer->selectedFeatureCount() > 0 );
   else
     setEnabled( false );
 }
