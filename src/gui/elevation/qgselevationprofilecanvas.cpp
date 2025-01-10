@@ -846,16 +846,48 @@ void QgsElevationProfileCanvas::mouseMoveEvent( QMouseEvent *e )
       plotPoint = snapResult.snappedPoint;
   }
 
-  if ( plotPoint.isEmpty() )
+  if ( !mCrossHairsItemIsDelegate )
   {
+    if ( plotPoint.isEmpty() )
+    {
+      mCrossHairsItem->hide();
+    }
+    else
+    {
+      mCrossHairsItem->setPoint( plotPoint );
+      mCrossHairsItem->show();
+    }
+    emit canvasPointHovered( e->pos(), plotPoint );
+  }
+}
+
+void QgsElevationProfileCanvas::setCrossHairsItemPoint( QPoint point )
+{
+  QgsProfilePoint plotPoint = canvasPointToPlotPoint( point );
+  mCrossHairsItem->setPoint( plotPoint );
+  emit canvasPointHovered( QgsPointXY(), plotPoint );
+}
+
+void QgsElevationProfileCanvas::hideCrossHairsItem()
+{
+  if ( mCrossHairsItemIsDelegate )
     mCrossHairsItem->hide();
-  }
-  else
-  {
-    mCrossHairsItem->setPoint( plotPoint );
+}
+
+void QgsElevationProfileCanvas::showCrossHairsItem()
+{
+  if ( mCrossHairsItemIsDelegate )
     mCrossHairsItem->show();
-  }
-  emit canvasPointHovered( e->pos(), plotPoint );
+}
+
+bool QgsElevationProfileCanvas::crossHairsItemIsDelegate()
+{
+  return mCrossHairsItemIsDelegate;
+}
+
+void QgsElevationProfileCanvas::setCrossHairsItemIsDelegate( bool enabled )
+{
+  mCrossHairsItemIsDelegate = enabled;
 }
 
 QRectF QgsElevationProfileCanvas::plotArea() const
