@@ -318,6 +318,57 @@ Clears the current profile.
 Sets whether snapping of cursor points is enabled.
 %End
 
+    void setCrossHairsItemIsDelegate( bool enabled );
+%Docstring
+Sets wether the cross hairs item is controlled externally
+
+.. versionadded:: 3.42
+%End
+
+    bool crossHairsItemIsDelegate();
+%Docstring
+Returns wether the cross hairs item is controlled externally
+
+.. versionadded:: 3.42
+%End
+
+    void setCrossHairsItemPoint( QPoint point );
+%Docstring
+Sets the cross hairs item point (if cross hairs items is controlled externally)
+
+.. seealso:: :py:func:`setCrossHairsItemIsDelegate`
+
+.. seealso:: :py:func:`crossHairsItemIsDelegate`
+
+.. versionadded:: 3.42
+%End
+
+    void showCrossHairsItem();
+%Docstring
+Show the cross hairs item if cross hairs items is controlled externally)
+
+.. seealso:: :py:func:`setCrossHairsItemIsDelegate`
+
+.. seealso:: :py:func:`crossHairsItemIsDelegate`
+
+.. seealso:: :py:func:`hideCrossHairsItem`
+
+.. versionadded:: 3.42
+%End
+
+    void hideCrossHairsItem();
+%Docstring
+Hide the cross hairs item if cross hairs items is controlled externally)
+
+.. seealso:: :py:func:`setCrossHairsItemIsDelegate`
+
+.. seealso:: :py:func:`crossHairsItemIsDelegate`
+
+.. seealso:: :py:func:`showCrossHairsItem`
+
+.. versionadded:: 3.42
+%End
+
 };
 
 /************************************************************************
