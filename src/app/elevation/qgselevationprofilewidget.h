@@ -62,6 +62,7 @@ class QgsLineSymbol;
 class QgsScaleComboBox;
 class QgsElevationProfileWidgetToggleEditingLayerAction;
 class QgsElevationProfileWidgetSaveLayerAction;
+class QgsElevationProfileWidgetDeleteFeaturesAction;
 
 class QgsAppElevationProfileLayerTreeView : public QgsElevationProfileLayerTreeView
 {
@@ -175,6 +176,7 @@ class QgsElevationProfileWidget : public QWidget
     QAction *mSubsectionsSymbologyAction = nullptr;
     QgsElevationProfileWidgetToggleEditingLayerAction *mToggleEditLayerAction = nullptr;
     QgsElevationProfileWidgetSaveLayerAction *mSaveLayerAction = nullptr;
+    QgsElevationProfileWidgetDeleteFeaturesAction *mDeleteFeaturesAction = nullptr;
     QMenu *mDistanceUnitMenu = nullptr;
 
     QgsDockableWidgetHelper *mDockableWidgetHelper = nullptr;
@@ -261,6 +263,19 @@ class QgsElevationProfileWidgetToggleEditingLayerAction : public QAction
   private:
     QgsVectorLayer *mLayer = nullptr;
     void handleCheckEnableStates();
+};
+
+class QgsElevationProfileWidgetDeleteFeaturesAction : public QAction
+{
+    Q_OBJECT
+
+  public:
+    QgsElevationProfileWidgetDeleteFeaturesAction( const QString &text, QWidget *parent = nullptr );
+    void setLayer( QgsVectorLayer *layer );
+
+  private:
+    QgsVectorLayer *mLayer = nullptr;
+    void handleEnableState();
 };
 
 #endif // QGSELEVATIONPROFILEWIDGET_H
