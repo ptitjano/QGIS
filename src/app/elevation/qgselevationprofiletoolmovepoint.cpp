@@ -41,6 +41,29 @@ QgsElevationProfileToolMovePoint::QgsElevationProfileToolMovePoint( QgsElevation
 
 QgsElevationProfileToolMovePoint::~QgsElevationProfileToolMovePoint() = default;
 
+void QgsElevationProfileToolMovePoint::keyPressEvent( QKeyEvent *e )
+{
+  if ( !e->isAutoRepeat() )
+  {
+    switch ( e->key() )
+    {
+      case Qt::Key_Control:
+        mAbscissaLocked = true;
+        QgisApp::instance()->statusBar()->showMessage( tr( "Abscissa locked" ) );
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+void QgsElevationProfileToolMovePoint::keyReleaseEvent( QKeyEvent * /* e */ )
+{
+  QgisApp::instance()->statusBar()->showMessage( tr( "Hold Ctrl key to lock the abscissa" ) );
+  qgis::down_cast<QgsElevationProfileCanvas *>( mCanvas )->setCrossHairsItemIsDelegate( false );
+  mAbscissaLocked = false;
+}
+
 void QgsElevationProfileToolMovePoint::plotReleaseEvent( QgsPlotMouseEvent *event )
 {
   event->ignore();
@@ -51,7 +74,18 @@ void QgsElevationProfileToolMovePoint::plotReleaseEvent( QgsPlotMouseEvent *even
 
   if ( mDragging )
   {
-    mRubberBand->finish( QPointF(), Qt::KeyboardModifiers() );
+    QgsPointXY snappedPoint;
+    if ( mAbscissaLocked )
+    {
+      QgsPointXY point = event->pos();
+      point.setX( mStartX );
+      snappedPoint = mCanvas->snapToPlot( point.toQPointF().toPoint() );
+      if ( snappedPoint.isEmpty() )
+        snappedPoint = point;
+    }
+    else
+      snappedPoint = event->snappedPoint();
+
     QgsGeometry geometry( std::make_unique<QgsPoint>( toMapCoordinates( snappedPoint ) ) );
 
     if ( geometry.isNull() || geometry.isEmpty() )
@@ -74,12 +108,14 @@ void QgsElevationProfileToolMovePoint::plotReleaseEvent( QgsPlotMouseEvent *even
     }
 
     mLayer->changeGeometry( mFeatureId, geometry );
+    mRubberBand->finish( QPointF(), Qt::KeyboardModifiers() );
   }
   else
   {
     if ( !findFeature( snappedPoint.toQPointF() ) )
       return;
 
+    mStartX = snappedPoint.toQPointF().x();
     mRubberBand->start( snappedPoint.toQPointF(), Qt::KeyboardModifiers() );
   }
   mDragging = !mDragging;
@@ -91,7 +127,25 @@ void QgsElevationProfileToolMovePoint::plotMoveEvent( QgsPlotMouseEvent *event )
   if ( !mDragging || !mRubberBand )
     return;
 
-  mRubberBand->update( event->snappedPoint().toQPointF(), Qt::KeyboardModifiers() );
+  QgsElevationProfileCanvas *profileCanvas = qgis::down_cast<QgsElevationProfileCanvas *>( mCanvas );
+  profileCanvas->setCrossHairsItemIsDelegate( mAbscissaLocked );
+
+  QgsPointXY snappedPoint;
+  if ( mAbscissaLocked )
+  {
+    QgsPointXY point = event->pos();
+    point.setX( mStartX );
+    snappedPoint = mCanvas->snapToPlot( point.toQPointF().toPoint() );
+    if ( snappedPoint.isEmpty() )
+      snappedPoint = point;
+
+    profileCanvas->showCrossHairsItem();
+    profileCanvas->setCrossHairsItemPoint( snappedPoint.toQPointF().toPoint() );
+  }
+  else
+    snappedPoint = event->snappedPoint();
+
+  mRubberBand->update( snappedPoint.toQPointF(), Qt::KeyboardModifiers() );
 }
 
 bool QgsElevationProfileToolMovePoint::findFeature( QPointF pos )
@@ -136,6 +190,18 @@ void QgsElevationProfileToolMovePoint::setLayer( QgsVectorLayer *layer )
   }
 
   toggleAction();
+}
+
+void QgsElevationProfileToolMovePoint::deactivate()
+{
+  QgisApp::instance()->statusBar()->clearMessage();
+  QgsPlotTool::deactivate();
+}
+
+void QgsElevationProfileToolMovePoint::activate()
+{
+  QgisApp::instance()->statusBar()->showMessage( tr( "Hold Ctrl key to lock the abscissa" ) );
+  QgsPlotTool::activate();
 }
 
 void QgsElevationProfileToolMovePoint::toggleAction()
