@@ -35,6 +35,10 @@ class QgsElevationProfileToolMovePoint : public QgsPlotTool
 
     void plotMoveEvent( QgsPlotMouseEvent *event ) override;
     void plotReleaseEvent( QgsPlotMouseEvent *event ) override;
+    void keyPressEvent( QKeyEvent *event ) override;
+    void keyReleaseEvent( QKeyEvent *e ) override;
+    void activate() override;
+    void deactivate() override;
 
     void setLayer( QgsVectorLayer *layer );
 
@@ -51,8 +55,8 @@ class QgsElevationProfileToolMovePoint : public QgsPlotTool
 
     std::unique_ptr< QgsPlotPointRubberBand > mRubberBand;
     bool mDragging = false;
-
+    bool mAbscissaLocked = false;
+    double mStartX;
 };
 
 #endif // QGSELEVATIONPROFILETOOLMOVEPOINT_H
-
