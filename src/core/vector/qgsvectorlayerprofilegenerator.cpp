@@ -431,7 +431,8 @@ void QgsVectorLayerProfileResults::renderResultsAsIndividualFeatures( QgsProfile
 
   const QgsRectangle clipPathRect( clipPath.boundingRect() );
 
-  auto renderResult = [&context, &clipPathRect]( const Feature &profileFeature, QgsMarkerSymbol *markerSymbol, QgsLineSymbol *lineSymbol, QgsFillSymbol *fillSymbol, bool selected ) {
+  auto renderResult = [&context, &clipPathRect]( const Feature & profileFeature, QgsMarkerSymbol * markerSymbol, QgsLineSymbol * lineSymbol, QgsFillSymbol * fillSymbol, bool selected )
+  {
     if ( profileFeature.crossSectionGeometry.isEmpty() )
       return;
 
