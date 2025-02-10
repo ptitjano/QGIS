@@ -1177,7 +1177,7 @@ namespace QgsWfs
           throw QgsRequestNotWellFormedException( QStringLiteral( "srsName error: '%1' is not valid." ).arg( srsName ) );
         }
 
-        json value;
+        ordered_json value;
         QgsJsonUtils::addCrsInfo( value, destinationCrs );
         for ( const auto &it : value.items() )
         {
