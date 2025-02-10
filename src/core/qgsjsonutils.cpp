@@ -13,6 +13,7 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "nlohmann/json_fwd.hpp"
 #include "qgsjsonutils.h"
 #include "moc_qgsjsonutils.cpp"
 #include "qgsfeatureiterator.h"
@@ -86,9 +87,9 @@ QString QgsJsonExporter::exportFeature( const QgsFeature &feature, const QVarian
   return QString::fromStdString( exportFeatureToJsonObject( feature, extraProperties, id ).dump( indent ) );
 }
 
-json QgsJsonExporter::exportFeatureToJsonObject( const QgsFeature &feature, const QVariantMap &extraProperties, const QVariant &id ) const
+ordered_json QgsJsonExporter::exportFeatureToJsonObject( const QgsFeature &feature, const QVariantMap &extraProperties, const QVariant &id ) const
 {
-  json featureJson
+  ordered_json featureJson
   {
     {  "type",  "Feature" },
   };
@@ -150,7 +151,7 @@ json QgsJsonExporter::exportFeatureToJsonObject( const QgsFeature &feature, cons
   }
 
   // build up properties element
-  json properties;
+  ordered_json properties;
   if ( mIncludeAttributes || !extraProperties.isEmpty() )
   {
     //read all attribute values from the feature
@@ -206,7 +207,7 @@ json QgsJsonExporter::exportFeatureToJsonObject( const QgsFeature &feature, cons
         QgsFeatureRequest req = relation.getRelatedFeaturesRequest( feature );
         req.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
         QgsVectorLayer *childLayer = relation.referencingLayer();
-        json relatedFeatureAttributes;
+        ordered_json relatedFeatureAttributes;
         if ( childLayer )
         {
           QgsFeatureIterator it = childLayer->getFeatures( req );
@@ -239,12 +240,12 @@ QString QgsJsonExporter::exportFeatures( const QgsFeatureList &features, int ind
   return QString::fromStdString( exportFeaturesToJsonObject( features ).dump( indent ) );
 }
 
-json QgsJsonExporter::exportFeaturesToJsonObject( const QgsFeatureList &features ) const
+ordered_json QgsJsonExporter::exportFeaturesToJsonObject( const QgsFeatureList &features ) const
 {
-  json data
+  ordered_json data
   {
     { "type", "FeatureCollection" },
-    { "features", json::array() }
+    { "features", ordered_json::array() }
   };
 
   QgsJsonUtils::addCrsInfo( data, mDestinationCrs );
@@ -349,10 +350,10 @@ QVariantList QgsJsonUtils::parseArray( const QString &json, QMetaType::Type type
   QVariantList result;
   try
   {
-    const auto jObj( json::parse( json.toStdString() ) );
+    const auto jObj( ordered_json::parse( json.toStdString() ) );
     if ( ! jObj.is_array() )
     {
-      throw json::parse_error::create( 0, 0, QStringLiteral( "JSON value must be an array" ).toStdString() );
+      throw ordered_json::parse_error::create( 0, 0, QStringLiteral( "JSON value must be an array" ).toStdString() );
     }
     for ( const auto &item : jObj )
     {
@@ -403,7 +404,7 @@ QVariantList QgsJsonUtils::parseArray( const QString &json, QMetaType::Type type
       }
     }
   }
-  catch ( json::parse_error &ex )
+  catch ( ordered_json::parse_error &ex )
   {
     errorMessage = ex.what();
     QgsLogger::warning( QStringLiteral( "Cannot parse json (%1): %2" ).arg( ex.what(), json ) );
@@ -417,7 +418,7 @@ QVariantList QgsJsonUtils::parseArray( const QString &json, QVariant::Type type 
   return parseArray( json, QgsVariantUtils::variantTypeToMetaType( type ) );
 }
 
-std::unique_ptr< QgsPoint> parsePointFromGeoJson( const json &coords )
+std::unique_ptr< QgsPoint> parsePointFromGeoJson( const ordered_json &coords )
 {
   if ( !coords.is_array() || coords.size() < 2 || coords.size() > 3 )
   {
@@ -438,7 +439,7 @@ std::unique_ptr< QgsPoint> parsePointFromGeoJson( const json &coords )
   }
 }
 
-std::unique_ptr< QgsLineString> parseLineStringFromGeoJson( const json &coords )
+std::unique_ptr< QgsLineString> parseLineStringFromGeoJson( const ordered_json &coords )
 {
   if ( !coords.is_array() || coords.size() < 2 )
   {
@@ -488,7 +489,7 @@ std::unique_ptr< QgsLineString> parseLineStringFromGeoJson( const json &coords )
   return std::make_unique< QgsLineString >( x, y, hasZ ? z : QVector<double>() );
 }
 
-std::unique_ptr< QgsPolygon > parsePolygonFromGeoJson( const json &coords )
+std::unique_ptr< QgsPolygon > parsePolygonFromGeoJson( const ordered_json &coords )
 {
   if ( !coords.is_array() || coords.size() < 1 )
   {
@@ -516,7 +517,7 @@ std::unique_ptr< QgsPolygon > parsePolygonFromGeoJson( const json &coords )
   return polygon;
 }
 
-std::unique_ptr< QgsAbstractGeometry > parseGeometryFromGeoJson( const json &geometry )
+std::unique_ptr< QgsAbstractGeometry > parseGeometryFromGeoJson( const ordered_json &geometry )
 {
   if ( !geometry.is_object() )
   {
@@ -539,7 +540,7 @@ std::unique_ptr< QgsAbstractGeometry > parseGeometryFromGeoJson( const json &geo
       return nullptr;
     }
 
-    const json &coords = geometry["coordinates"];
+    const ordered_json &coords = geometry["coordinates"];
     return parsePointFromGeoJson( coords );
   }
   else if ( type.compare( QLatin1String( "MultiPoint" ), Qt::CaseInsensitive ) == 0 )
@@ -550,7 +551,7 @@ std::unique_ptr< QgsAbstractGeometry > parseGeometryFromGeoJson( const json &geo
       return nullptr;
     }
 
-    const json &coords = geometry["coordinates"];
+    const ordered_json &coords = geometry["coordinates"];
 
     if ( !coords.is_array() )
     {
@@ -580,7 +581,7 @@ std::unique_ptr< QgsAbstractGeometry > parseGeometryFromGeoJson( const json &geo
       return nullptr;
     }
 
-    const json &coords = geometry["coordinates"];
+    const ordered_json &coords = geometry["coordinates"];
     return parseLineStringFromGeoJson( coords );
   }
   else if ( type.compare( QLatin1String( "MultiLineString" ), Qt::CaseInsensitive ) == 0 )
@@ -591,7 +592,7 @@ std::unique_ptr< QgsAbstractGeometry > parseGeometryFromGeoJson( const json &geo
       return nullptr;
     }
 
-    const json &coords = geometry["coordinates"];
+    const ordered_json &coords = geometry["coordinates"];
 
     if ( !coords.is_array() )
     {
@@ -621,7 +622,7 @@ std::unique_ptr< QgsAbstractGeometry > parseGeometryFromGeoJson( const json &geo
       return nullptr;
     }
 
-    const json &coords = geometry["coordinates"];
+    const ordered_json &coords = geometry["coordinates"];
     if ( !coords.is_array() || coords.size() < 1 )
     {
       QgsDebugError( QStringLiteral( "JSON Polygon geometry coordinates must be an array of at least one ring" ) );
@@ -638,7 +639,7 @@ std::unique_ptr< QgsAbstractGeometry > parseGeometryFromGeoJson( const json &geo
       return nullptr;
     }
 
-    const json &coords = geometry["coordinates"];
+    const ordered_json &coords = geometry["coordinates"];
 
     if ( !coords.is_array() )
     {
@@ -668,7 +669,7 @@ std::unique_ptr< QgsAbstractGeometry > parseGeometryFromGeoJson( const json &geo
       return nullptr;
     }
 
-    const json &geometries = geometry["geometries"];
+    const ordered_json &geometries = geometry["geometries"];
 
     if ( !geometries.is_array() )
     {
@@ -695,7 +696,7 @@ std::unique_ptr< QgsAbstractGeometry > parseGeometryFromGeoJson( const json &geo
   return nullptr;
 }
 
-QgsGeometry QgsJsonUtils::geometryFromGeoJson( const json &geometry )
+QgsGeometry QgsJsonUtils::geometryFromGeoJson( const ordered_json &geometry )
 {
   if ( !geometry.is_object() )
   {
@@ -710,27 +711,27 @@ QgsGeometry QgsJsonUtils::geometryFromGeoJson( const QString &geometry )
 {
   try
   {
-    const auto jObj( json::parse( geometry.toStdString() ) );
+    const auto jObj( ordered_json::parse( geometry.toStdString() ) );
     return geometryFromGeoJson( jObj );
   }
-  catch ( json::parse_error &ex )
+  catch ( ordered_json::parse_error &ex )
   {
     QgsDebugError( QStringLiteral( "Cannot parse json (%1): %2" ).arg( geometry, ex.what() ) );
     return QgsGeometry();
   }
 }
 
-json QgsJsonUtils::jsonFromVariant( const QVariant &val )
+ordered_json QgsJsonUtils::jsonFromVariant( const QVariant &val )
 {
   if ( QgsVariantUtils::isNull( val ) )
   {
     return nullptr;
   }
-  json j;
+  ordered_json j;
   if ( val.userType() == QMetaType::Type::QVariantMap )
   {
     const QVariantMap &vMap = val.toMap();
-    json jMap = json::object();
+    ordered_json jMap = ordered_json::object();
     for ( auto it = vMap.constBegin(); it != vMap.constEnd(); it++ )
     {
       jMap[ it.key().toStdString() ] = jsonFromVariant( it.value() );
@@ -740,7 +741,7 @@ json QgsJsonUtils::jsonFromVariant( const QVariant &val )
   else if ( val.userType() == QMetaType::Type::QVariantList || val.userType() == QMetaType::Type::QStringList )
   {
     const QVariantList &vList = val.toList();
-    json jList = json::array();
+    ordered_json jList = ordered_json::array();
     for ( const auto &v : vList )
     {
       jList.push_back( jsonFromVariant( v ) );
@@ -793,22 +794,22 @@ QVariant QgsJsonUtils::parseJson( const std::string &jsonString, QString &error 
   error.clear();
   try
   {
-    const json j = json::parse( jsonString );
+    const ordered_json j = ordered_json::parse( jsonString );
     return jsonToVariant( j );
   }
-  catch ( json::parse_error &ex )
+  catch ( ordered_json::parse_error &ex )
   {
     error = QString::fromStdString( ex.what() );
   }
   return QVariant();
 }
 
-QVariant QgsJsonUtils::jsonToVariant( const json &value )
+QVariant QgsJsonUtils::jsonToVariant( const ordered_json &value )
 {
   // tracks whether entire json string is a primitive
   bool isPrimitive = true;
 
-  std::function<QVariant( json )> _parser { [ & ]( json jObj ) -> QVariant {
+  std::function<QVariant( ordered_json )> _parser { [ & ]( ordered_json jObj ) -> QVariant {
       QVariant result;
       if ( jObj.is_array() )
       {
@@ -902,10 +903,10 @@ QVariant QgsJsonUtils::parseJson( const QString &jsonString )
   return parseJson( jsonString.toStdString() );
 }
 
-json QgsJsonUtils::exportAttributesToJsonObject( const QgsFeature &feature, QgsVectorLayer *layer, const QVector<QVariant> &attributeWidgetCaches, bool useFieldFormatters )
+ordered_json QgsJsonUtils::exportAttributesToJsonObject( const QgsFeature &feature, QgsVectorLayer *layer, const QVector<QVariant> &attributeWidgetCaches, bool useFieldFormatters )
 {
   QgsFields fields = feature.fields();
-  json attrs;
+  ordered_json attrs;
   for ( int i = 0; i < fields.count(); ++i )
   {
     QVariant val = feature.attributes().at( i );
@@ -922,7 +923,7 @@ json QgsJsonUtils::exportAttributesToJsonObject( const QgsFeature &feature, QgsV
   return attrs;
 }
 
-void QgsJsonUtils::addCrsInfo( json &value, const QgsCoordinateReferenceSystem &crs )
+void QgsJsonUtils::addCrsInfo( ordered_json &value, const QgsCoordinateReferenceSystem &crs )
 {
   // When user request EPSG:4326 we return a compliant CRS84 lon/lat GeoJSON
   // so no need to add CRS information
