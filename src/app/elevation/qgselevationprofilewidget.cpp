@@ -355,6 +355,16 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
   connect( movePointAction, &QAction::triggered, this, [=] { mCanvas->setTool( mMovePointTool ); } );
   toolBar->addAction( movePointAction );
 
+  // show Inflection Lines Action
+  mShowInflectionLinesAction = new QAction( tr( "Show Inflection Lines" ), this );
+  mShowInflectionLinesAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mIconLineLayer.svg" ) ) );
+  mShowInflectionLinesAction->setCheckable( true );
+  mShowInflectionLinesAction->setChecked( false );
+  mShowInflectionLinesAction->setEnabled( false );
+  connect( mShowInflectionLinesAction, &QAction::triggered, this, [=] { mCanvas->setInflectionLinesEnabled( mShowInflectionLinesAction->isChecked() ); } );
+  toolBar->addAction( mShowInflectionLinesAction );
+
+
   toolBar->addSeparator();
 
   QAction *exportAsPdfAction = new QAction( tr( "Export as PDF" ), this );
@@ -706,6 +716,7 @@ void QgsElevationProfileWidget::setProfileCurve( const QgsGeometry &curve, bool 
 {
   mNudgeLeftAction->setEnabled( !curve.isEmpty() );
   mNudgeRightAction->setEnabled( !curve.isEmpty() );
+  mShowInflectionLinesAction->setEnabled( !curve.isEmpty() );
 
   mProfileCurve = curve;
   createOrUpdateRubberBands();
@@ -771,6 +782,7 @@ void QgsElevationProfileWidget::clear()
   mCanvas->clear();
   mNudgeLeftAction->setEnabled( false );
   mNudgeRightAction->setEnabled( false );
+  mShowInflectionLinesAction->setEnabled( false );
   mProfileCurve = QgsGeometry();
 }
 
