@@ -251,6 +251,13 @@ readability with the new background color.
 .. versionadded:: 3.34
 %End
 
+    void setInflectionLinesEnabled( bool enabled );
+%Docstring
+Sets whether inflection lines are displayed.
+
+.. versionadded:: 3.44
+%End
+
   signals:
 
     void activeJobCountChanged( int count );

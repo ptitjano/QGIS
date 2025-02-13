@@ -264,6 +264,13 @@ class GUI_EXPORT QgsElevationProfileCanvas : public QgsPlotCanvas
      */
     void setBackgroundColor( const QColor &color );
 
+    /**
+     * Sets whether inflection lines are displayed.
+     *
+     * \since QGIS 3.44
+     */
+    void setInflectionLinesEnabled( bool enabled );
+
   signals:
 
     /**
