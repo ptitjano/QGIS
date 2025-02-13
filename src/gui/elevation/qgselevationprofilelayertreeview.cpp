@@ -29,10 +29,9 @@
 #include "qgsmarkersymbol.h"
 #include "qgsfillsymbol.h"
 #include "qgsmaplayerutils.h"
+#include "qgsapplication.h"
 
 #include <QHeaderView>
-#include <QContextMenuEvent>
-#include <QMenu>
 #include <QMimeData>
 
 
@@ -52,6 +51,7 @@ QVariant QgsElevationProfileLayerTreeModel::data( const QModelIndex &index, int 
     case Qt::DecorationRole:
     {
       QgsLayerTreeNode *node = index2node( index );
+      bool addEditSymbol = false;
 
       if ( node && node->nodeType() == QgsLayerTreeNode::NodeLayer )
       {
@@ -67,6 +67,9 @@ QVariant QgsElevationProfileLayerTreeModel::data( const QModelIndex &index, int 
             {
               QgsVectorLayerElevationProperties *elevationProperties = qgis::down_cast<QgsVectorLayerElevationProperties *>( layer->elevationProperties() );
               QgsVectorLayer *vLayer = qobject_cast<QgsVectorLayer *>( layer );
+
+              if ( vLayer->geometryType() == Qgis::GeometryType::Point && vLayer->isEditable() )
+                addEditSymbol = true;
 
               switch ( elevationProperties->type() )
               {
@@ -197,7 +200,13 @@ QVariant QgsElevationProfileLayerTreeModel::data( const QModelIndex &index, int 
           if ( !symbol )
             break;
 
-          const QPixmap pix = QgsSymbolLayerUtils::symbolPreviewPixmap( symbol.get(), QSize( iconSize, iconSize ), 0, context.get() );
+          QPixmap pix = QgsSymbolLayerUtils::symbolPreviewPixmap( symbol.get(), QSize( iconSize, iconSize ), 0, context.get() );
+          if ( addEditSymbol )
+          {
+            QPainter painter( &pix );
+            painter.drawPixmap( 0, 0, iconSize, iconSize, QgsApplication::getThemePixmap( layer->isModified() ? QStringLiteral( "/mIconEditableEdits.svg" ) : QStringLiteral( "/mActionToggleEditing.svg" ) ) );
+            painter.end();
+          }
           return QIcon( pix );
         }
       }

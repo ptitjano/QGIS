@@ -264,6 +264,13 @@ class GUI_EXPORT QgsElevationProfileCanvas : public QgsPlotCanvas
      */
     void setBackgroundColor( const QColor &color );
 
+    /**
+     * Sets whether inflection lines are displayed.
+     *
+     * \since QGIS 3.44
+     */
+    void setInflectionLinesEnabled( bool enabled );
+
   signals:
 
     /**
@@ -294,6 +301,49 @@ class GUI_EXPORT QgsElevationProfileCanvas : public QgsPlotCanvas
      * Sets whether snapping of cursor points is enabled.
      */
     void setSnappingEnabled( bool enabled );
+
+    /**
+     * Sets wether the cross hairs item is controlled externally
+     *
+     * \since QGIS 3.42
+     */
+    void setCrossHairsItemIsDelegate( bool enabled );
+
+    /**
+     * Returns wether the cross hairs item is controlled externally
+     *
+     * \since QGIS 3.42
+     */
+    bool crossHairsItemIsDelegate();
+
+    /**
+     * Sets the cross hairs item point (if cross hairs items is controlled externally)
+     *
+     * \see setCrossHairsItemIsDelegate()
+     * \see crossHairsItemIsDelegate()
+     * \since QGIS 3.42
+     */
+    void setCrossHairsItemPoint( QPoint point );
+
+    /**
+     * Show the cross hairs item if cross hairs items is controlled externally)
+     *
+     * \see setCrossHairsItemIsDelegate()
+     * \see crossHairsItemIsDelegate()
+     * \see hideCrossHairsItem()
+     * \since QGIS 3.42
+     */
+    void showCrossHairsItem();
+
+    /**
+     * Hide the cross hairs item if cross hairs items is controlled externally)
+     *
+     * \see setCrossHairsItemIsDelegate()
+     * \see crossHairsItemIsDelegate()
+     * \see showCrossHairsItem()
+     * \since QGIS 3.42
+     */
+    void hideCrossHairsItem();
 
   private slots:
 
@@ -345,6 +395,9 @@ class GUI_EXPORT QgsElevationProfileCanvas : public QgsPlotCanvas
     bool mZoomFullWhenJobFinished = true;
 
     bool mForceRegenerationAfterCurrentJobCompletes = false;
+
+    // set to true if mCrossHairsItem is controlled externally
+    bool mCrossHairsItemIsDelegate = false;
 
     static constexpr double MAX_ERROR_PIXELS = 2;
 };
