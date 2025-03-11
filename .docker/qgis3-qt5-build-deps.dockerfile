@@ -175,6 +175,7 @@ ENV PATH="/opt/mssql-tools18/bin:${PATH}"
 RUN  apt-get update \
      && DEBIAN_FRONTEND=noninteractive apt-get install -y \
      ninja-build \
+     libgdal-dev \
      libproj-dev
 ENV PDAL_VERSION=2.8.4
 RUN curl -L https://github.com/PDAL/PDAL/releases/download/${PDAL_VERSION}/PDAL-${PDAL_VERSION}-src.tar.gz --output PDAL-${PDAL_VERSION}-src.tar.gz \
@@ -201,7 +202,6 @@ RUN  apt-get update \
     libexiv2-dev \
     libexpat1-dev \
     libfcgi-dev \
-    libgdal-dev \
     libgeos-dev \
     libgsl-dev \
     libpq-dev \
