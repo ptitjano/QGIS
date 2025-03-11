@@ -229,12 +229,11 @@ RUN curl -L https://github.com/PDAL/PDAL/releases/download/${PDAL_VERSION}/PDAL-
     && mkdir pdal \
     && tar zxf PDAL-${PDAL_VERSION}-src.tar.gz -C pdal --strip-components=1 \
     && rm -f PDAL-${PDAL_VERSION}-src.tar.gz \
-    && mkdir -p pdal/build
-RUN cd pdal/build \
+    && mkdir -p pdal/build \
+    && cd pdal/build \
     && cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DWITH_TESTS=OFF .. \
     && ninja \
     && ninja install
-    ## - rm -rf include/pdal && cp -r /tmp/pdal/include/pdal include/ && cp /tmp/pdal/lib/libpdalcpp.so lib/ && rm -rf /tmp/pdal/
 
 ENV PATH="/usr/local/bin:${PATH}"
 
