@@ -14,7 +14,6 @@ LABEL Description="Docker container with QGIS dependencies" Vendor="QGIS.org" Ve
 
 RUN  apt-get update \
   && apt-get install -y software-properties-common \
-  && add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable \
   && apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     apt-transport-https \
@@ -57,7 +56,6 @@ RUN  apt-get update \
     'libzip4|libzip5|libzip4t64' \
     lighttpd \
     locales \
-    pdal \
     poppler-utils \
     python3-future \
     python3-gdal \
@@ -146,6 +144,7 @@ FROM binary-for-oracle as binary-only
 
 RUN  apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    grass \
     iproute2 \
     postgresql-client \
     spawn-fcgi \
@@ -171,6 +170,24 @@ RUN apt-get update
 RUN ACCEPT_EULA=Y apt-get install -y --allow-unauthenticated msodbcsql18 mssql-tools18
 ENV PATH="/opt/mssql-tools18/bin:${PATH}"
 
+# PDAL is not available in ubuntu 24.04
+# Install it from source
+RUN  apt-get update \
+     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+     ninja-build \
+     libgdal-dev \
+     libproj-dev
+ENV PDAL_VERSION=2.8.4
+RUN curl -L https://github.com/PDAL/PDAL/releases/download/${PDAL_VERSION}/PDAL-${PDAL_VERSION}-src.tar.gz --output PDAL-${PDAL_VERSION}-src.tar.gz \
+    && mkdir pdal \
+    && tar zxf PDAL-${PDAL_VERSION}-src.tar.gz -C pdal --strip-components=1 \
+    && rm -f PDAL-${PDAL_VERSION}-src.tar.gz \
+    && mkdir -p pdal/build \
+    && cd pdal/build \
+    && cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DWITH_TESTS=OFF .. \
+    && ninja \
+    && ninja install
+
 FROM binary-only
 
 RUN  apt-get update \
@@ -180,16 +197,14 @@ RUN  apt-get update \
     clang \
     cmake \
     flex \
+    grass-dev \
     libdraco-dev \
     libexiv2-dev \
     libexpat1-dev \
     libfcgi-dev \
-    libgdal-dev \
     libgeos-dev \
     libgsl-dev \
-    libpdal-dev \
     libpq-dev \
-    libproj-dev \
     libprotobuf-dev \
     libqca-qt5-2-dev \
     libqt5opengl5-dev \
@@ -204,7 +219,6 @@ RUN  apt-get update \
     libsqlite3-mod-spatialite \
     libzip-dev \
     libzstd-dev \
-    ninja-build \
     protobuf-compiler \
     pyqt5-dev \
     pyqt5-dev-tools \
@@ -223,7 +237,7 @@ RUN  apt-get update \
     qtbase5-private-dev \
     opencl-headers \
     ocl-icd-opencl-dev \
-  && apt-get clean
+    && apt-get clean
 
 ENV PATH="/usr/local/bin:${PATH}"
 
