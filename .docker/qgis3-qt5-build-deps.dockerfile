@@ -224,7 +224,7 @@ RUN  apt-get update \
 
 # PDAL is not available in ubuntu 24.04
 # Install it from source
-ENV PDAL_VERSION="2.8.4"
+ENV PDAL_VERSION=2.8.4
 RUN wget -q https://github.com/PDAL/PDAL/releases/download/${PDAL_VERSION}/PDAL-${PDAL_VERSION}-src.tar.gz
 RUN mkdir pdal && tar zxf PDAL-${PDAL_VERSION}-src.tar.gz -C pdal --strip-components=1 && rm -f PDAL-${PDAL_VERSION}-src.tar.gz \
     && mkdir -p pdal/build && cd "$_" \
