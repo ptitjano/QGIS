@@ -60,7 +60,7 @@ jobs:
             experimental: false
             unity-builds: ON
 
-          - distro-version: '39'
+          - distro-version: '40'
             qt-version: 6
             run-tests: true
             with-qt6: ON
@@ -252,7 +252,7 @@ jobs:
             docker-target: binary-only
 
           - qt-version: 6
-            distro-version: 39
+            distro-version: 40
             docker-target: binary-only
 
           - qt-version: 5
