@@ -170,6 +170,19 @@ RUN apt-get update
 RUN ACCEPT_EULA=Y apt-get install -y --allow-unauthenticated msodbcsql18 mssql-tools18
 ENV PATH="/opt/mssql-tools18/bin:${PATH}"
 
+# PDAL is not available in ubuntu 24.04
+# Install it from source
+ENV PDAL_VERSION=2.8.4
+RUN curl -L https://github.com/PDAL/PDAL/releases/download/${PDAL_VERSION}/PDAL-${PDAL_VERSION}-src.tar.gz --output PDAL-${PDAL_VERSION}-src.tar.gz \
+    && mkdir pdal \
+    && tar zxf PDAL-${PDAL_VERSION}-src.tar.gz -C pdal --strip-components=1 \
+    && rm -f PDAL-${PDAL_VERSION}-src.tar.gz \
+    && mkdir -p pdal/build \
+    && cd pdal/build \
+    && cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DWITH_TESTS=OFF .. \
+    && ninja \
+    && ninja install
+
 FROM binary-only
 
 RUN  apt-get update \
@@ -223,19 +236,6 @@ RUN  apt-get update \
     opencl-headers \
     ocl-icd-opencl-dev \
     && apt-get clean
-
-# PDAL is not available in ubuntu 24.04
-# Install it from source
-ENV PDAL_VERSION=2.8.4
-RUN curl -L https://github.com/PDAL/PDAL/releases/download/${PDAL_VERSION}/PDAL-${PDAL_VERSION}-src.tar.gz --output PDAL-${PDAL_VERSION}-src.tar.gz \
-    && mkdir pdal \
-    && tar zxf PDAL-${PDAL_VERSION}-src.tar.gz -C pdal --strip-components=1 \
-    && rm -f PDAL-${PDAL_VERSION}-src.tar.gz \
-    && mkdir -p pdal/build \
-    && cd pdal/build \
-    && cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DWITH_TESTS=OFF .. \
-    && ninja \
-    && ninja install
 
 ENV PATH="/usr/local/bin:${PATH}"
 
