@@ -225,13 +225,15 @@ RUN  apt-get update \
 # PDAL is not available in ubuntu 24.04
 # Install it from source
 ENV PDAL_VERSION=2.8.4
-RUN curl -L https://github.com/PDAL/PDAL/releases/download/${PDAL_VERSION}/PDAL-${PDAL_VERSION}-src.tar.gz --output PDAL-${PDAL_VERSION}-src.tar.gz
-RUN mkdir pdal && tar zxf PDAL-${PDAL_VERSION}-src.tar.gz -C pdal --strip-components=1 && rm -f PDAL-${PDAL_VERSION}-src.tar.gz \
-    && mkdir -p pdal/build \
-    && cd "$_"
-RUN LC_ALL=C cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DWITH_TESTS=OFF ..
-RUN ninja
-RUN ninja install
+RUN curl -L https://github.com/PDAL/PDAL/releases/download/${PDAL_VERSION}/PDAL-${PDAL_VERSION}-src.tar.gz --output PDAL-${PDAL_VERSION}-src.tar.gz \
+    && mkdir pdal \
+    && tar zxf PDAL-${PDAL_VERSION}-src.tar.gz -C pdal --strip-components=1 \
+    && rm -f PDAL-${PDAL_VERSION}-src.tar.gz \
+    && mkdir -p pdal/build
+RUN cd pdal/build \
+    && cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DWITH_TESTS=OFF .. \
+    && ninja \
+    && ninja install
     ## - rm -rf include/pdal && cp -r /tmp/pdal/include/pdal include/ && cp /tmp/pdal/lib/libpdalcpp.so lib/ && rm -rf /tmp/pdal/
 
 ENV PATH="/usr/local/bin:${PATH}"
