@@ -56,6 +56,7 @@ RUN  apt-get update \
     'libzip4|libzip5|libzip4t64' \
     lighttpd \
     locales \
+    ninja-build \
     poppler-utils \
     python3-future \
     python3-gdal \
@@ -216,7 +217,6 @@ RUN  apt-get update \
     libsqlite3-mod-spatialite \
     libzip-dev \
     libzstd-dev \
-    ninja-build \
     protobuf-compiler \
     pyqt5-dev \
     pyqt5-dev-tools \
