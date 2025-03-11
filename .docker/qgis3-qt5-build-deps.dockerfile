@@ -56,7 +56,6 @@ RUN  apt-get update \
     'libzip4|libzip5|libzip4t64' \
     lighttpd \
     locales \
-    ninja-build \
     poppler-utils \
     python3-future \
     python3-gdal \
@@ -173,6 +172,10 @@ ENV PATH="/opt/mssql-tools18/bin:${PATH}"
 
 # PDAL is not available in ubuntu 24.04
 # Install it from source
+RUN  apt-get update \
+     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+     ninja-build \
+     libproj-dev
 ENV PDAL_VERSION=2.8.4
 RUN curl -L https://github.com/PDAL/PDAL/releases/download/${PDAL_VERSION}/PDAL-${PDAL_VERSION}-src.tar.gz --output PDAL-${PDAL_VERSION}-src.tar.gz \
     && mkdir pdal \
@@ -202,7 +205,6 @@ RUN  apt-get update \
     libgeos-dev \
     libgsl-dev \
     libpq-dev \
-    libproj-dev \
     libprotobuf-dev \
     libqca-qt5-2-dev \
     libqt5opengl5-dev \
