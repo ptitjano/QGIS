@@ -141,7 +141,9 @@ class GdalUtils:
         progress_string_list = [str(a) for a in range(0, 100)]
 
         def on_stdout(ba):
+            print("ON STDOUT")
             val = ba.data().decode("UTF-8")
+            print(val)
             # catch progress reports
             if val == "100 - done.":
                 on_stdout.progress = 100
@@ -163,10 +165,13 @@ class GdalUtils:
 
             on_stdout.buffer += val
             if on_stdout.buffer.endswith("\n") or on_stdout.buffer.endswith("\r"):
+                print("ON FLUSH")
                 # flush buffer
                 feedback.pushConsoleInfo(on_stdout.buffer.rstrip())
                 loglines.append(on_stdout.buffer.rstrip())
                 on_stdout.buffer = ""
+
+            print("ON STDOUT FINI")
 
         on_stdout.progress = 0
         on_stdout.buffer = ""
@@ -184,6 +189,8 @@ class GdalUtils:
         on_stderr.buffer = ""
 
         command, *arguments = QgsRunProcess.splitCommand(fused_command)
+        print("command", command)
+        print("arguments", arguments)
         proc = QgsBlockingProcess(command, arguments)
         proc.setStdOutHandler(on_stdout)
         proc.setStdErrHandler(on_stderr)
