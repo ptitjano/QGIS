@@ -196,6 +196,18 @@ class GdalUtils:
         proc.setStdErrHandler(on_stderr)
 
         res = proc.run(feedback)
+        print("C FINI")
+
+        print("OUT")
+        print(on_stdout.buffer)
+        if on_stdout.buffer:
+            loglines.append(on_stdout.buffer.rstrip())
+
+        print("ERR")
+        print(on_stderr.buffer)
+        if on_stderr.buffer:
+            loglines.append(on_stderr.buffer.rstrip())
+
         if feedback.isCanceled() and res != 0:
             feedback.pushInfo(GdalUtils.tr("Process was canceled and did not complete"))
         elif (
