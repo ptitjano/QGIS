@@ -56,6 +56,7 @@ class QgsLayoutItemElevationProfilePlot : public Qgs2DPlot
     {
       if ( mRenderer )
       {
+        rc.setShowSelection( false ); // don't render selected features with selected rendering
         rc.painter()->translate( plotArea.left(), plotArea.top() );
         mRenderer->render( rc, plotArea.width(), plotArea.height(), xMinimum() * xScale, xMaximum() * xScale, yMinimum(), yMaximum() );
         rc.painter()->translate( -plotArea.left(), -plotArea.top() );

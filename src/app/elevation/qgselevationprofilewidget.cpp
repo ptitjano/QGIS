@@ -21,6 +21,7 @@
 #include "qgselevationprofilecanvas.h"
 #include "qgsdockablewidgethelper.h"
 #include "qgsmapcanvas.h"
+#include "qgsmaplayer.h"
 #include "qgsmaplayerelevationproperties.h"
 #include "qgsmaplayermodel.h"
 #include "qgsmaptoolprofilecurve.h"
@@ -50,6 +51,9 @@
 #include "qgsshortcutsmanager.h"
 #include "qgselevationprofiletoolidentify.h"
 #include "qgselevationprofiletoolmeasure.h"
+#include "qgselevationprofiletooladdpoint.h"
+#include "qgselevationprofiletoolmovepoint.h"
+#include "qgselevationprofiletoolselectfeatures.h"
 #include "qgssettingsentryimpl.h"
 #include "qgssettingstree.h"
 #include "qgsmaplayerproxymodel.h"
@@ -180,9 +184,14 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
     }
   } );
 
+  connect( mLayerTreeView->selectionModel(), &QItemSelectionModel::selectionChanged, this, &QgsElevationProfileWidget::onLayerSelectionChanged );
+
   mZoomTool = new QgsPlotToolZoom( mCanvas );
   mXAxisZoomTool = new QgsPlotToolXAxisZoom( mCanvas );
   mIdentifyTool = new QgsElevationProfileToolIdentify( mCanvas );
+  mAddPointTool = new QgsElevationProfileToolAddPoint( mCanvas );
+  mMovePointTool = new QgsElevationProfileToolMovePoint( mCanvas );
+  mSelectFeaturesTool = new QgsElevationProfileToolSelectFeatures( mCanvas );
 
   mCanvas->setTool( mIdentifyTool );
 
@@ -251,13 +260,13 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
 
   toolBar->addSeparator();
 
-  QAction *identifyToolAction = new QAction( tr( "Identify Features" ), this );
-  identifyToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionIdentify.svg" ) ) );
-  identifyToolAction->setCheckable( true );
-  identifyToolAction->setChecked( true );
-  mIdentifyTool->setAction( identifyToolAction );
-  connect( identifyToolAction, &QAction::triggered, mPanTool, [=] { mCanvas->setTool( mIdentifyTool ); } );
-  toolBar->addAction( identifyToolAction );
+  QAction *identifyAction = new QAction( tr( "Identify Features" ), this );
+  identifyAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionIdentify.svg" ) ) );
+  identifyAction->setCheckable( true );
+  identifyAction->setChecked( true );
+  mIdentifyTool->setAction( identifyAction );
+  connect( identifyAction, &QAction::triggered, mIdentifyTool, [=] { mCanvas->setTool( mIdentifyTool ); } );
+  toolBar->addAction( identifyAction );
 
   QAction *panToolAction = new QAction( tr( "Pan" ), this );
   panToolAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionPan.svg" ) ) );
@@ -303,6 +312,58 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( const QString &name )
     mCanvas->setTool( mMeasureTool.get() );
   } );
   toolBar->addAction( measureToolAction );
+
+  toolBar->addSeparator();
+
+  // Select features action
+  QAction *selectFeaturesAction = new QAction( tr( "Select Features" ), this );
+  selectFeaturesAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionSelectRectangle.svg" ) ) );
+  selectFeaturesAction->setCheckable( true );
+  selectFeaturesAction->setChecked( false );
+  selectFeaturesAction->setEnabled( false );
+  mSelectFeaturesTool->setAction( selectFeaturesAction );
+  connect( selectFeaturesAction, &QAction::triggered, this, [=] { mCanvas->setTool( mSelectFeaturesTool ); } );
+  toolBar->addAction( selectFeaturesAction );
+
+  // Save and Edit layer actions
+  mToggleEditLayerAction = new QgsElevationProfileWidgetToggleEditingLayerAction( tr( "Toggle Editing" ), this );
+  toolBar->addAction( mToggleEditLayerAction );
+  mSaveLayerAction = new QgsElevationProfileWidgetSaveLayerAction( tr( "Save Editing" ), this );
+  toolBar->addAction( mSaveLayerAction );
+
+  // Delete features action
+  mDeleteFeaturesAction = new QgsElevationProfileWidgetDeleteFeaturesAction( tr( "Delete Features" ), this );
+  toolBar->addAction( mDeleteFeaturesAction );
+
+  // Add Feature Action
+  QAction *addPointAction = new QAction( tr( "Add Point Features" ), this );
+  addPointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCapturePoint.svg" ) ) );
+  addPointAction->setCheckable( true );
+  addPointAction->setChecked( false );
+  addPointAction->setEnabled( false );
+  mAddPointTool->setAction( addPointAction );
+  connect( addPointAction, &QAction::triggered, this, [=] { mCanvas->setTool( mAddPointTool ); } );
+  toolBar->addAction( addPointAction );
+
+  // Move Feature Action
+  QAction *movePointAction = new QAction( tr( "Move Point Features" ), this );
+  movePointAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionMoveFeaturePoint.svg" ) ) );
+  movePointAction->setCheckable( true );
+  movePointAction->setChecked( false );
+  movePointAction->setEnabled( false );
+  mMovePointTool->setAction( movePointAction );
+  connect( movePointAction, &QAction::triggered, this, [=] { mCanvas->setTool( mMovePointTool ); } );
+  toolBar->addAction( movePointAction );
+
+  // show Inflection Lines Action
+  mShowInflectionLinesAction = new QAction( tr( "Show Inflection Lines" ), this );
+  mShowInflectionLinesAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mIconLineLayer.svg" ) ) );
+  mShowInflectionLinesAction->setCheckable( true );
+  mShowInflectionLinesAction->setChecked( false );
+  mShowInflectionLinesAction->setEnabled( false );
+  connect( mShowInflectionLinesAction, &QAction::triggered, this, [=] { mCanvas->setInflectionLinesEnabled( mShowInflectionLinesAction->isChecked() ); } );
+  toolBar->addAction( mShowInflectionLinesAction );
+
 
   toolBar->addSeparator();
 
@@ -656,6 +717,7 @@ void QgsElevationProfileWidget::setProfileCurve( const QgsGeometry &curve, bool 
 {
   mNudgeLeftAction->setEnabled( !curve.isEmpty() );
   mNudgeRightAction->setEnabled( !curve.isEmpty() );
+  mShowInflectionLinesAction->setEnabled( !curve.isEmpty() );
 
   mProfileCurve = curve;
   createOrUpdateRubberBands();
@@ -721,6 +783,7 @@ void QgsElevationProfileWidget::clear()
   mCanvas->clear();
   mNudgeLeftAction->setEnabled( false );
   mNudgeRightAction->setEnabled( false );
+  mShowInflectionLinesAction->setEnabled( false );
   mProfileCurve = QgsGeometry();
 }
 
@@ -1109,6 +1172,27 @@ void QgsAppElevationProfileLayerTreeView::contextMenuEvent( QContextMenuEvent *e
   {
     QMenu *menu = new QMenu();
 
+    if ( QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer );
+         vectorLayer && vectorLayer->geometryType() == Qgis::GeometryType::Point )
+    {
+      const Qgis::VectorProviderCapabilities capabilities = vectorLayer->dataProvider()->capabilities();
+      const bool canAddFeatures = capabilities & Qgis::VectorProviderCapability::AddFeatures;
+      const bool canChangeGeometries = capabilities & Qgis::VectorProviderCapability::ChangeGeometries;
+      if ( capabilities & canAddFeatures || capabilities & canChangeGeometries )
+      {
+        QAction *toggleEditingAction = new QAction( tr( "Toggle Editing" ), menu );
+        toggleEditingAction->setIcon( QgsApplication::getThemePixmap( QStringLiteral( "/mActionToggleEditing.svg" ) ) );
+        toggleEditingAction->setCheckable( true );
+        toggleEditingAction->setChecked( vectorLayer->isEditable() );
+        connect( toggleEditingAction, &QAction::triggered, this, [layer, toggleEditingAction] {
+          if ( QgisApp::instance()->toggleEditing( layer ) )
+            toggleEditingAction->setChecked( layer->isEditable() );
+        } );
+        menu->addAction( toggleEditingAction );
+        menu->addSeparator();
+      }
+    }
+
     QAction *propertiesAction = new QAction( tr( "Properties…" ), menu );
     connect( propertiesAction, &QAction::triggered, this, [layer] {
       QgisApp::instance()->showLayerProperties( layer, QStringLiteral( "mOptsPage_Elevation" ) );
@@ -1118,4 +1202,167 @@ void QgsAppElevationProfileLayerTreeView::contextMenuEvent( QContextMenuEvent *e
     menu->exec( mapToGlobal( event->pos() ) );
     delete menu;
   }
+}
+
+void QgsElevationProfileWidget::onLayerSelectionChanged( const QItemSelection &, const QItemSelection & )
+{
+  QItemSelectionModel *selectModel = mLayerTreeView->selectionModel();
+  if ( !selectModel )
+    return;
+
+  const QModelIndexList selected = selectModel->selectedIndexes();
+  QModelIndex idx = selected.at( 0 );
+  if ( selected.size() == 1 && idx.isValid() )
+  {
+    QgsMapLayer *layer = mLayerTreeView->indexToLayer( idx );
+    if ( QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer ) )
+    {
+      mSelectFeaturesTool->setLayer( vectorLayer );
+      if ( vectorLayer->geometryType() == Qgis::GeometryType::Point )
+      {
+        mAddPointTool->setLayer( vectorLayer );
+        mMovePointTool->setLayer( vectorLayer );
+        mToggleEditLayerAction->setLayer( vectorLayer );
+        mSaveLayerAction->setLayer( vectorLayer );
+        mDeleteFeaturesAction->setLayer( vectorLayer );
+        return;
+      }
+    }
+  }
+
+  mCanvas->setTool( mIdentifyTool );
+  mAddPointTool->setLayer( nullptr );
+  mMovePointTool->setLayer( nullptr );
+  mSelectFeaturesTool->setLayer( nullptr );
+  mToggleEditLayerAction->setLayer( nullptr );
+  mSaveLayerAction->setLayer( nullptr );
+  mDeleteFeaturesAction->setLayer( nullptr );
+}
+
+QgsElevationProfileWidgetToggleEditingLayerAction::QgsElevationProfileWidgetToggleEditingLayerAction( const QString &text, QWidget *parent )
+  : QAction( text, parent )
+{
+  setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionToggleEditing.svg" ) ) );
+  connect( this, &QgsElevationProfileWidgetToggleEditingLayerAction::triggered, this, [this]() { QgisApp::instance()->toggleEditing( mLayer ); } );
+  setCheckable( true );
+  handleCheckEnableStates();
+}
+
+void QgsElevationProfileWidgetToggleEditingLayerAction::setLayer( QgsVectorLayer *layer )
+{
+  if ( layer == mLayer )
+  {
+    return;
+  }
+
+  if ( mLayer )
+  {
+    disconnect( mLayer, &QgsVectorLayer::editingStarted, this, &QgsElevationProfileWidgetToggleEditingLayerAction::handleCheckEnableStates );
+    disconnect( mLayer, &QgsVectorLayer::editingStopped, this, &QgsElevationProfileWidgetToggleEditingLayerAction::handleCheckEnableStates );
+  }
+
+  mLayer = layer;
+
+  if ( mLayer )
+  {
+    connect( mLayer, &QgsVectorLayer::editingStarted, this, &QgsElevationProfileWidgetToggleEditingLayerAction::handleCheckEnableStates );
+    connect( mLayer, &QgsVectorLayer::editingStopped, this, &QgsElevationProfileWidgetToggleEditingLayerAction::handleCheckEnableStates );
+  }
+
+  handleCheckEnableStates();
+}
+
+void QgsElevationProfileWidgetToggleEditingLayerAction::handleCheckEnableStates()
+{
+  const Qgis::VectorProviderCapabilities capabilities = mLayer ? mLayer->dataProvider()->capabilities() : Qgis::VectorProviderCapabilities();
+  const bool canAddFeatures = capabilities & Qgis::VectorProviderCapability::AddFeatures;
+  const bool canChangeGeometries = capabilities & Qgis::VectorProviderCapability::ChangeGeometries;
+  if ( mLayer && mLayer->geometryType() == Qgis::GeometryType::Point && ( canAddFeatures || canChangeGeometries ) )
+  {
+    setEnabled( true );
+    setChecked( mLayer->isEditable() );
+  }
+  else
+  {
+    setEnabled( false );
+    setChecked( false );
+  }
+}
+
+QgsElevationProfileWidgetSaveLayerAction::QgsElevationProfileWidgetSaveLayerAction( const QString &text, QWidget *parent )
+  : QAction( text, parent )
+{
+  setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionSaveEdits.svg" ) ) );
+  connect( this, &QgsElevationProfileWidgetToggleEditingLayerAction::triggered, this, [this]() {
+    QgisApp::instance()->saveEdits( mLayer );
+    handleEnableState();
+  } );
+  handleEnableState();
+}
+
+void QgsElevationProfileWidgetSaveLayerAction::setLayer( QgsVectorLayer *layer )
+{
+  if ( layer == mLayer )
+    return;
+
+  if ( mLayer )
+    disconnect( mLayer, &QgsVectorLayer::layerModified, this, &QgsElevationProfileWidgetSaveLayerAction::handleEnableState );
+
+  mLayer = layer;
+
+  if ( mLayer )
+    connect( mLayer, &QgsVectorLayer::layerModified, this, &QgsElevationProfileWidgetSaveLayerAction::handleEnableState );
+
+  handleEnableState();
+}
+
+void QgsElevationProfileWidgetSaveLayerAction::handleEnableState()
+{
+  if ( mLayer && mLayer->geometryType() == Qgis::GeometryType::Point )
+    setEnabled( mLayer->isModified() );
+  else
+    setEnabled( false );
+}
+
+QgsElevationProfileWidgetDeleteFeaturesAction::QgsElevationProfileWidgetDeleteFeaturesAction( const QString &text, QWidget *parent )
+  : QAction( text, parent )
+{
+  setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionDeleteSelectedFeatures.svg" ) ) );
+  connect( this, &QgsElevationProfileWidgetToggleEditingLayerAction::triggered, this, [this]() {
+    QgisApp::instance()->saveEdits( mLayer );
+    handleEnableState();
+  } );
+  handleEnableState();
+}
+
+void QgsElevationProfileWidgetDeleteFeaturesAction::setLayer( QgsVectorLayer *layer )
+{
+  if ( layer == mLayer )
+    return;
+
+  if ( mLayer )
+  {
+    disconnect( mLayer, &QgsVectorLayer::editingStarted, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+    disconnect( mLayer, &QgsVectorLayer::editingStopped, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+    disconnect( mLayer, &QgsVectorLayer::selectionChanged, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+  }
+
+  mLayer = layer;
+
+  if ( mLayer )
+  {
+    connect( mLayer, &QgsVectorLayer::editingStarted, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+    connect( mLayer, &QgsVectorLayer::editingStopped, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+    connect( mLayer, &QgsVectorLayer::selectionChanged, this, &QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState );
+  }
+
+  handleEnableState();
+}
+
+void QgsElevationProfileWidgetDeleteFeaturesAction::handleEnableState()
+{
+  if ( mLayer && mLayer->geometryType() == Qgis::GeometryType::Point )
+    setEnabled( mLayer->isEditable() && mLayer->selectedFeatureCount() > 0 );
+  else
+    setEnabled( false );
 }

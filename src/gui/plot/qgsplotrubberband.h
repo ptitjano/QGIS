@@ -19,7 +19,6 @@
 #define QGSPLOTRUBBERBAND_H
 
 #include "qgis_gui.h"
-#include "qgis_sip.h"
 
 #include <QPointF>
 #include <QObject>
@@ -28,6 +27,7 @@
 
 class QgsPlotCanvas;
 class QGraphicsRectItem;
+class QGraphicsEllipseItem;
 
 /**
  * \ingroup gui
@@ -142,6 +142,35 @@ class GUI_EXPORT QgsPlotRectangularRubberBand : public QgsPlotRubberBand
 
     //! Start of rubber band creation
     QPointF mRubberBandStartPos;
+};
+
+/**
+ * \ingroup gui
+ * \brief QgsPlotPointRubberBand is a point rubber band for use within QgsPlotCanvas widgets.
+ * \since QGIS 3.42
+ */
+class GUI_EXPORT QgsPlotPointRubberBand : public QgsPlotRubberBand
+{
+    Q_OBJECT
+
+  public:
+
+    /**
+     * Constructor for QgsPlotPointRubberBand.
+     */
+    QgsPlotPointRubberBand( QgsPlotCanvas *canvas = nullptr );
+
+    ~QgsPlotPointRubberBand() override = default;
+
+    void start( QPointF position, Qt::KeyboardModifiers modifiers ) override;
+    void update( QPointF position, Qt::KeyboardModifiers modifiers ) override;
+    QRectF finish( QPointF position = QPointF(), Qt::KeyboardModifiers modifiers = Qt::KeyboardModifiers() ) override;
+
+  private:
+
+    //! Rubber band item
+    QGraphicsEllipseItem *mRubberBandItem = nullptr;
+
 };
 
 #endif // QGSPLOTRUBBERBAND_H

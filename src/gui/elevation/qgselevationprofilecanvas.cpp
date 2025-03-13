@@ -235,6 +235,54 @@ class QgsElevationProfilePlotItem : public Qgs2DPlot, public QgsPlotCanvasItem
       }
     }
 
+    void renderInflectionLines( QgsRenderContext &context )
+    {
+      if ( !mInflexionLinesEnabled )
+      {
+        return;
+      }
+
+      if ( QgsElevationProfileCanvas *canvas = dynamic_cast<QgsElevationProfileCanvas *>( mCanvas ) )
+      {
+        QgsCurve *profileCurve = canvas->profileCurve();
+        if ( !profileCurve || profileCurve->length() < 3 )
+          return;
+
+        const QRectF area = plotArea();
+
+        // this transforms the coordinates from the plot reference to the plot one
+        QTransform transform;
+        transform.translate( 0, area.height() );
+        transform.scale( area.width() / ( xMaximum() * mXScaleFactor - xMinimum() * mXScaleFactor ), -area.height() / ( yMaximum() - yMinimum() ) );
+        transform.translate( -xMinimum() * mXScaleFactor, -yMinimum() );
+
+        QgsPointSequence points;
+        profileCurve->points( points );
+        QgsPoint firstPoint = points.takeFirst();
+        points.removeLast();
+
+        std::unique_ptr<QgsLineSymbol> lineSymbol( QgsLineSymbol::createSimple(
+          { { QStringLiteral( "line_color" ), QStringLiteral( "#ff0000" ) },
+            { QStringLiteral( "line_width" ), QStringLiteral( "0.5" ) },
+            { QStringLiteral( "capstyle" ), QStringLiteral( "flat" ) }
+          }
+        ) );
+        lineSymbol->startRender( context );
+        context.painter()->translate( area.left(), 0 );
+        double accumulatedDistance = 0.;
+        for ( const QgsPoint &point : points )
+        {
+          accumulatedDistance += point.distance( firstPoint );
+          QPointF output = transform.map( QPointF( accumulatedDistance, 0. ) );
+          QPolygonF polyLine( QVector<QPointF> { QPointF( output.x(), area.top() ), QPointF( output.x(), area.bottom() ) } );
+          lineSymbol->renderPolyline( polyLine, nullptr, context );
+          firstPoint = point;
+        }
+        context.painter()->translate( -area.left(), -area.top() );
+        lineSymbol->stopRender( context );
+      }
+    }
+
     void paint( QPainter *painter ) override
     {
       // cache rendering to an image, so we don't need to redraw the plot
@@ -262,10 +310,25 @@ class QgsElevationProfilePlotItem : public Qgs2DPlot, public QgsPlotCanvasItem
 
         calculateOptimisedIntervals( rc );
         render( rc );
+        renderInflectionLines( rc );
         imagePainter.end();
 
         painter->drawImage( QPointF( 0, 0 ), mImage );
       }
+    }
+
+    void setInflexionLinesEnabled( bool enabled )
+    {
+      if ( enabled == mInflexionLinesEnabled )
+      {
+        return;
+      }
+
+      mInflexionLinesEnabled = enabled;
+      // only invalidate the background
+      // the results have not changed
+      mImage = QImage();
+      update();
     }
 
     QgsProject *mProject = nullptr;
@@ -281,6 +344,8 @@ class QgsElevationProfilePlotItem : public Qgs2DPlot, public QgsPlotCanvasItem
     QRectF mRect;
     QRectF mPlotArea;
     QgsProfilePlotRenderer *mRenderer = nullptr;
+
+    bool mInflexionLinesEnabled = false;
 };
 
 class QgsElevationProfileCrossHairsItem : public QgsPlotCanvasItem
@@ -407,6 +472,8 @@ class QgsElevationProfileCrossHairsItem : public QgsPlotCanvasItem
     QgsProfilePoint mPoint;
     QgsElevationProfilePlotItem *mPlotItem = nullptr;
 };
+
+
 ///@endcond PRIVATE
 
 
@@ -570,6 +637,7 @@ void QgsElevationProfileCanvas::setupLayerConnections( QgsMapLayer *layer, bool 
         disconnect( vl, &QgsVectorLayer::featureDeleted, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         disconnect( vl, &QgsVectorLayer::geometryChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         disconnect( vl, &QgsVectorLayer::attributeValueChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
+        disconnect( vl, &QgsVectorLayer::selectionChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
       }
       else
       {
@@ -577,6 +645,7 @@ void QgsElevationProfileCanvas::setupLayerConnections( QgsMapLayer *layer, bool 
         connect( vl, &QgsVectorLayer::featureDeleted, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         connect( vl, &QgsVectorLayer::geometryChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         connect( vl, &QgsVectorLayer::attributeValueChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
+        connect( vl, &QgsVectorLayer::selectionChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
       }
       break;
     }
@@ -836,16 +905,48 @@ void QgsElevationProfileCanvas::mouseMoveEvent( QMouseEvent *e )
       plotPoint = snapResult.snappedPoint;
   }
 
-  if ( plotPoint.isEmpty() )
+  if ( !mCrossHairsItemIsDelegate )
   {
+    if ( plotPoint.isEmpty() )
+    {
+      mCrossHairsItem->hide();
+    }
+    else
+    {
+      mCrossHairsItem->setPoint( plotPoint );
+      mCrossHairsItem->show();
+    }
+    emit canvasPointHovered( e->pos(), plotPoint );
+  }
+}
+
+void QgsElevationProfileCanvas::setCrossHairsItemPoint( QPoint point )
+{
+  QgsProfilePoint plotPoint = canvasPointToPlotPoint( point );
+  mCrossHairsItem->setPoint( plotPoint );
+  emit canvasPointHovered( QgsPointXY(), plotPoint );
+}
+
+void QgsElevationProfileCanvas::hideCrossHairsItem()
+{
+  if ( mCrossHairsItemIsDelegate )
     mCrossHairsItem->hide();
-  }
-  else
-  {
-    mCrossHairsItem->setPoint( plotPoint );
+}
+
+void QgsElevationProfileCanvas::showCrossHairsItem()
+{
+  if ( mCrossHairsItemIsDelegate )
     mCrossHairsItem->show();
-  }
-  emit canvasPointHovered( e->pos(), plotPoint );
+}
+
+bool QgsElevationProfileCanvas::crossHairsItemIsDelegate()
+{
+  return mCrossHairsItemIsDelegate;
+}
+
+void QgsElevationProfileCanvas::setCrossHairsItemIsDelegate( bool enabled )
+{
+  mCrossHairsItemIsDelegate = enabled;
 }
 
 QRectF QgsElevationProfileCanvas::plotArea() const
@@ -1368,6 +1469,7 @@ void QgsElevationProfileCanvas::render( QgsRenderContext &context, double width,
 
   context.expressionContext().appendScope( QgsExpressionContextUtils::globalScope() );
   context.expressionContext().appendScope( QgsExpressionContextUtils::projectScope( mProject ) );
+  context.setSelectionColor( mProject->selectionColor() );
 
   QgsElevationProfilePlot profilePlot( mCurrentJob );
 
@@ -1427,4 +1529,9 @@ void QgsElevationProfileCanvas::clear()
 void QgsElevationProfileCanvas::setSnappingEnabled( bool enabled )
 {
   mSnappingEnabled = enabled;
+}
+
+void QgsElevationProfileCanvas::setInflectionLinesEnabled( bool enabled )
+{
+  mPlotItem->setInflexionLinesEnabled( enabled );
 }

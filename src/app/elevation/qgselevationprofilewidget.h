@@ -17,9 +17,8 @@
 #ifndef QGSELEVATIONPROFILEWIDGET_H
 #define QGSELEVATIONPROFILEWIDGET_H
 
+#include "qgselevationprofiletoolselectfeatures.h"
 #include "qmenu.h"
-#include "qgsdockwidget.h"
-#include "qgis_app.h"
 #include "qgsgeometry.h"
 #include "qobjectuniqueptr.h"
 #include "qgselevationprofilelayertreeview.h"
@@ -47,6 +46,8 @@ class QgsLayerTree;
 class QgsLayerTreeRegistryBridge;
 class QgsElevationProfileToolIdentify;
 class QgsElevationProfileToolMeasure;
+class QgsElevationProfileToolAddPoint;
+class QgsElevationProfileToolMovePoint;
 class QLabel;
 class QgsProfilePoint;
 class QgsSettingsEntryDouble;
@@ -54,6 +55,9 @@ class QgsSettingsEntryBool;
 class QgsSettingsEntryString;
 class QgsSettingsEntryColor;
 class QgsMapLayerProxyModel;
+class QgsElevationProfileWidgetToggleEditingLayerAction;
+class QgsElevationProfileWidgetSaveLayerAction;
+class QgsElevationProfileWidgetDeleteFeaturesAction;
 
 class QgsAppElevationProfileLayerTreeView : public QgsElevationProfileLayerTreeView
 {
@@ -133,6 +137,7 @@ class QgsElevationProfileWidget : public QWidget
     void axisScaleLockToggled( bool active );
     void renameProfileTriggered();
     void onProjectElevationPropertiesChanged();
+    void onLayerSelectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
 
   private:
     QgsElevationProfileCanvas *mCanvas = nullptr;
@@ -154,6 +159,10 @@ class QgsElevationProfileWidget : public QWidget
     QAction *mNudgeRightAction = nullptr;
     QAction *mRenameProfileAction = nullptr;
     QAction *mLockRatioAction = nullptr;
+    QAction *mShowInflectionLinesAction = nullptr;
+    QgsElevationProfileWidgetToggleEditingLayerAction *mToggleEditLayerAction = nullptr;
+    QgsElevationProfileWidgetSaveLayerAction *mSaveLayerAction = nullptr;
+    QgsElevationProfileWidgetDeleteFeaturesAction *mDeleteFeaturesAction = nullptr;
     QMenu *mDistanceUnitMenu = nullptr;
 
     QgsDockableWidgetHelper *mDockableWidgetHelper = nullptr;
@@ -174,6 +183,9 @@ class QgsElevationProfileWidget : public QWidget
     QgsPlotToolXAxisZoom *mXAxisZoomTool = nullptr;
     QgsPlotToolZoom *mZoomTool = nullptr;
     QgsElevationProfileToolIdentify *mIdentifyTool = nullptr;
+    QgsElevationProfileToolAddPoint *mAddPointTool = nullptr;
+    QgsElevationProfileToolMovePoint *mMovePointTool = nullptr;
+    QgsElevationProfileToolSelectFeatures *mSelectFeaturesTool = nullptr;
 
     QgsElevationProfileWidgetSettingsAction *mSettingsAction = nullptr;
 
@@ -194,6 +206,45 @@ class QgsElevationProfileWidgetSettingsAction : public QWidgetAction
 
   private:
     QgsDoubleSpinBox *mToleranceWidget = nullptr;
+};
+
+class QgsElevationProfileWidgetSaveLayerAction : public QAction
+{
+    Q_OBJECT
+
+  public:
+    QgsElevationProfileWidgetSaveLayerAction( const QString &text, QWidget *parent = nullptr );
+    void setLayer( QgsVectorLayer *layer );
+
+  private:
+    QgsVectorLayer *mLayer = nullptr;
+    void handleEnableState();
+};
+
+class QgsElevationProfileWidgetToggleEditingLayerAction : public QAction
+{
+    Q_OBJECT
+
+  public:
+    QgsElevationProfileWidgetToggleEditingLayerAction( const QString &text, QWidget *parent = nullptr );
+    void setLayer( QgsVectorLayer *layer );
+
+  private:
+    QgsVectorLayer *mLayer = nullptr;
+    void handleCheckEnableStates();
+};
+
+class QgsElevationProfileWidgetDeleteFeaturesAction : public QAction
+{
+    Q_OBJECT
+
+  public:
+    QgsElevationProfileWidgetDeleteFeaturesAction( const QString &text, QWidget *parent = nullptr );
+    void setLayer( QgsVectorLayer *layer );
+
+  private:
+    QgsVectorLayer *mLayer = nullptr;
+    void handleEnableState();
 };
 
 #endif // QGSELEVATIONPROFILEWIDGET_H
