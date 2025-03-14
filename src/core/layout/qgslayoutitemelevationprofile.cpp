@@ -18,6 +18,7 @@
 #include "qgslayoutitemelevationprofile.h"
 #include "moc_qgslayoutitemelevationprofile.cpp"
 #include "qgslayoutitemregistry.h"
+#include "qgslinesymbol.h"
 #include "qgsplot.h"
 #include "qgslayout.h"
 #include "qgsmessagelog.h"
@@ -56,9 +57,12 @@ class QgsLayoutItemElevationProfilePlot : public Qgs2DPlot
     {
       if ( mRenderer )
       {
+        const double distanceMin = xMinimum() * xScale;
+        const double distanceMax = xMaximum() * xScale;
         rc.painter()->translate( plotArea.left(), plotArea.top() );
-        mRenderer->render( rc, plotArea.width(), plotArea.height(), xMinimum() * xScale, xMaximum() * xScale, yMinimum(), yMaximum() );
+        mRenderer->render( rc, plotArea.width(), plotArea.height(), distanceMin, distanceMax, yMinimum(), yMaximum() );
         rc.painter()->translate( -plotArea.left(), -plotArea.top() );
+        mRenderer->renderSubsectionsIndicator( rc, plotArea, distanceMin, distanceMax, yMinimum(), yMaximum() );
       }
     }
 
@@ -683,6 +687,8 @@ void QgsLayoutItemElevationProfile::paint( QPainter *painter, const QStyleOption
         }
 
         QgsProfilePlotRenderer renderer( sources, profileRequest() );
+        QgsLineSymbol *rendererSubSectionsSymbol = subsectionsSymbol() ? subsectionsSymbol()->clone() : nullptr;
+        renderer.setSubsectionsSymbol( rendererSubSectionsSymbol );
 
         renderer.generateSynchronously();
         mPlot->setRenderer( &renderer );
@@ -736,7 +742,8 @@ void QgsLayoutItemElevationProfile::paint( QPainter *painter, const QStyleOption
         }
 
         QgsProfilePlotRenderer renderer( sources, profileRequest() );
-
+        QgsLineSymbol *rendererSubSectionsSymbol = subsectionsSymbol() ? subsectionsSymbol()->clone() : nullptr;
+        renderer.setSubsectionsSymbol( rendererSubSectionsSymbol );
 
         // TODO
         // we should be able to call renderer.start()/renderer.waitForFinished() here and
@@ -972,6 +979,8 @@ void QgsLayoutItemElevationProfile::recreateCachedImageInBackground()
   }
 
   mRenderJob = std::make_unique< QgsProfilePlotRenderer >( sources, profileRequest() );
+  QgsLineSymbol *rendererSubSectionsSymbol = subsectionsSymbol() ? subsectionsSymbol()->clone() : nullptr;
+  mRenderJob->setSubsectionsSymbol( rendererSubSectionsSymbol );
   connect( mRenderJob.get(), &QgsProfilePlotRenderer::generationFinished, this, &QgsLayoutItemElevationProfile::profileGenerationFinished );
   mRenderJob->startGeneration();
 
@@ -1078,3 +1087,7 @@ void QgsLayoutItemElevationProfile::setDistanceUnit( Qgis::DistanceUnit unit )
   }
 }
 
+void QgsLayoutItemElevationProfile::setSubsectionsSymbol( QgsLineSymbol *symbol )
+{
+  mSubsectionsSymbol.reset( symbol );
+}
