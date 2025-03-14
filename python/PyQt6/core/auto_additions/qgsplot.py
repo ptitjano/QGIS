@@ -5,6 +5,7 @@ try:
     QgsPlotDefaultSettings.axisGridMinorSymbol = staticmethod(QgsPlotDefaultSettings.axisGridMinorSymbol)
     QgsPlotDefaultSettings.chartBackgroundSymbol = staticmethod(QgsPlotDefaultSettings.chartBackgroundSymbol)
     QgsPlotDefaultSettings.chartBorderSymbol = staticmethod(QgsPlotDefaultSettings.chartBorderSymbol)
+    QgsPlotDefaultSettings.subSectionsSymbol = staticmethod(QgsPlotDefaultSettings.subSectionsSymbol)
     QgsPlotDefaultSettings.__group__ = ['plot']
 except (NameError, AttributeError):
     pass

@@ -530,6 +530,13 @@ class CORE_EXPORT QgsPlotDefaultSettings
      */
     static QgsFillSymbol *chartBorderSymbol() SIP_FACTORY;
 
+    /**
+     * Returns the default line symbol to use for subsections lines.
+     *
+     * \since QGIS 3.44
+     */
+    static QgsLineSymbol *subSectionsSymbol() SIP_FACTORY;
+
 };
 
 #endif // QGSPLOT_H

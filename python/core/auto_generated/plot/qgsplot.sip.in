@@ -479,6 +479,13 @@ Returns the default fill symbol to use for the chart area border.
 .. seealso:: :py:func:`chartBackgroundSymbol`
 %End
 
+    static QgsLineSymbol *subSectionsSymbol() /Factory/;
+%Docstring
+Returns the default line symbol to use for subsections lines.
+
+.. versionadded:: 3.44
+%End
+
 };
 
 /************************************************************************

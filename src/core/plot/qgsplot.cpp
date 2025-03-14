@@ -807,3 +807,10 @@ QgsFillSymbol *QgsPlotDefaultSettings::chartBorderSymbol()
   auto chartBorder = std::make_unique< QgsSimpleLineSymbolLayer >( QColor( 20, 20, 20 ), 0.1 );
   return new QgsFillSymbol( QgsSymbolLayerList( { chartBorder.release() } ) );
 }
+
+QgsLineSymbol *QgsPlotDefaultSettings::subSectionsSymbol()
+{
+  auto subSections = std::make_unique< QgsSimpleLineSymbolLayer >( QColor( 255, 0, 0, 255 ), 0.5 );
+  subSections->setPenCapStyle( Qt::FlatCap );
+  return new QgsLineSymbol( QgsSymbolLayerList( { subSections.release() } ) );
+}

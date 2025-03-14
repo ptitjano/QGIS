@@ -316,6 +316,7 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
       UndoElevationProfileMaximumDistance, //!< Change elevation profile maximum distance
       UndoElevationProfileMinimumElevation, //!< Change elevation profile minimum elevation
       UndoElevationProfileMaximumElevation, //!< Change elevation profile maximum elevation
+      UndoElevationProfileSubsectionLines, //!< Change elevation profile subsection indicator symbol
 
       UndoCustomCommand, //!< Base id for plugin based item undo commands
     };
