@@ -44,13 +44,15 @@ class QgsProfileMeasureResultsDialog : public QDialog
 
   public slots:
 
-    void setMeasures( double total, double distance, double elevation );
+    void setMeasures( double total, double distance, double elevation, double azimuth, double dip );
     void clear();
 
   private:
     QLabel *mTotalLabel = nullptr;
     QLabel *mDistanceLabel = nullptr;
     QLabel *mElevationLabel = nullptr;
+    QLabel *mAzimuthLabel = nullptr;
+    QLabel *mDipLabel = nullptr;
 
     QgsCoordinateReferenceSystem mCrs;
 };
@@ -72,7 +74,7 @@ class QgsElevationProfileToolMeasure : public QgsPlotTool
 
   signals:
 
-    void measureChanged( double totalDistance, double deltaCurveDistance, double deltaElevation );
+    void measureChanged( double totalDistance, double deltaCurveDistance, double deltaElevation, double azimuth, double dip );
     void cleared();
 
   private slots:
