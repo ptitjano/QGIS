@@ -228,11 +228,12 @@ void TestQgsJsonUtils::testExportFeatureJson()
 
   const QgsJsonExporter exporter { &vl };
 
-  const auto expectedJson { QStringLiteral( "{\"bbox\":[1.12,1.12,5.45,5.33],\"geometry\":{\"coordinates\":"
+  const auto expectedJson { QStringLiteral( "{\"type\":\"Feature\""
+                                            ",\"id\":null,"
+                                            "\"bbox\":[1.12,1.12,5.45,5.33],\"geometry\":{\"coordinates\":"
                                             "[[[1.12,1.34],[5.45,1.12],[5.34,5.33],[1.56,5.2],[1.12,1.34]],"
                                             "[[2.0,2.0],[3.0,2.0],[3.0,3.0],[2.0,3.0],[2.0,2.0]]],\"type\":\"Polygon\"}"
-                                            ",\"id\":null,\"properties\":{\"flddbl\":2.0,\"fldint\":1,\"fldtxt\":\"a value\"}"
-                                            ",\"type\":\"Feature\"}" ) };
+                                            ",\"properties\":{\"fldtxt\":\"a value\",\"fldint\":1,\"flddbl\":2.0}}" ) };
 
   const auto j( exporter.exportFeatureToJsonObject( feature ) );
   QCOMPARE( QString::fromStdString( j.dump() ), expectedJson );
@@ -242,11 +243,12 @@ void TestQgsJsonUtils::testExportFeatureJson()
   const QgsJsonExporter exporterPrecision { &vl, 1 };
 
 
-  const auto expectedJsonPrecision { QStringLiteral( "{\"bbox\":[1.1,1.1,5.5,5.3],\"geometry\":{\"coordinates\":"
+  const auto expectedJsonPrecision { QStringLiteral( "{\"type\":\"Feature\""
+                                                     ",\"id\":123"
+                                                     ",\"bbox\":[1.1,1.1,5.5,5.3],\"geometry\":{\"coordinates\":"
                                                      "[[[1.1,1.3],[5.5,1.1],[5.3,5.3],[1.6,5.2],[1.1,1.3]],"
                                                      "[[2.0,2.0],[3.0,2.0],[3.0,3.0],[2.0,3.0],[2.0,2.0]]],\"type\":\"Polygon\"}"
-                                                     ",\"id\":123,\"properties\":{\"flddbl\":2.0,\"fldint\":1,\"fldtxt\":\"a value\"}"
-                                                     ",\"type\":\"Feature\"}" ) };
+                                                     ",\"properties\":{\"fldtxt\":\"a value\",\"fldint\":1,\"flddbl\":2.0}}" ) };
 
   feature.setId( 123 );
   const auto jPrecision( exporterPrecision.exportFeatureToJsonObject( feature ) );
@@ -266,11 +268,13 @@ void TestQgsJsonUtils::testExportFeatureJsonCrs()
   exporterPrecision.setDestinationCrs( QgsCoordinateReferenceSystem( "EPSG:3857" ) );
 
 
-  const auto expectedJsonPrecision { QStringLiteral( "{\"bbox\":[124677.8,124685.8,606691.2,594190.5],\"geometry\":"
+  const auto expectedJsonPrecision { QStringLiteral( "{\"type\":\"Feature\""
+                                                     ",\"id\":123"
+                                                     ",\"bbox\":[124677.8,124685.8,606691.2,594190.5],\"geometry\":"
                                                      "{\"coordinates\":[[[124677.8,149181.7],[606691.2,124685.8],[594446.1,594190.5],[173658.4,579657.7],"
                                                      "[124677.8,149181.7]],[[222639.0,222684.2],[333958.5,222684.2],[333958.5,334111.2],[222639.0,334111.2],"
-                                                     "[222639.0,222684.2]]],\"type\":\"Polygon\"},\"id\":123,\"properties\":{\"flddbl\":2.0,\"fldint\":1,"
-                                                     "\"fldtxt\":\"a value\"},\"type\":\"Feature\"}" ) };
+                                                     "[222639.0,222684.2]]],\"type\":\"Polygon\"}"
+                                                     ",\"properties\":{\"fldtxt\":\"a value\",\"fldint\":1,\"flddbl\":2.0}}" ) };
 
   feature.setId( 123 );
   const auto jPrecision( exporterPrecision.exportFeatureToJsonObject( feature ) );

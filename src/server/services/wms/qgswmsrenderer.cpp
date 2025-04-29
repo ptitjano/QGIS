@@ -17,6 +17,7 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "nlohmann/json_fwd.hpp"
 #include "qgsjsonutils.h"
 #include "qgswmsrenderer.h"
 #include "qgsfilterrestorer.h"
@@ -2814,9 +2815,9 @@ namespace QgsWms
 
   QByteArray QgsRenderer::convertFeatureInfoToJson( const QList<QgsMapLayer *> &layers, const QDomDocument &doc, const QgsCoordinateReferenceSystem &destCRS ) const
   {
-    json json {
+    ordered_json json {
       { "type", "FeatureCollection" },
-      { "features", json::array() },
+      { "features", ordered_json::array() },
     };
     const bool withGeometry = ( QgsServerProjectUtils::wmsFeatureInfoAddWktGeometry( *mProject ) && mWmsParameters.withGeometry() );
     const bool withDisplayName = mWmsParameters.withDisplayName();

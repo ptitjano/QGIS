@@ -238,9 +238,9 @@ class CORE_EXPORT QgsJsonExporter
      * \returns json object
      * \see exportFeatures()
      */
-    json exportFeatureToJsonObject( const QgsFeature &feature,
-                                    const QVariantMap &extraProperties = QVariantMap(),
-                                    const QVariant &id = QVariant() ) const SIP_SKIP;
+    ordered_json exportFeatureToJsonObject( const QgsFeature &feature,
+                                            const QVariantMap &extraProperties = QVariantMap(),
+                                            const QVariant &id = QVariant() ) const SIP_SKIP;
 
 
     /**
@@ -259,7 +259,7 @@ class CORE_EXPORT QgsJsonExporter
      * \see exportFeatures()
      * \since QGIS 3.10
      */
-    json exportFeaturesToJsonObject( const QgsFeatureList &features ) const SIP_SKIP;
+    ordered_json exportFeaturesToJsonObject( const QgsFeatureList &features ) const SIP_SKIP;
 
     /**
      * Set the destination CRS for feature geometry transformation to \a destinationCrs, this defaults to EPSG:4326
@@ -372,7 +372,7 @@ class CORE_EXPORT QgsJsonUtils
      * \note Not available in Python bindings
      * \since QGIS 3.8
      */
-    static json exportAttributesToJsonObject( const QgsFeature &feature, QgsVectorLayer *layer = nullptr,
+    static ordered_json exportAttributesToJsonObject( const QgsFeature &feature, QgsVectorLayer *layer = nullptr,
         const QVector<QVariant> &attributeWidgetCaches = QVector<QVariant>(), bool useFieldFormatters = true ) SIP_SKIP;
 
     /**
@@ -402,7 +402,7 @@ class CORE_EXPORT QgsJsonUtils
      * \note Not available in Python bindings.
      * \since QGIS 3.36
      */
-    static QgsGeometry geometryFromGeoJson( const json &geometry ) SIP_SKIP;
+    static QgsGeometry geometryFromGeoJson( const ordered_json &geometry ) SIP_SKIP;
 
     /**
      * Parses a GeoJSON "geometry" value to a QgsGeometry object.
@@ -418,7 +418,7 @@ class CORE_EXPORT QgsJsonUtils
      * \note Not available in Python bindings
      * \since QGIS 3.8
      */
-    static json jsonFromVariant( const QVariant &v ) SIP_SKIP;
+    static ordered_json jsonFromVariant( const QVariant &v ) SIP_SKIP;
 
     /**
      * Converts JSON \a jsonString to a QVariant, in case of parsing error an invalid QVariant is returned and an
@@ -450,7 +450,7 @@ class CORE_EXPORT QgsJsonUtils
      * \note Not available in Python bindings
      * \since QGIS 3.36
      */
-    static QVariant jsonToVariant( const json &value ) SIP_SKIP;
+    static QVariant jsonToVariant( const ordered_json &value ) SIP_SKIP;
 
     /**
      * Add \a crs information entry in \a json object regarding old GeoJSON specification format
@@ -459,7 +459,7 @@ class CORE_EXPORT QgsJsonUtils
      * is assumed to be OGC:CRS84 but when user specifically request a different CRS, this method
      * adds this information in the JSON output
      */
-    static void addCrsInfo( json &value, const QgsCoordinateReferenceSystem &crs ) SIP_SKIP;
+    static void addCrsInfo( ordered_json &value, const QgsCoordinateReferenceSystem &crs ) SIP_SKIP;
 
 };
 
