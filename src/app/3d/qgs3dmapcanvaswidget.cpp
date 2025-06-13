@@ -29,6 +29,7 @@
 #include "qgs3dmaptoolidentify.h"
 #include "qgs3dmaptoolmeasureline.h"
 #include "qgs3dmaptoolpointcloudchangeattribute.h"
+#include "qgs3dmaptoolstreetview.h"
 #include "qgs3dnavigationwidget.h"
 #include "qgs3dpointcloudeditiontoolbar.h"
 #include "qgs3dprimitiveeditiontoolbar.h"
@@ -144,8 +145,12 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   QAction *actionMeasurementTool = toolBar->addAction( QIcon( QgsApplication::iconPath( "mActionMeasure.svg" ) ), tr( "Measurement Line" ), this, &Qgs3DMapCanvasWidget::measureLine );
   actionMeasurementTool->setCheckable( true );
 
+  QAction *actionStreetViewTool = toolBar->addAction( QIcon( QgsApplication::iconPath( "pin.svg" ) ), tr( "Street view" ), this, &Qgs3DMapCanvasWidget::streetView );
+  actionStreetViewTool->setCheckable( true );
+
   // Create action group to make the action exclusive
   QActionGroup *actionGroup = new QActionGroup( this );
+  actionGroup->addAction( actionStreetViewTool );
   actionGroup->addAction( actionCameraControl );
   actionGroup->addAction( actionIdentify );
   actionGroup->addAction( actionMeasurementTool );
@@ -320,7 +325,7 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   connect( configureAction, &QAction::triggered, this, &Qgs3DMapCanvasWidget::configure );
   toolBar->addAction( configureAction );
 
-  mCanvas = new Qgs3DMapCanvas;
+  mCanvas = new Qgs3DMapCanvas( this );
   mCanvas->setMinimumSize( QSize( 200, 200 ) );
 
   connect( mCanvas, &Qgs3DMapCanvas::savedAsImage, this, []( const QString &fileName ) {
@@ -343,6 +348,12 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   mMapToolIdentify = new Qgs3DMapToolIdentify( mCanvas );
 
   mMapToolMeasureLine = new Qgs3DMapToolMeasureLine( this );
+
+  mMapToolStreetView = new Qgs3DMapToolStreetView( mCanvas );
+  connect( mMapToolStreetView, &Qgs3DMapToolStreetView::finished, this, [actionStreetViewTool, this]() {
+    actionStreetViewTool->setChecked( false );
+    mCanvas->setMapTool( nullptr );
+  } );
 
   mLabelPendingJobs = new QLabel( this );
   mProgressPendingJobs = new QProgressBar( this );
@@ -501,6 +512,17 @@ void Qgs3DMapCanvasWidget::measureLine()
     return;
 
   mCanvas->setMapTool( action->isChecked() ? mMapToolMeasureLine : nullptr );
+}
+
+void Qgs3DMapCanvasWidget::streetView()
+{
+  QAction *action = qobject_cast<QAction *>( sender() );
+  if ( !action )
+    return;
+
+  qDebug() << "Qgs3DMapCanvasWidget::streetView" << action->isChecked();
+  action->setChecked( mCanvas->mapTool() != mMapToolStreetView );
+  mCanvas->setMapTool( mCanvas->mapTool() == mMapToolStreetView ? nullptr : mMapToolStreetView );
 }
 
 void Qgs3DMapCanvasWidget::setCanvasName( const QString &name )
