@@ -67,6 +67,16 @@ void QgsProcessingToolboxTreeView::setFilterString( const QString &filter )
   }
 }
 
+void QgsProcessingToolboxTreeView::reset()
+{
+  QTreeView::reset();
+
+  if ( !mModel->filterString().isEmpty() )
+  {
+    expandAll();
+  }
+}
+
 const QgsProcessingAlgorithm *QgsProcessingToolboxTreeView::algorithmForIndex( const QModelIndex &index )
 {
   const QModelIndex sourceIndex = mModel->mapToSource( index );
@@ -82,6 +92,28 @@ const QgsProcessingAlgorithm *QgsProcessingToolboxTreeView::selectedAlgorithm()
   {
     const QModelIndex index = selectionModel()->selectedIndexes().at( 0 );
     return algorithmForIndex( index );
+  }
+  else
+  {
+    return nullptr;
+  }
+}
+
+const QgsProcessingParameterType *QgsProcessingToolboxTreeView::parameterTypeForIndex( const QModelIndex &index )
+{
+  const QModelIndex sourceIndex = mModel->mapToSource( index );
+  if ( mToolboxModel->isParameter( sourceIndex ) )
+    return mToolboxModel->parameterTypeForIndex( sourceIndex );
+  else
+    return nullptr;
+}
+
+const QgsProcessingParameterType *QgsProcessingToolboxTreeView::selectedParameterType()
+{
+  if ( selectionModel()->hasSelection() )
+  {
+    const QModelIndex index = selectionModel()->selectedIndexes().at( 0 );
+    return parameterTypeForIndex( index );
   }
   else
   {

@@ -23,6 +23,7 @@
 #include "qgsclipper.h"
 #include "qgsgui.h"
 #include "qgsproject.h"
+#include "qgsgeometryutils.h"
 
 #include <QGraphicsLineItem>
 #include <QGridLayout>
@@ -52,6 +53,18 @@ QgsProfileMeasureResultsDialog::QgsProfileMeasureResultsDialog()
   mElevationLabel->setTextInteractionFlags( Qt::TextBrowserInteraction );
   grid->addWidget( mElevationLabel, 2, 1 );
 
+  // azimuth
+  grid->addWidget( new QLabel( tr( "Azimuth" ) ), 3, 0 );
+  mAzimuthLabel = new QLabel();
+  mAzimuthLabel->setTextInteractionFlags( Qt::TextBrowserInteraction );
+  grid->addWidget( mAzimuthLabel, 3, 1 );
+
+  // dip
+  grid->addWidget( new QLabel( tr( "Dip" ) ), 4, 0 );
+  mDipLabel = new QLabel();
+  mDipLabel->setTextInteractionFlags( Qt::TextBrowserInteraction );
+  grid->addWidget( mDipLabel, 4, 1 );
+
   setLayout( grid );
 
   QgsGui::enableAutoGeometryRestore( this );
@@ -72,7 +85,7 @@ bool QgsProfileMeasureResultsDialog::eventFilter( QObject *object, QEvent *event
   return QDialog::eventFilter( object, event );
 }
 
-void QgsProfileMeasureResultsDialog::setMeasures( double total, double distance, double elevation )
+void QgsProfileMeasureResultsDialog::setMeasures( double total, double distance, double elevation, double azimuth, double dip )
 {
   // these values are inherently dimensionless for now. We need proper support for vertical CRS
   // before we can determine what units the elevation are in!
@@ -105,6 +118,9 @@ void QgsProfileMeasureResultsDialog::setMeasures( double total, double distance,
   }
 
   mDistanceLabel->setText( QgsUnitTypes::formatDistance( distance, decimals, distanceUnit, baseUnit ) );
+
+  mAzimuthLabel->setText( QgsUnitTypes::formatAngle( azimuth, decimals, Qgis::AngleUnit::Degrees ) );
+  mDipLabel->setText( QgsUnitTypes::formatAngle( dip, decimals, Qgis::AngleUnit::Degrees ) );
 }
 
 void QgsProfileMeasureResultsDialog::clear()
@@ -112,6 +128,8 @@ void QgsProfileMeasureResultsDialog::clear()
   mTotalLabel->clear();
   mDistanceLabel->clear();
   mElevationLabel->clear();
+  mAzimuthLabel->clear();
+  mDipLabel->clear();
 }
 
 //
@@ -145,15 +163,13 @@ QgsElevationProfileToolMeasure::QgsElevationProfileToolMeasure( QgsElevationProf
   mDialog = new QgsProfileMeasureResultsDialog();
 
   connect( this, &QgsElevationProfileToolMeasure::cleared, mDialog, &QDialog::hide );
-  connect( this, &QgsElevationProfileToolMeasure::measureChanged, mDialog, [=]( double totalDistance, double deltaCurve, double deltaElevation ) {
+  connect( this, &QgsElevationProfileToolMeasure::measureChanged, mDialog, [this]( double totalDistance, double deltaCurve, double deltaElevation, double azimuth, double dip ) {
     mDialog->setCrs( mElevationCanvas->crs() );
-    mDialog->setMeasures( totalDistance, deltaCurve, deltaElevation );
+    mDialog->setMeasures( totalDistance, deltaCurve, deltaElevation, azimuth, dip );
     mDialog->show();
   } );
-  connect( mDialog, &QgsProfileMeasureResultsDialog::closed, this, [=] {
-    mMeasureInProgress = false;
-    mRubberBand->hide();
-    emit cleared();
+  connect( mDialog, &QgsProfileMeasureResultsDialog::closed, this, [this] {
+    clear();
   } );
 }
 
@@ -186,7 +202,25 @@ void QgsElevationProfileToolMeasure::plotMoveEvent( QgsPlotMouseEvent *event )
   const double deltaCurveDistance = mEndPoint.distance() - mStartPoint.distance();
   const double deltaElevation = mEndPoint.elevation() - mStartPoint.elevation();
   const double totalDistance = std::sqrt( std::pow( deltaCurveDistance, 2 ) + std::pow( deltaElevation, 2 ) );
-  emit measureChanged( totalDistance, deltaCurveDistance, deltaElevation );
+
+  // compute dip and azimuth
+  const QgsPoint canvasStartPoint = toMapCoordinates( mElevationCanvas->plotPointToCanvasPoint( mStartPoint ) );
+  const QgsPoint canvasEndPoint = toMapCoordinates( mElevationCanvas->plotPointToCanvasPoint( mEndPoint ) );
+
+  // azimuth: direction from North measured clockwise
+  double azimuth = canvasStartPoint.azimuth( canvasEndPoint );
+  // display azimuth between 0 and 360 degrees
+  if ( azimuth < 0.0 )
+  {
+    azimuth += 360.0;
+  }
+
+  // compute dip: downwards inclination from the horizontal reference plane
+  // 0° means horizontal plane
+  // 90° means vertical plane
+  const double dip = std::atan2( std::abs( deltaElevation ), QgsGeometryUtils::distance2D( canvasStartPoint, canvasEndPoint ) ) * 180.0 / M_PI;
+
+  emit measureChanged( totalDistance, deltaCurveDistance, deltaElevation, azimuth, dip );
 }
 
 void QgsElevationProfileToolMeasure::plotPressEvent( QgsPlotMouseEvent *event )
@@ -222,7 +256,7 @@ void QgsElevationProfileToolMeasure::plotPressEvent( QgsPlotMouseEvent *event )
     mRubberBand->show();
 
     mMeasureInProgress = true;
-    emit measureChanged( 0, 0, 0 );
+    emit measureChanged( 0, 0, 0, 0, 0 );
   }
 }
 
@@ -231,9 +265,7 @@ void QgsElevationProfileToolMeasure::plotReleaseEvent( QgsPlotMouseEvent *event 
   if ( event->button() == Qt::RightButton && mRubberBand->isVisible() )
   {
     event->ignore();
-    mMeasureInProgress = false;
-    mRubberBand->hide();
-    emit cleared();
+    clear();
   }
   else if ( event->button() != Qt::LeftButton )
   {
@@ -256,4 +288,11 @@ void QgsElevationProfileToolMeasure::updateRubberBand()
   const QgsPointXY p2 = mElevationCanvas->plotPointToCanvasPoint( QgsProfilePoint( distance2, elevation2 ) );
 
   mRubberBand->setLine( QLineF( p1.x(), p1.y(), p2.x(), p2.y() ) );
+}
+
+void QgsElevationProfileToolMeasure::clear()
+{
+  mMeasureInProgress = false;
+  mRubberBand->hide();
+  emit cleared();
 }

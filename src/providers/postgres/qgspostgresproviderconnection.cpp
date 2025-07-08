@@ -46,6 +46,7 @@ const QStringList QgsPostgresProviderConnection::CONFIGURATION_PARAMETERS = {
   QStringLiteral( "metadataInDatabase" ),
   QStringLiteral( "session_role" ),
   QStringLiteral( "allowRasterOverviewTables" ),
+  QStringLiteral( "schema" ),
 };
 
 const QString QgsPostgresProviderConnection::SETTINGS_BASE_KEY = QStringLiteral( "/PostgreSQL/connections/" );
@@ -82,7 +83,7 @@ QgsPostgresProviderConnection::QgsPostgresProviderConnection( const QString &nam
 }
 
 QgsPostgresProviderConnection::QgsPostgresProviderConnection( const QString &uri, const QVariantMap &configuration )
-  : QgsAbstractDatabaseProviderConnection( QgsDataSourceUri( uri ).connectionInfo( false ), configuration )
+  : QgsAbstractDatabaseProviderConnection( QgsPostgresConn::connectionInfo( uri, false ), configuration )
 {
   mProviderKey = QStringLiteral( "postgres" );
   setDefaultCapabilities();
@@ -114,7 +115,9 @@ void QgsPostgresProviderConnection::setDefaultCapabilities()
     Capability::DeleteSpatialIndex,
     Capability::DeleteField,
     Capability::DeleteFieldCascade,
-    Capability::AddField
+    Capability::AddField,
+    Capability::RenameField,
+    Capability::MoveTableToSchema
   };
   mGeometryColumnCapabilities = {
     GeometryColumnCapability::Z,
@@ -165,6 +168,7 @@ void QgsPostgresProviderConnection::createVectorTable( const QString &schema, co
   {
     newUri.setGeometryColumn( options->value( QStringLiteral( "geometryColumn" ), QStringLiteral( "geom" ) ).toString() );
   }
+
   QMap<int, int> map;
   QString errCause;
   QString createdLayerUri;
@@ -233,7 +237,7 @@ QList<QgsAbstractDatabaseProviderConnection::TableProperty> QgsPostgresProviderC
   QString errCause;
   // TODO: set flags from the connection if flags argument is 0
   const QgsDataSourceUri dsUri { uri() };
-  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( dsUri.connectionInfo( false ), -1, false, feedback );
+  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( QgsPostgresConn::connectionInfo( dsUri, false ), -1, false, feedback );
   if ( feedback && feedback->isCanceled() )
     return {};
 
@@ -257,7 +261,7 @@ QList<QgsAbstractDatabaseProviderConnection::TableProperty> QgsPostgresProviderC
     }
     else
     {
-      ok = conn->supportedLayers( properties, false, schema == QStringLiteral( "public" ), aspatial, false, schema );
+      ok = conn->supportedLayers( properties, false, aspatial, false, schema );
     }
 
     if ( !ok )
@@ -415,14 +419,14 @@ QgsAbstractDatabaseProviderConnection::QueryResult QgsPostgresProviderConnection
 
 QList<QVariantList> QgsPostgresProviderConnection::executeSqlPrivate( const QString &sql, bool resolveTypes, QgsFeedback *feedback, std::shared_ptr<QgsPoolPostgresConn> pgconn ) const
 {
-  return execSqlPrivate( sql, resolveTypes, feedback, pgconn ).rows();
+  return execSqlPrivate( sql, resolveTypes, feedback, std::move( pgconn ) ).rows();
 }
 
 QgsAbstractDatabaseProviderConnection::QueryResult QgsPostgresProviderConnection::execSqlPrivate( const QString &sql, bool resolveTypes, QgsFeedback *feedback, std::shared_ptr<QgsPoolPostgresConn> pgconn ) const
 {
   if ( !pgconn )
   {
-    pgconn = std::make_shared<QgsPoolPostgresConn>( QgsDataSourceUri( uri() ).connectionInfo( false ) );
+    pgconn = std::make_shared<QgsPoolPostgresConn>( QgsPostgresConn::connectionInfo( QgsDataSourceUri( uri() ), false ) );
   }
 
   std::shared_ptr<QgsAbstractDatabaseProviderConnection::QueryResult::QueryResultIterator> iterator = std::make_shared<QgsPostgresProviderResultIterator>( resolveTypes );
@@ -775,7 +779,7 @@ QStringList QgsPostgresProviderConnection::schemas() const
   QStringList schemas;
   QString errCause;
   const QgsDataSourceUri dsUri { uri() };
-  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( dsUri.connectionInfo( false ) );
+  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( QgsPostgresConn::connectionInfo( dsUri, false ) );
   if ( !conn )
   {
     errCause = QObject::tr( "Connection failed: %1" ).arg( uri() );
@@ -832,6 +836,10 @@ void QgsPostgresProviderConnection::store( const QString &name ) const
     {
       settings.setValue( p, configuration().value( p ) );
     }
+    else
+    {
+      settings.remove( p );
+    }
   }
   settings.endGroup();
   settings.endGroup();
@@ -851,7 +859,7 @@ QIcon QgsPostgresProviderConnection::icon() const
 QList<QgsVectorDataProvider::NativeType> QgsPostgresProviderConnection::nativeTypes() const
 {
   QList<QgsVectorDataProvider::NativeType> types;
-  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( QgsDataSourceUri { uri() }.connectionInfo( false ) );
+  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( QgsPostgresConn::connectionInfo( QgsDataSourceUri { uri() }, false ) );
   if ( conn )
   {
     types = conn->nativeTypes();
@@ -1928,4 +1936,19 @@ QgsFields QgsPostgresProviderConnection::fields( const QString &schema, const QS
     }
     throw ex;
   }
+}
+
+void QgsPostgresProviderConnection::renameField( const QString &schema, const QString &tableName, const QString &name, const QString &newName ) const
+{
+  executeSqlPrivate( QStringLiteral( "ALTER TABLE %1.%2 RENAME COLUMN %3 TO %4;" )
+                       .arg( QgsPostgresConn::quotedIdentifier( schema ), QgsPostgresConn::quotedIdentifier( tableName ), QgsPostgresConn::quotedIdentifier( name ), QgsPostgresConn::quotedIdentifier( newName ) ) );
+}
+
+void QgsPostgresProviderConnection::moveTableToSchema( const QString &sourceSchema, const QString &tableName, const QString &targetSchema ) const
+{
+  const QString sql = QStringLiteral( "ALTER TABLE %1.%2 SET SCHEMA %3;" )
+                        .arg( QgsPostgresConn::quotedIdentifier( sourceSchema ) )
+                        .arg( QgsPostgresConn::quotedIdentifier( tableName ) )
+                        .arg( QgsPostgresConn::quotedIdentifier( targetSchema ) );
+  executeSqlPrivate( sql );
 }

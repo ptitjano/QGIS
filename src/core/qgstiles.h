@@ -88,8 +88,9 @@ CORE_EXPORT inline uint qHash( QgsTileXYZ id ) SIP_SKIP
 
 /**
  * \ingroup core
- * \brief Range of tiles in a tile matrix to be rendered. The selection is rectangular,
- * given by start/end row and column numbers.
+ * \brief A range of tiles in a tile matrix.
+ *
+ * The selection is rectangular, given by start/end row and column numbers.
  *
  * \since QGIS 3.14
  */
@@ -111,6 +112,13 @@ class CORE_EXPORT QgsTileRange
     int startRow() const { return mStartRow; }
     //! Returns index of the last row in the range
     int endRow() const { return mEndRow; }
+
+    /**
+     * Returns the total number of tiles in the range.
+     *
+     * \since QGIS 3.44
+     */
+    int count() const { return isValid() ? ( mEndRow - mStartRow + 1 ) * ( mEndColumn - mStartColumn + 1 ) : 0; }
 
   private:
     int mStartColumn = -1;

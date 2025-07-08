@@ -115,6 +115,11 @@ void QgsTextFormatWidget::initWidget()
   mRenderingItem->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "propertyicons/render.svg" ) ) );
   mRenderingItem->setToolTip( tr( "Rendering" ) );
 
+#if ( GEOS_VERSION_MAJOR == 3 && GEOS_VERSION_MINOR < 10 )
+  mDuplicatesStackedWidget->setCurrentWidget( mDuplicatesNotAvailableWidget );
+  mLabelSpacingStackedWidget->setCurrentWidget( mLabelSpacingNotAvailableWidget );
+#endif
+
   mLabelingOptionsListWidget->addItem( mTextItem );
   mLabelingOptionsListWidget->addItem( mFormattingItem );
   mLabelingOptionsListWidget->addItem( mBufferItem );
@@ -260,6 +265,7 @@ void QgsTextFormatWidget::initWidget()
   mMaximumDistanceUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits << Qgis::RenderUnit::Pixels << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
   mRepeatDistanceUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits << Qgis::RenderUnit::Pixels << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
   mOverrunDistanceUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits << Qgis::RenderUnit::Pixels << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
+  mLabelMarginUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::MetersInMapUnits << Qgis::RenderUnit::MapUnits << Qgis::RenderUnit::Pixels << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
   mLineHeightUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Percentage << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::Pixels << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
   mTabDistanceUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << Qgis::RenderUnit::Percentage << Qgis::RenderUnit::Millimeters << Qgis::RenderUnit::Pixels << Qgis::RenderUnit::Points << Qgis::RenderUnit::Inches );
   mFontLineHeightSpinBox->setClearValue( 100.0 );
@@ -278,7 +284,7 @@ void QgsTextFormatWidget::initWidget()
   mSpinStretch->setClearValue( 100 );
   mTabStopDistanceSpin->setMinimum( 0 );
 
-  connect( mLineHeightUnitWidget, &QgsUnitSelectionWidget::changed, this, [=] {
+  connect( mLineHeightUnitWidget, &QgsUnitSelectionWidget::changed, this, [this] {
     if ( mLineHeightUnitWidget->unit() == Qgis::RenderUnit::Percentage )
       mFontLineHeightSpinBox->setClearValue( 100.0 );
     else
@@ -518,6 +524,8 @@ void QgsTextFormatWidget::initWidget()
           << mRepeatDistanceUnitWidget
           << mOverrunDistanceSpinBox
           << mOverrunDistanceUnitWidget
+          << mLabelMarginSpinBox
+          << mLabelMarginUnitWidget
           << mScaleBasedVisibilityChkBx
           << mMaxScaleWidget
           << mMinScaleWidget
@@ -587,26 +595,27 @@ void QgsTextFormatWidget::initWidget()
           << mHtmlFormattingCheckBox
           << mPrioritizationComboBox
           << mTabDistanceUnitWidget
-          << mTabStopDistanceSpin;
+          << mTabStopDistanceSpin
+          << mChkNoDuplicates;
 
   connectValueChanged( widgets );
 
   connect( mQuadrantBtnGrp, qOverload<QAbstractButton *>( &QButtonGroup::buttonClicked ), this, &QgsTextFormatWidget::updatePreview );
 
   connect( mBufferDrawDDBtn, &QgsPropertyOverrideButton::activated, this, &QgsTextFormatWidget::updateBufferFrameStatus );
-  connect( mBufferDrawChkBx, &QCheckBox::stateChanged, this, [=]( int ) {
+  connect( mBufferDrawChkBx, &QCheckBox::stateChanged, this, [this]( int ) {
     updateBufferFrameStatus();
   } );
   connect( mShapeDrawDDBtn, &QgsPropertyOverrideButton::activated, this, &QgsTextFormatWidget::updateShapeFrameStatus );
-  connect( mShapeDrawChkBx, &QCheckBox::stateChanged, this, [=]( int ) {
+  connect( mShapeDrawChkBx, &QCheckBox::stateChanged, this, [this]( int ) {
     updateShapeFrameStatus();
   } );
   connect( mShadowDrawDDBtn, &QgsPropertyOverrideButton::activated, this, &QgsTextFormatWidget::updateShadowFrameStatus );
-  connect( mShadowDrawChkBx, &QCheckBox::stateChanged, this, [=]( int ) {
+  connect( mShadowDrawChkBx, &QCheckBox::stateChanged, this, [this]( int ) {
     updateShadowFrameStatus();
   } );
   connect( mCalloutDrawDDBtn, &QgsPropertyOverrideButton::changed, this, &QgsTextFormatWidget::updateCalloutFrameStatus );
-  connect( mCalloutsDrawCheckBox, &QCheckBox::stateChanged, this, [=]( int ) {
+  connect( mCalloutsDrawCheckBox, &QCheckBox::stateChanged, this, [this]( int ) {
     updateCalloutFrameStatus();
   } );
 
@@ -938,6 +947,8 @@ void QgsTextFormatWidget::populateDataDefinedButtons()
   registerDataDefinedButton( mRepeatDistanceUnitDDBtn, QgsPalLayerSettings::Property::RepeatDistanceUnit );
   registerDataDefinedButton( mOverrunDistanceDDBtn, QgsPalLayerSettings::Property::OverrunDistance );
 
+  registerDataDefinedButton( mLabelMarginDDBtn, QgsPalLayerSettings::Property::LabelMarginDistance );
+
   // data defined-only
   registerDataDefinedButton( mCoordXDDBtn, QgsPalLayerSettings::Property::PositionX );
   registerDataDefinedButton( mCoordYDDBtn, QgsPalLayerSettings::Property::PositionY );
@@ -987,6 +998,8 @@ void QgsTextFormatWidget::populateDataDefinedButtons()
   registerDataDefinedButton( mCalloutDrawDDBtn, QgsPalLayerSettings::Property::CalloutDraw );
 
   registerDataDefinedButton( mLabelAllPartsDDBtn, QgsPalLayerSettings::Property::LabelAllParts );
+
+  registerDataDefinedButton( mNoDuplicatesDDBtn, QgsPalLayerSettings::Property::RemoveDuplicateLabels );
 }
 
 void QgsTextFormatWidget::registerDataDefinedButton( QgsPropertyOverrideButton *button, QgsPalLayerSettings::Property key )
@@ -2270,7 +2283,7 @@ void QgsTextFormatWidget::configureTabStops()
     widget->setPanelTitle( tr( "Tab Positions" ) );
     widget->setPositions( mTabPositions );
     widget->setUnit( mTabDistanceUnitWidget->unit() );
-    connect( widget, &QgsTabPositionWidget::positionsChanged, this, [=]( const QList<QgsTextFormat::Tab> &positions ) {
+    connect( widget, &QgsTabPositionWidget::positionsChanged, this, [this]( const QList<QgsTextFormat::Tab> &positions ) {
       mTabPositions = positions;
       mTabStopDistanceSpin->setEnabled( mTabPositions.empty() );
       emit widgetChanged();
@@ -2393,7 +2406,7 @@ QgsTextFormatPanelWidget::QgsTextFormatPanelWidget( const QgsTextFormat &format,
   : QgsPanelWidgetWrapper( new QgsTextFormatWidget( format, mapCanvas, nullptr, layer ), parent )
 {
   mFormatWidget = qobject_cast<QgsTextFormatWidget *>( widget() );
-  connect( mFormatWidget, &QgsTextFormatWidget::widgetChanged, this, [=] {
+  connect( mFormatWidget, &QgsTextFormatWidget::widgetChanged, this, [this] {
     if ( !mBlockSignals )
       emit widgetChanged();
   } );

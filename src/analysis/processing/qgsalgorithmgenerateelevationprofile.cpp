@@ -66,10 +66,10 @@ class QgsAlgorithmElevationProfilePlotItem : public Qgs2DPlot
     void renderContent( QgsRenderContext &rc, const QRectF &plotArea ) override
     {
       mPlotArea = plotArea;
-
       if ( !mRenderer )
         return;
 
+      rc.setShowSelection(false); // don't render selected features with the selection rendering
       rc.painter()->translate( mPlotArea.left(), mPlotArea.top() );
       const QStringList sourceIds = mRenderer->sourceIds();
       for ( const QString &source : sourceIds )
@@ -157,6 +157,11 @@ QString QgsGenerateElevationProfileAlgorithm::shortHelpString() const
   return QObject::tr( "This algorithm creates an elevation profile image from a list of map layer and an optional terrain." );
 }
 
+QString QgsGenerateElevationProfileAlgorithm::shortDescription() const
+{
+  return QObject::tr( "Creates an elevation profile image from a list of map layer and an optional terrain." );
+}
+
 QgsGenerateElevationProfileAlgorithm *QgsGenerateElevationProfileAlgorithm::createInstance() const
 {
   return new QgsGenerateElevationProfileAlgorithm();
@@ -175,7 +180,7 @@ bool QgsGenerateElevationProfileAlgorithm::prepareAlgorithm( const QVariantMap &
   QList<QgsAbstractProfileSource *> sources;
   for ( QgsMapLayer *layer : layers )
   {
-    if ( QgsAbstractProfileSource *source = dynamic_cast<QgsAbstractProfileSource *>( layer ) )
+    if ( QgsAbstractProfileSource *source = layer->profileSource() )
       sources.append( source );
   }
 

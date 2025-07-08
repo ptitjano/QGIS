@@ -81,6 +81,8 @@ class QgsOapifProvider final : public QgsVectorDataProvider
 
     bool empty() const override;
 
+    QString geometryColumnName() const override;
+
     enum class FilterTranslationState
     {
       FULLY_CLIENT,
@@ -125,6 +127,9 @@ class QgsOapifProvider final : public QgsVectorDataProvider
     //! Layer metadata
     QgsLayerMetadata mLayerMetadata;
 
+    //! Feature count when advertized (currently only through ldproxy's itemCount)
+    int64_t mFeatureCount = -1;
+
     //! Set to true by reloadProviderData()
     mutable bool mUpdateFeatureCountAtNextFeatureCountRequest = true;
 
@@ -138,6 +143,9 @@ class QgsOapifProvider final : public QgsVectorDataProvider
 
     //! Compute capabilities
     void computeCapabilities( const QgsOapifItemsRequest &itemsRequest );
+
+    //! Issue a GET /schema request and handle it
+    void handleGetSchemaRequest( const QString &schemaUrl );
 };
 
 class QgsOapifProviderMetadata final : public QgsProviderMetadata
@@ -208,6 +216,9 @@ class QgsOapifSharedData final : public QObject, public QgsBackgroundCachedShare
     //! Server filter
     QString mServerFilter;
 
+    //! Geometry column name
+    QString mGeometryColumnName;
+
     //! Translation state of filter to server-side filter.
     QgsOapifProvider::FilterTranslationState mFilterTranslationState = QgsOapifProvider::FilterTranslationState::FULLY_CLIENT;
 
@@ -229,8 +240,8 @@ class QgsOapifSharedData final : public QObject, public QgsBackgroundCachedShare
     //! Whether server supports CQL2 case-insensitive-comparison conformance class (CASEI function)
     bool mServerSupportsCaseI = false;
 
-    //! Whether server supports CQL2 basic-spatial-operators conformance class (S_INTERSECTS(,BBOX() or POINT()))
-    bool mServerSupportsBasicSpatialOperators = false;
+    //! Whether server supports CQL2 basic-spatial-functions conformance class (S_INTERSECTS(,BBOX() or POINT()))
+    bool mServerSupportsBasicSpatialFunctions = false;
 
     // Map of queryables items for CQL2 request. The key of the map is a queryable name.
     QMap<QString, QgsOapifQueryablesRequest::Queryable> mQueryables;

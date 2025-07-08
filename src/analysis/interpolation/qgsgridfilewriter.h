@@ -30,7 +30,7 @@ class QgsFeedback;
 
 /**
  * \ingroup analysis
- * \brief A class that does interpolation to a grid and writes the results to an ascii grid.
+ * \brief Handles interpolation to a grid and writes the results to a raster grid file.
 */
 class ANALYSIS_EXPORT QgsGridFileWriter
 {
@@ -56,18 +56,18 @@ class ANALYSIS_EXPORT QgsGridFileWriter
     /**
      * Sets a list of data source creation options to use when creating the output raster file.
      *
-     * \see createOptions()
+     * \see creationOptions()
      * \since QGIS 3.44t
      */
-    void setCreateOptions( const QStringList &list ) { mCreateOptions = list; }
+    void setCreationOptions( const QStringList &options ) { mCreationOptions = options; }
 
     /**
      * Returns the list of data source creation options which will be used when creating the output raster file.
      *
-     * \see setCreateOptions()
+     * \see setCreationOptions()
      * \since QGIS 3.44
      */
-    QStringList createOptions() const { return mCreateOptions; }
+    QStringList creationOptions() const { return mCreationOptions; }
 
     /**
      * Set no data value for output file.
@@ -97,7 +97,7 @@ class ANALYSIS_EXPORT QgsGridFileWriter
     double mCellSizeX = 0;
     double mCellSizeY = 0;
 
-    QStringList mCreateOptions;
+    QStringList mCreationOptions;
     double mNoDataValue = -9999.0;
 };
 

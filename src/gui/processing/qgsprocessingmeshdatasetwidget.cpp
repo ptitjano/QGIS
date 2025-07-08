@@ -151,7 +151,7 @@ void QgsProcessingMeshDatasetGroupsWidget::showDialog()
       return ( pos >= 0 && pos < options.size() ) ? options.at( pos ) : QString();
     } );
 
-    connect( widget, &QgsProcessingMultipleSelectionPanelWidget::selectionChanged, this, [=]() {
+    connect( widget, &QgsProcessingMultipleSelectionPanelWidget::selectionChanged, this, [this, widget]() {
       setValue( widget->selectedOptions() );
     } );
     connect( widget, &QgsProcessingMultipleSelectionPanelWidget::acceptClicked, widget, &QgsPanelWidget::acceptPanel );
@@ -193,7 +193,7 @@ void QgsProcessingMeshDatasetGroupsWidget::selectCurrentActiveDatasetGroup()
   setValue( options );
 }
 
-QgsProcessingMeshDatasetGroupsWidgetWrapper::QgsProcessingMeshDatasetGroupsWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type, QWidget *parent )
+QgsProcessingMeshDatasetGroupsWidgetWrapper::QgsProcessingMeshDatasetGroupsWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type, QWidget *parent )
   : QgsAbstractProcessingParameterWidgetWrapper( parameter, type, parent )
 {}
 
@@ -202,7 +202,7 @@ QString QgsProcessingMeshDatasetGroupsWidgetWrapper::parameterType() const
   return QgsProcessingParameterMeshDatasetGroups::typeName();
 }
 
-QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingMeshDatasetGroupsWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type )
+QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingMeshDatasetGroupsWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type )
 {
   return new QgsProcessingMeshDatasetGroupsWidgetWrapper( parameter, type );
 }
@@ -217,15 +217,15 @@ void QgsProcessingMeshDatasetGroupsWidgetWrapper::postInitialize( const QList<Qg
   QgsAbstractProcessingParameterWidgetWrapper::postInitialize( wrappers ); //necessary here?
   switch ( type() )
   {
-    case QgsProcessingGui::Standard:
-    case QgsProcessingGui::Batch:
+    case Qgis::ProcessingMode::Standard:
+    case Qgis::ProcessingMode::Batch:
     {
       for ( const QgsAbstractProcessingParameterWidgetWrapper *wrapper : wrappers )
       {
         if ( wrapper->parameterDefinition()->name() == static_cast<const QgsProcessingParameterMeshDatasetGroups *>( parameterDefinition() )->meshLayerParameterName() )
         {
           setMeshLayerWrapperValue( wrapper );
-          connect( wrapper, &QgsAbstractProcessingParameterWidgetWrapper::widgetValueHasChanged, this, [=] {
+          connect( wrapper, &QgsAbstractProcessingParameterWidgetWrapper::widgetValueHasChanged, this, [this, wrapper] {
             setMeshLayerWrapperValue( wrapper );
           } );
           break;
@@ -233,7 +233,7 @@ void QgsProcessingMeshDatasetGroupsWidgetWrapper::postInitialize( const QList<Qg
       }
     }
     break;
-    case QgsProcessingGui::Modeler:
+    case Qgis::ProcessingMode::Modeler:
       break;
   }
 }
@@ -266,23 +266,10 @@ void QgsProcessingMeshDatasetGroupsWidgetWrapper::setMeshLayerWrapperValue( cons
     mWidget->setMeshLayer( meshLayer, layerFromProject );
 }
 
-QStringList QgsProcessingMeshDatasetGroupsWidgetWrapper::compatibleParameterTypes() const
-{
-  return QStringList() << QgsProcessingParameterMeshDatasetGroups::typeName()
-                       << QgsProcessingParameterString::typeName()
-                       << QgsProcessingParameterNumber::typeName();
-}
-
-QStringList QgsProcessingMeshDatasetGroupsWidgetWrapper::compatibleOutputTypes() const
-{
-  return QStringList() << QgsProcessingOutputString::typeName()
-                       << QgsProcessingOutputNumber::typeName();
-}
-
 QWidget *QgsProcessingMeshDatasetGroupsWidgetWrapper::createWidget() SIP_FACTORY
 {
   mWidget = new QgsProcessingMeshDatasetGroupsWidget( nullptr, static_cast<const QgsProcessingParameterMeshDatasetGroups *>( parameterDefinition() ) );
-  connect( mWidget, &QgsProcessingMeshDatasetGroupsWidget::changed, this, [=] {
+  connect( mWidget, &QgsProcessingMeshDatasetGroupsWidget::changed, this, [this] {
     emit widgetValueHasChanged( this );
   } );
 
@@ -323,7 +310,7 @@ void QgsProcessingMeshDatasetGroupsWidget::updateSummaryText()
   mLineEdit->setText( tr( "%n option(s) selected", nullptr, mValue.count() ) );
 }
 
-QgsProcessingMeshDatasetTimeWidgetWrapper::QgsProcessingMeshDatasetTimeWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type, QWidget *parent )
+QgsProcessingMeshDatasetTimeWidgetWrapper::QgsProcessingMeshDatasetTimeWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type, QWidget *parent )
   : QgsAbstractProcessingParameterWidgetWrapper( parameter, type, parent )
 {
 }
@@ -333,7 +320,7 @@ QString QgsProcessingMeshDatasetTimeWidgetWrapper::parameterType() const
   return QgsProcessingParameterMeshDatasetTime::typeName();
 }
 
-QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingMeshDatasetTimeWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type )
+QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingMeshDatasetTimeWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type )
 {
   return new QgsProcessingMeshDatasetTimeWidgetWrapper( parameter, type );
 }
@@ -343,8 +330,8 @@ void QgsProcessingMeshDatasetTimeWidgetWrapper::postInitialize( const QList<QgsA
   QgsAbstractProcessingParameterWidgetWrapper::postInitialize( wrappers ); //necessary here?
   switch ( type() )
   {
-    case QgsProcessingGui::Standard:
-    case QgsProcessingGui::Batch:
+    case Qgis::ProcessingMode::Standard:
+    case Qgis::ProcessingMode::Batch:
     {
       const QgsAbstractProcessingParameterWidgetWrapper *layerParameterWrapper = nullptr;
       const QgsAbstractProcessingParameterWidgetWrapper *datasetGroupsParameterWrapper = nullptr;
@@ -358,7 +345,7 @@ void QgsProcessingMeshDatasetTimeWidgetWrapper::postInitialize( const QList<QgsA
       }
       setMeshLayerWrapperValue( layerParameterWrapper );
       setDatasetGroupIndexesWrapperValue( datasetGroupsParameterWrapper );
-      connect( datasetGroupsParameterWrapper, &QgsAbstractProcessingParameterWidgetWrapper::widgetValueHasChanged, this, [=] {
+      connect( datasetGroupsParameterWrapper, &QgsAbstractProcessingParameterWidgetWrapper::widgetValueHasChanged, this, [this, layerParameterWrapper, datasetGroupsParameterWrapper] {
         setMeshLayerWrapperValue( layerParameterWrapper );
         setDatasetGroupIndexesWrapperValue( datasetGroupsParameterWrapper );
       } );
@@ -366,7 +353,7 @@ void QgsProcessingMeshDatasetTimeWidgetWrapper::postInitialize( const QList<QgsA
       break;
     }
 
-    case QgsProcessingGui::Modeler:
+    case Qgis::ProcessingMode::Modeler:
       break;
   }
 }
@@ -422,20 +409,6 @@ void QgsProcessingMeshDatasetTimeWidgetWrapper::setDatasetGroupIndexesWrapperVal
   mWidget->setDatasetGroupIndexes( datasetGroupsIndexes );
 }
 
-QStringList QgsProcessingMeshDatasetTimeWidgetWrapper::compatibleParameterTypes() const
-{
-  return QStringList()
-         << QgsProcessingParameterMeshDatasetTime::typeName()
-         << QgsProcessingParameterString::typeName()
-         << QgsProcessingParameterDateTime::typeName();
-}
-
-QStringList QgsProcessingMeshDatasetTimeWidgetWrapper::compatibleOutputTypes() const
-{
-  return QStringList()
-         << QgsProcessingOutputString::typeName();
-}
-
 QWidget *QgsProcessingMeshDatasetTimeWidgetWrapper::createWidget()
 {
   mWidget = new QgsProcessingMeshDatasetTimeWidget( nullptr, static_cast<const QgsProcessingParameterMeshDatasetTime *>( parameterDefinition() ), widgetContext() );
@@ -445,7 +418,7 @@ QWidget *QgsProcessingMeshDatasetTimeWidgetWrapper::createWidget()
   {
     connect( canvas, &QgsMapCanvas::temporalRangeChanged, mWidget, &QgsProcessingMeshDatasetTimeWidget::updateValue );
   }
-  connect( mWidget, &QgsProcessingMeshDatasetTimeWidget::changed, this, [=] {
+  connect( mWidget, &QgsProcessingMeshDatasetTimeWidget::changed, this, [this] {
     emit widgetValueHasChanged( this );
   } );
 

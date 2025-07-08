@@ -33,7 +33,7 @@
 
 /**
  * \ingroup core
- * \brief This class wraps a request for features to a vector layer (or directly its vector data provider).
+ * \brief Wraps a request for features to a vector layer (or directly its vector data provider).
  *
  * The request may apply an attribute/ID filter to fetch only a particular subset of features. Currently supported filters:
  *
@@ -57,7 +57,7 @@
  * The options may be chained, e.g.:
  *
  * \code{.py}
- *   QgsFeatureRequest().setFilterRect(QgsRectangle(0,0,1,1)).setFlags(QgsFeatureRequest.ExactIntersect)
+ *   QgsFeatureRequest().setFilterRect(QgsRectangle(0,0,1,1)).setFlags(Qgis.FeatureRequestFlag.ExactIntersect)
  * \endcode
  *
  * Examples:
@@ -68,7 +68,7 @@
  *   # fetch all features, only one attribute
  *   QgsFeatureRequest().setSubsetOfAttributes(['myfield'], layer.fields())
  *   # fetch all features, without geometries
- *   QgsFeatureRequest().setFlags(QgsFeatureRequest.NoGeometry)
+ *   QgsFeatureRequest().setFlags(Qgis.FeatureRequestFlag.NoGeometry)
  *   # fetch only features from particular extent
  *   QgsFeatureRequest().setFilterRect(QgsRectangle(0,0,1,1))
  *   # fetch only features from particular extent, where the 'type' attribute is equal to 'road':
@@ -1031,7 +1031,7 @@ class QgsAbstractFeatureIterator;
 
 /**
  * \ingroup core
- * \brief Base class that can be used for any class that is capable of returning features
+ * \brief Base class that can be used for any class that is capable of returning features.
  */
 class CORE_EXPORT QgsAbstractFeatureSource
 {

@@ -43,7 +43,7 @@ QgsSymbolButton::QgsSymbolButton( QWidget *parent, const QString &dialogTitle )
   : QToolButton( parent )
   , mDialogTitle( dialogTitle.isEmpty() ? tr( "Symbol Settings" ) : dialogTitle )
 {
-  mSymbol.reset( QgsFillSymbol::createSimple( QVariantMap() ) );
+  mSymbol = QgsFillSymbol::createSimple( QVariantMap() );
 
   setAcceptDrops( true );
   connect( this, &QAbstractButton::clicked, this, &QgsSymbolButton::showSettingsDialog );
@@ -110,15 +110,15 @@ void QgsSymbolButton::setSymbolType( Qgis::SymbolType type )
     switch ( type )
     {
       case Qgis::SymbolType::Marker:
-        mSymbol.reset( QgsMarkerSymbol::createSimple( QVariantMap() ) );
+        mSymbol = QgsMarkerSymbol::createSimple( QVariantMap() );
         break;
 
       case Qgis::SymbolType::Line:
-        mSymbol.reset( QgsLineSymbol::createSimple( QVariantMap() ) );
+        mSymbol = QgsLineSymbol::createSimple( QVariantMap() );
         break;
 
       case Qgis::SymbolType::Fill:
-        mSymbol.reset( QgsFillSymbol::createSimple( QVariantMap() ) );
+        mSymbol = QgsFillSymbol::createSimple( QVariantMap() );
         break;
 
       case Qgis::SymbolType::Hybrid:
@@ -174,7 +174,7 @@ void QgsSymbolButton::showSettingsDialog()
     QgsSymbolSelectorWidget *widget = QgsSymbolSelectorWidget::createWidgetWithSymbolOwnership( std::move( newSymbol ), QgsStyle::defaultStyle(), mLayer, panel );
     widget->setPanelTitle( mDialogTitle );
     widget->setContext( symbolContext );
-    connect( widget, &QgsPanelWidget::widgetChanged, this, [=] { updateSymbolFromWidget( widget ); } );
+    connect( widget, &QgsPanelWidget::widgetChanged, this, [this, widget] { updateSymbolFromWidget( widget ); } );
     panel->openPanel( widget );
   }
   else
@@ -535,7 +535,7 @@ void QgsSymbolButton::prepareMenu()
     alphaRamp->setColor( alphaColor );
     QgsColorWidgetAction *alphaAction = new QgsColorWidgetAction( alphaRamp, mMenu, mMenu );
     alphaAction->setDismissOnColorSelection( false );
-    connect( alphaAction, &QgsColorWidgetAction::colorChanged, this, [=]( const QColor &color ) {
+    connect( alphaAction, &QgsColorWidgetAction::colorChanged, this, [this]( const QColor &color ) {
       const double opacity = color.alphaF();
       mSymbol->setOpacity( opacity );
       updatePreview();
@@ -775,7 +775,7 @@ void QgsSymbolButton::showColorDialog()
       colorWidget->setPreviousColor( currentColor );
     }
 
-    connect( colorWidget, &QgsCompoundColorWidget::currentColorChanged, this, [=]( const QColor &newColor ) {
+    connect( colorWidget, &QgsCompoundColorWidget::currentColorChanged, this, [this]( const QColor &newColor ) {
       if ( newColor.isValid() )
       {
         setColor( newColor );

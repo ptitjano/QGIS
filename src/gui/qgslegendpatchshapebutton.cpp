@@ -30,7 +30,7 @@ QgsLegendPatchShapeButton::QgsLegendPatchShapeButton( QWidget *parent, const QSt
   , mShape( QgsStyle::defaultStyle()->defaultPatch( Qgis::SymbolType::Fill, QSizeF( 10, 5 ) ) )
   , mDialogTitle( dialogTitle.isEmpty() ? tr( "Legend Patch Shape" ) : dialogTitle )
 {
-  mPreviewSymbol.reset( QgsFillSymbol::createSimple( QVariantMap() ) );
+  mPreviewSymbol = QgsFillSymbol::createSimple( QVariantMap() );
 
   connect( this, &QAbstractButton::clicked, this, &QgsLegendPatchShapeButton::showSettingsDialog );
 
@@ -65,15 +65,15 @@ void QgsLegendPatchShapeButton::setSymbolType( Qgis::SymbolType type )
     switch ( type )
     {
       case Qgis::SymbolType::Marker:
-        mPreviewSymbol.reset( QgsMarkerSymbol::createSimple( QVariantMap() ) );
+        mPreviewSymbol = QgsMarkerSymbol::createSimple( QVariantMap() );
         break;
 
       case Qgis::SymbolType::Line:
-        mPreviewSymbol.reset( QgsLineSymbol::createSimple( QVariantMap() ) );
+        mPreviewSymbol = QgsLineSymbol::createSimple( QVariantMap() );
         break;
 
       case Qgis::SymbolType::Fill:
-        mPreviewSymbol.reset( QgsFillSymbol::createSimple( QVariantMap() ) );
+        mPreviewSymbol = QgsFillSymbol::createSimple( QVariantMap() );
         break;
 
       case Qgis::SymbolType::Hybrid:
@@ -102,7 +102,7 @@ void QgsLegendPatchShapeButton::showSettingsDialog()
   if ( panel && panel->dockMode() )
   {
     QgsLegendPatchShapeWidget *widget = new QgsLegendPatchShapeWidget( this, mShape );
-    connect( widget, &QgsLegendPatchShapeWidget::changed, this, [=] {
+    connect( widget, &QgsLegendPatchShapeWidget::changed, this, [this, widget] {
       setShape( widget->shape() );
     } );
     widget->setPanelTitle( mDialogTitle );
@@ -193,7 +193,7 @@ void QgsLegendPatchShapeButton::prepareMenu()
 
   QAction *defaultAction = new QAction( tr( "Reset to Default" ), this );
   mMenu->addAction( defaultAction );
-  connect( defaultAction, &QAction::triggered, this, [=] { setToDefault(); emit changed(); } );
+  connect( defaultAction, &QAction::triggered, this, [this] { setToDefault(); emit changed(); } );
 
   mMenu->addSeparator();
 
@@ -210,7 +210,7 @@ void QgsLegendPatchShapeButton::prepareMenu()
         QIcon icon = QgsSymbolLayerUtils::symbolPreviewPixmap( symbol, QSize( iconSize, iconSize ), 1, nullptr, false, nullptr, &shape, QgsScreenProperties( screen() ) );
         QAction *action = new QAction( name, this );
         action->setIcon( icon );
-        connect( action, &QAction::triggered, this, [=] { loadPatchFromStyle( name ); } );
+        connect( action, &QAction::triggered, this, [this, name] { loadPatchFromStyle( name ); } );
         mMenu->addAction( action );
       }
     }

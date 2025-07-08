@@ -35,7 +35,7 @@ class QgsRenderContext;
 
 /**
  * \ingroup core
- * \brief Utility class that construct a planar graph from the input vector
+ * \brief Utility class that constructs a planar graph from the input vector
  * layers and provides shortest path search for tracing of existing
  * features.
  *
@@ -199,7 +199,7 @@ class CORE_EXPORT QgsTracer : public QObject
     //! Extent for graph building (empty extent means no limit)
     QgsRectangle mExtent;
     //! If FALSE, no vertices will be added on intersections unless they exist in the original layers
-    bool mAddPointsOnIntersections = false;
+    bool mAddPointsOnIntersections = true;
     //! Holds the input layers' intersections. Only populated when mAddPointsOnIntersections == false
     QgsGeometry mIntersections;
 

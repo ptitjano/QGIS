@@ -136,6 +136,8 @@ QgsExpressionBuilderWidget::QgsExpressionBuilderWidget( QWidget *parent )
     connect( button, &QAbstractButton::clicked, this, &QgsExpressionBuilderWidget::operatorButtonClicked );
   }
 
+  connect( btnCommentLinePushButton, &QAbstractButton::clicked, this, &QgsExpressionBuilderWidget::commentLinesClicked );
+
   txtSearchEdit->setShowSearchIcon( true );
   txtSearchEdit->setPlaceholderText( tr( "Search…" ) );
 
@@ -149,11 +151,11 @@ QgsExpressionBuilderWidget::QgsExpressionBuilderWidget( QWidget *parent )
   editorSplit->setSizes( QList<int>( { 175, 300 } ) );
 
   functionsplit->setCollapsible( 0, false );
-  connect( mShowHelpButton, &QPushButton::clicked, this, [=]() {
+  connect( mShowHelpButton, &QPushButton::clicked, this, [this]() {
     functionsplit->setSizes( QList<int>( { mOperationListGroup->width() - mHelpAndValuesWidget->minimumWidth(), mHelpAndValuesWidget->minimumWidth() } ) );
     mShowHelpButton->setEnabled( false );
   } );
-  connect( functionsplit, &QSplitter::splitterMoved, this, [=]( int, int ) {
+  connect( functionsplit, &QSplitter::splitterMoved, this, [this]( int, int ) {
     mShowHelpButton->setEnabled( functionsplit->sizes().at( 1 ) == 0 );
   } );
 
@@ -958,6 +960,11 @@ void QgsExpressionBuilderWidget::operatorButtonClicked()
   // Insert the button text or replace selected text
   txtExpressionString->insertText( ' ' + button->text() + ' ' );
   txtExpressionString->setFocus();
+}
+
+void QgsExpressionBuilderWidget::commentLinesClicked()
+{
+  txtExpressionString->toggleComment();
 }
 
 void QgsExpressionBuilderWidget::loadSampleValues()

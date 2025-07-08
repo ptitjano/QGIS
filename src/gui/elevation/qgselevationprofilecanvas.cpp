@@ -37,7 +37,6 @@
 #include "qgsmaplayerelevationproperties.h"
 #include "qgsscreenhelper.h"
 #include "qgsfillsymbol.h"
-#include "qgslinesymbol.h"
 #include "qgsprofilesourceregistry.h"
 
 #include <QWheelEvent>
@@ -265,6 +264,15 @@ class QgsElevationProfilePlotItem : public Qgs2DPlot, public QgsPlotCanvasItem
         imagePainter.end();
 
         painter->drawImage( QPointF( 0, 0 ), mImage );
+      }
+    }
+
+    void setSubsectionsSymbol( QgsLineSymbol *symbol )
+    {
+      if ( mRenderer )
+      {
+        mRenderer->setSubsectionsSymbol( symbol );
+        updatePlot();
       }
     }
 
@@ -570,6 +578,7 @@ void QgsElevationProfileCanvas::setupLayerConnections( QgsMapLayer *layer, bool 
         disconnect( vl, &QgsVectorLayer::featureDeleted, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         disconnect( vl, &QgsVectorLayer::geometryChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         disconnect( vl, &QgsVectorLayer::attributeValueChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
+        disconnect( vl, &QgsVectorLayer::selectionChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
       }
       else
       {
@@ -577,6 +586,7 @@ void QgsElevationProfileCanvas::setupLayerConnections( QgsMapLayer *layer, bool 
         connect( vl, &QgsVectorLayer::featureDeleted, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         connect( vl, &QgsVectorLayer::geometryChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
         connect( vl, &QgsVectorLayer::attributeValueChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
+        connect( vl, &QgsVectorLayer::selectionChanged, this, &QgsElevationProfileCanvas::regenerateResultsForLayer );
       }
       break;
     }
@@ -836,16 +846,48 @@ void QgsElevationProfileCanvas::mouseMoveEvent( QMouseEvent *e )
       plotPoint = snapResult.snappedPoint;
   }
 
-  if ( plotPoint.isEmpty() )
+  if ( !mCrossHairsItemIsDelegate )
   {
+    if ( plotPoint.isEmpty() )
+    {
+      mCrossHairsItem->hide();
+    }
+    else
+    {
+      mCrossHairsItem->setPoint( plotPoint );
+      mCrossHairsItem->show();
+    }
+    emit canvasPointHovered( e->pos(), plotPoint );
+  }
+}
+
+void QgsElevationProfileCanvas::setCrossHairsItemPoint( QPoint point )
+{
+  QgsProfilePoint plotPoint = canvasPointToPlotPoint( point );
+  mCrossHairsItem->setPoint( plotPoint );
+  emit canvasPointHovered( QgsPointXY(), plotPoint );
+}
+
+void QgsElevationProfileCanvas::hideCrossHairsItem()
+{
+  if ( mCrossHairsItemIsDelegate )
     mCrossHairsItem->hide();
-  }
-  else
-  {
-    mCrossHairsItem->setPoint( plotPoint );
+}
+
+void QgsElevationProfileCanvas::showCrossHairsItem()
+{
+  if ( mCrossHairsItemIsDelegate )
     mCrossHairsItem->show();
-  }
-  emit canvasPointHovered( e->pos(), plotPoint );
+}
+
+bool QgsElevationProfileCanvas::crossHairsItemIsDelegate()
+{
+  return mCrossHairsItemIsDelegate;
+}
+
+void QgsElevationProfileCanvas::setCrossHairsItemIsDelegate( bool enabled )
+{
+  mCrossHairsItemIsDelegate = enabled;
 }
 
 QRectF QgsElevationProfileCanvas::plotArea() const
@@ -878,7 +920,7 @@ void QgsElevationProfileCanvas::refresh()
   sources << registrySources;
   for ( QgsMapLayer *layer : layersToGenerate )
   {
-    if ( QgsAbstractProfileSource *source = dynamic_cast<QgsAbstractProfileSource *>( layer ) )
+    if ( QgsAbstractProfileSource *source = layer->profileSource() )
       sources.append( source );
   }
 
@@ -890,6 +932,11 @@ void QgsElevationProfileCanvas::refresh()
   generationContext.setMaximumErrorMapUnits( MAX_ERROR_PIXELS * ( mProfileCurve->length() ) / mPlotItem->plotArea().width() );
   generationContext.setMapUnitsPerDistancePixel( mProfileCurve->length() / mPlotItem->plotArea().width() );
   mCurrentJob->setContext( generationContext );
+
+  if ( mSubsectionsSymbol )
+  {
+    mCurrentJob->setSubsectionsSymbol( mSubsectionsSymbol->clone() );
+  }
 
   mCurrentJob->startGeneration();
   mPlotItem->setRenderer( mCurrentJob );
@@ -944,7 +991,7 @@ void QgsElevationProfileCanvas::onLayerProfileGenerationPropertyChanged()
 
   if ( QgsMapLayer *layer = qobject_cast<QgsMapLayer *>( properties->parent() ) )
   {
-    if ( QgsAbstractProfileSource *source = dynamic_cast<QgsAbstractProfileSource *>( layer ) )
+    if ( QgsAbstractProfileSource *source = layer->profileSource() )
     {
       if ( mCurrentJob->invalidateResults( source ) )
         scheduleDeferredRegeneration();
@@ -964,7 +1011,7 @@ void QgsElevationProfileCanvas::onLayerProfileRendererPropertyChanged()
 
   if ( QgsMapLayer *layer = qobject_cast<QgsMapLayer *>( properties->parent() ) )
   {
-    if ( QgsAbstractProfileSource *source = dynamic_cast<QgsAbstractProfileSource *>( layer ) )
+    if ( QgsAbstractProfileSource *source = layer->profileSource() )
     {
       mCurrentJob->replaceSource( source );
     }
@@ -980,7 +1027,7 @@ void QgsElevationProfileCanvas::regenerateResultsForLayer()
 
   if ( QgsMapLayer *layer = qobject_cast<QgsMapLayer *>( sender() ) )
   {
-    if ( QgsAbstractProfileSource *source = dynamic_cast<QgsAbstractProfileSource *>( layer ) )
+    if ( QgsAbstractProfileSource *source = layer->profileSource() )
     {
       if ( mCurrentJob->invalidateResults( source ) )
         scheduleDeferredRegeneration();
@@ -1368,6 +1415,7 @@ void QgsElevationProfileCanvas::render( QgsRenderContext &context, double width,
 
   context.expressionContext().appendScope( QgsExpressionContextUtils::globalScope() );
   context.expressionContext().appendScope( QgsExpressionContextUtils::projectScope( mProject ) );
+  context.setSelectionColor( mProject->selectionColor() );
 
   QgsElevationProfilePlot profilePlot( mCurrentJob );
 
@@ -1427,4 +1475,11 @@ void QgsElevationProfileCanvas::clear()
 void QgsElevationProfileCanvas::setSnappingEnabled( bool enabled )
 {
   mSnappingEnabled = enabled;
+}
+
+void QgsElevationProfileCanvas::setSubsectionsSymbol( QgsLineSymbol *symbol )
+{
+  mSubsectionsSymbol.reset( symbol );
+  std::unique_ptr<QgsLineSymbol> plotItemSymbol( mSubsectionsSymbol ? mSubsectionsSymbol->clone() : nullptr );
+  mPlotItem->setSubsectionsSymbol( plotItemSymbol.release() );
 }

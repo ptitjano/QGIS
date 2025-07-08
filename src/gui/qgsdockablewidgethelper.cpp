@@ -60,18 +60,15 @@ QgsDockableWidgetHelper::~QgsDockableWidgetHelper()
 {
   if ( mDock )
   {
-    mDockGeometry = mDock->geometry();
     if ( !mSettingKeyDockId.isEmpty() )
       sSettingsDockGeometry->setValue( mDock->saveGeometry(), mSettingKeyDockId );
-    mIsDockFloating = mDock->isFloating();
-    if ( mOwnerWindow )
-      mDockArea = mOwnerWindow->dockWidgetArea( mDock );
-
-    mDock->setWidget( nullptr );
 
     if ( mOwnerWindow )
       mOwnerWindow->removeDockWidget( mDock );
-    mDock->deleteLater();
+
+    mDock->setWidget( nullptr );
+    mWidget->setParent( nullptr );
+    delete mDock.data();
     mDock = nullptr;
   }
 
@@ -270,12 +267,12 @@ void QgsDockableWidgetHelper::toggleDockMode( bool docked )
 
     if ( !mSettingKeyDockId.isEmpty() )
     {
-      connect( mDock, &QgsDockWidget::dockLocationChanged, this, [=]( Qt::DockWidgetArea area ) {
+      connect( mDock, &QgsDockWidget::dockLocationChanged, this, [this]( Qt::DockWidgetArea area ) {
         sSettingsDockArea->setValue( area, mSettingKeyDockId );
       } );
     }
 
-    connect( mDock, &QgsDockWidget::closed, this, [=]() {
+    connect( mDock, &QgsDockWidget::closed, this, [this]() {
       mDockGeometry = mDock->geometry();
       mIsDockFloating = mDock->isFloating();
       if ( mOwnerWindow )
@@ -326,7 +323,7 @@ void QgsDockableWidgetHelper::toggleDockMode( bool docked )
     mDialog->raise();
     mDialog->show();
 
-    connect( mDialog, &QDialog::finished, this, [=]() {
+    connect( mDialog, &QDialog::finished, this, [this]() {
       mDialogGeometry = mDialog->geometry();
       emit closed();
       emit visibilityChanged( false );
@@ -431,7 +428,7 @@ void QgsDockableWidgetHelper::setupDockWidget( const QStringList &tabSiblings )
   QMetaObject::invokeMethod( mDock, [this] {
     if (mIsDockFloating && sSettingsDockGeometry->exists( mSettingKeyDockId ) )
         mDock->restoreGeometry( sSettingsDockGeometry->value( mSettingKeyDockId ).toByteArray() );
-    else
+    else if ( mIsDockFloating )
       mDock->setGeometry( mDockGeometry ); }, Qt::QueuedConnection );
 }
 

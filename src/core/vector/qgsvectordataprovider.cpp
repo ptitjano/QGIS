@@ -784,7 +784,7 @@ static bool _removeDuplicateEncodings( const QString &s1, const QString &s2 )
 QStringList QgsVectorDataProvider::availableEncodings()
 {
   static std::once_flag initialized;
-  std::call_once( initialized, [ = ]
+  std::call_once( initialized, []
   {
     const auto codecs { QTextCodec::availableCodecs() };
     for ( const QByteArray &codec : codecs )
@@ -992,7 +992,7 @@ QgsGeometry QgsVectorDataProvider::convertToProviderType( const QgsGeometry &geo
     {
       if ( geomCollection->addGeometry( outputGeom ? outputGeom->clone() : convertedGeometry->clone() ) )
       {
-        outputGeom.reset( collGeom.release() );
+        outputGeom = std::move( collGeom );
       }
     }
   }

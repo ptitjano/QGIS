@@ -35,6 +35,7 @@ set(QGIS_GUI_SRCS
   vector/qgsattributeactiondialog.cpp
   vector/qgsattributeactionpropertiesdialog.cpp
   vector/qgsattributesforminitcode.cpp
+  vector/qgsattributesformmodel.cpp
   vector/qgsattributesformproperties.cpp
   vector/qgsdiagramproperties.cpp
   vector/qgsdiagramwidget.cpp
@@ -270,6 +271,7 @@ set(QGIS_GUI_SRCS
   labeling/qgslabellineanchorwidget.cpp
   labeling/qgslabelobstaclesettingswidget.cpp
   labeling/qgslabelsettingswidgetbase.cpp
+  labeling/qgslabelremoveduplicatesettingswidget.cpp
   labeling/qgsrulebasedlabelingwidget.cpp
   labeling/qgstabpositionwidget.cpp
 
@@ -407,6 +409,7 @@ set(QGIS_GUI_SRCS
   processing/qgsprocessingfeaturesourceoptionswidget.cpp
   processing/qgsprocessingfieldmapwidgetwrapper.cpp
   processing/qgsprocessingguiregistry.cpp
+  processing/qgsprocessingguiutils.cpp
   processing/qgsprocessinghelpeditorwidget.cpp
   processing/qgsprocessinghistoryprovider.cpp
   processing/qgsprocessinghistorywidget.cpp
@@ -446,6 +449,7 @@ set(QGIS_GUI_SRCS
   processing/models/qgsmodelviewmousehandles.cpp
   processing/models/qgsmodelviewrubberband.cpp
   processing/models/qgsmodelviewtool.cpp
+  processing/models/qgsmodelviewtoollink.cpp
   processing/models/qgsmodelviewtoolpan.cpp
   processing/models/qgsmodelviewtoolselect.cpp
   processing/models/qgsmodelviewtooltemporarykeypan.cpp
@@ -587,6 +591,7 @@ set(QGIS_GUI_SRCS
   qgscustomprojectopenhandler.cpp
   qgscurveeditorwidget.cpp
   qgsdatabaseschemacombobox.cpp
+  qgsdatabaseschemaselectiondialog.cpp
   qgsdatabasetablecombobox.cpp
   qgsdataitemguiprovider.cpp
   qgsdataitemguiproviderregistry.cpp
@@ -644,6 +649,7 @@ set(QGIS_GUI_SRCS
   qgsgeocoderlocatorfilter.cpp
   qgsgeometryrubberband.cpp
   qgsgeometrywidget.cpp
+  qgsgpstoolsinterface.cpp
   qgsgradientcolorrampdialog.cpp
   qgsgradientstopeditor.cpp
   qgsgraphicsviewmousehandles.cpp
@@ -685,6 +691,7 @@ set(QGIS_GUI_SRCS
   qgsmaplayerloadstyledialog.cpp
   qgsmaplayerrefreshsettingswidget.cpp
   qgsmaplayersavestyledialog.cpp
+  qgsmaplayerserverpropertieswidget.cpp
   qgsmaplayerstylecategoriesmodel.cpp
   qgsmaplayerstyleguiutils.cpp
   qgsmaplayerstylemanagerwidget.cpp
@@ -754,6 +761,7 @@ set(QGIS_GUI_SRCS
   qgsrichtexteditor.cpp
   qgsrubberband.cpp
   qgsscalecombobox.cpp
+  qgsscalemethodwidget.cpp
   qgsscalerangewidget.cpp
   qgsscalevisibilitydialog.cpp
   qgsscalewidget.cpp
@@ -863,6 +871,7 @@ set(QGIS_GUI_HDRS
   qgsdbrelationshipwidget.h
   qgsdecoratedscrollbar.h
   qgsnewdatabasetablenamewidget.h
+  qgsdatabaseschemaselectiondialog.h
   qgsdetaileditemdata.h
   qgsdetaileditemdelegate.h
   qgsdetaileditemwidget.h
@@ -912,6 +921,7 @@ set(QGIS_GUI_HDRS
   qgsgeocoderlocatorfilter.h
   qgsgeometryrubberband.h
   qgsgeometrywidget.h
+  qgsgpstoolsinterface.h
   qgsgradientcolorrampdialog.h
   qgsgradientstopeditor.h
   qgsgraphicsviewmousehandles.h
@@ -952,6 +962,7 @@ set(QGIS_GUI_HDRS
   qgsmaplayerconfigwidget.h
   qgsmaplayerconfigwidgetfactory.h
   qgsmaplayersavestyledialog.h
+  qgsmaplayerserverpropertieswidget.h
   qgsmaplayerloadstyledialog.h
   qgsmaplayerrefreshsettingswidget.h
   qgsmaplayerstylecategoriesmodel.h
@@ -1025,6 +1036,7 @@ set(QGIS_GUI_HDRS
   qgsrichtexteditor.h
   qgsrubberband.h
   qgsscalecombobox.h
+  qgsscalemethodwidget.h
   qgsscalerangewidget.h
   qgsscalevisibilitydialog.h
   qgsscalewidget.h
@@ -1258,6 +1270,7 @@ set(QGIS_GUI_HDRS
   labeling/qgslabellineanchorwidget.h
   labeling/qgslabelobstaclesettingswidget.h
   labeling/qgslabelsettingswidgetbase.h
+  labeling/qgslabelremoveduplicatesettingswidget.h
   labeling/qgsrulebasedlabelingwidget.h
   labeling/qgstabpositionwidget.h
 
@@ -1396,6 +1409,7 @@ set(QGIS_GUI_HDRS
   processing/qgsprocessingfieldmapwidgetwrapper.h
   processing/qgsprocessinggui.h
   processing/qgsprocessingguiregistry.h
+  processing/qgsprocessingguiutils.h
   processing/qgsprocessinghelpeditorwidget.h
   processing/qgsprocessinghistoryprovider.h
   processing/qgsprocessinghistorywidget.h
@@ -1436,6 +1450,7 @@ set(QGIS_GUI_HDRS
   processing/models/qgsmodelviewrubberband.h
   processing/models/qgsmodelviewtool.h
   processing/models/qgsmodelviewtoolpan.h
+  processing/models/qgsmodelviewtoollink.h
   processing/models/qgsmodelviewtoolselect.h
   processing/models/qgsmodelviewtooltemporarykeypan.h
   processing/models/qgsmodelviewtooltemporarykeyzoom.h
@@ -1519,6 +1534,7 @@ set(QGIS_GUI_HDRS
   vector/qgsattributeactiondialog.h
   vector/qgsattributeactionpropertiesdialog.h
   vector/qgsattributesforminitcode.h
+  vector/qgsattributesformmodel.h
   vector/qgsattributesformproperties.h
   vector/qgsdiagramproperties.h
   vector/qgsdiagramwidget.h
@@ -1764,36 +1780,12 @@ GENERATE_EXPORT_HEADER(
 
 set(QGIS_GUI_HDRS ${QGIS_GUI_HDRS} ${CMAKE_CURRENT_BINARY_DIR}/qgis_gui.h)
 
-if(NOT APPLE OR NOT QGIS_MACAPP_FRAMEWORK)
-  if (WIN32)
-    include_directories(${CMAKE_SOURCE_DIR}/src/native/win)
-  elseif (APPLE)
-    include_directories(${CMAKE_SOURCE_DIR}/src/native/mac)
-  elseif (UNIX)
-    include_directories(${CMAKE_SOURCE_DIR}/src/native/linux)
-  endif()
-  install(FILES ${QGIS_GUI_HDRS} DESTINATION ${QGIS_INCLUDE_DIR})
-else()
+if (WIN32)
+  include_directories(${CMAKE_SOURCE_DIR}/src/native/win)
+elseif (APPLE)
   include_directories(${CMAKE_SOURCE_DIR}/src/native/mac)
-  set_target_properties(qgis_gui PROPERTIES
-    CLEAN_DIRECT_OUTPUT 1
-    FRAMEWORK 1
-    FRAMEWORK_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}"
-    MACOSX_FRAMEWORK_INFO_PLIST "${CMAKE_SOURCE_DIR}/mac/framework.info.plist.in"
-    MACOSX_FRAMEWORK_SHORT_VERSION_STRING ${COMPLETE_VERSION}
-    MACOSX_FRAMEWORK_IDENTIFIER org.qgis.qgis3_gui
-    BUILD_WITH_INSTALL_RPATH TRUE
-    PUBLIC_HEADER "${QGIS_GUI_HDRS}"
-    LINK_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}"
-  )
-  # generated export header does not get copied with PUBLIC_HEADER files
-  add_custom_command(TARGET qgis_gui
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy qgis_gui.h
-            "${QGIS_OUTPUT_DIRECTORY}/${QGIS_LIB_SUBDIR}/qgis_gui.framework/Headers"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    DEPENDS qgis_gui.h
-  )
+elseif (UNIX)
+  include_directories(${CMAKE_SOURCE_DIR}/src/native/linux)
 endif()
 
 #generate unversioned libs for android
@@ -1882,26 +1874,11 @@ if(CLANG_TIDY_EXE)
 endif()
 
 # install
+if(NOT QGIS_MAC_BUNDLE)
+  install(FILES ${QGIS_GUI_HDRS} DESTINATION ${QGIS_INCLUDE_DIR})
+endif()
 
 install(TARGETS qgis_gui
   RUNTIME DESTINATION ${QGIS_BIN_DIR}
   LIBRARY DESTINATION ${QGIS_LIB_DIR}
-  ARCHIVE DESTINATION ${QGIS_LIB_DIR}
-  FRAMEWORK DESTINATION ${QGIS_FW_SUBDIR}
-  PUBLIC_HEADER DESTINATION ${QGIS_INCLUDE_DIR})
-
-# ui headers to install, don't exist at target definition time, install manually
-if (APPLE AND QGIS_MACAPP_FRAMEWORK)
-  install(FILES ${QGIS_GUI_UI_HDRS} DESTINATION ${QGIS_FW_SUBDIR}/qgis_gui.framework/Headers)
-else()
-  install(FILES ${QGIS_GUI_UI_HDRS} DESTINATION ${QGIS_INCLUDE_DIR})
-endif()
-
-# Mac dev frameworks
-
-if (APPLE AND QGIS_MACAPP_INSTALL_DEV)
-  install(TARGETS qgis_gui FRAMEWORK DESTINATION ${QGIS_MACAPP_DEV_PREFIX})
-  install(FILES ${QGIS_GUI_UI_HDRS} DESTINATION ${QGIS_MACAPP_DEV_PREFIX}/qgis_gui.framework/Headers)
-  install(CODE "execute_process(COMMAND install_name_tool -id \"${QGIS_MACAPP_DEV_PREFIX}/qgis_gui.framework/Versions/${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}/qgis_gui\" \"$ENV{DESTDIR}${QGIS_MACAPP_DEV_PREFIX}/qgis_gui.framework/qgis_gui\")")
-  install(CODE "execute_process(COMMAND install_name_tool -change \"${CMAKE_INSTALL_NAME_DIR}/qgis_core.framework/Versions/${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}/qgis_core\" \"${QGIS_MACAPP_DEV_PREFIX}/qgis_core.framework/Versions/${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}/qgis_core\" \"$ENV{DESTDIR}${QGIS_MACAPP_DEV_PREFIX}/qgis_gui.framework/qgis_gui\")")
-endif()
+  ARCHIVE DESTINATION ${QGIS_LIB_DIR})

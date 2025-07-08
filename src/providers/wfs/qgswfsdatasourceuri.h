@@ -93,6 +93,9 @@ class QgsWFSDataSourceURI
     //! Sets OGC filter xml or a QGIS expression
     void setFilter( const QString &filterIn );
 
+    //! Returns TRUE if an initial get features should always be issued.
+    bool forceInitialGetFeature() const;
+
     //! Returns whether there is a geometry type filter.
     bool hasGeometryTypeFilter() const;
 
@@ -110,6 +113,9 @@ class QgsWFSDataSourceURI
 
     //! Sets GetFeature output format
     void setOutputFormat( const QString &outputFormat );
+
+    //! Returns the preferred HTTP method for requests
+    Qgis::HttpMethod httpMethod() const;
 
     //! Returns whether GetFeature request should include the request bounding box. Defaults to false
     bool isRestrictedToRequestBBOX() const;
@@ -131,6 +137,17 @@ class QgsWFSDataSourceURI
 
     //! Returns authorization parameters
     const QgsAuthorizationSettings &auth() const { return mAuth; }
+
+    //! How to analyze DescribeFeatureType response
+    enum class FeatureMode
+    {
+      Default,         //! If the server supports transaction, same as SIMPLE_FEATURE. Otherwise COMPLEX_FEATURE
+      SimpleFeatures,  //! Analyze DescribeFeatureType response with QGIS built-in Simple Feature analyzer
+      ComplexFeatures, //! Analyze DescribeFeatureType response with OGR GMLAS Complex Feature analyzer
+    };
+
+    //! Returns how to analyze DescribeFeatureType response.
+    FeatureMode featureMode() const;
 
     //! Builds a derived uri from a base uri
     static QString build( const QString &uri, const QString &typeName, const QString &crsString = QString(), const QString &sql = QString(), const QString &filter = QString(), bool restrictToCurrentViewExtent = false );

@@ -48,7 +48,7 @@ int QgisEvent = QEvent::User + 1;
 
 /**
  * \ingroup core
- * \brief The Qgis class provides global constants for use throughout the application.
+ * \brief Provides global constants and enumerations for use throughout the application.
  */
 class CORE_EXPORT Qgis
 {
@@ -2229,6 +2229,7 @@ class CORE_EXPORT Qgis
     {
       UsersCannotToggleEditing = 1 << 0, //!< Indicates that users are not allowed to toggle editing for this layer. Note that this does not imply that the layer is non-editable (see isEditable(), supportsEditing() ), rather that the editable status of the layer cannot be changed by users manually \since QGIS 3.22
       IsBasemapLayer = 1 << 1, //!< Layer is considered a 'basemap' layer, and certain properties of the layer should be ignored when calculating project-level properties. For instance, the extent of basemap layers is ignored when calculating the extent of a project, as these layers are typically global and extend outside of a project's area of interest \since QGIS 3.26
+      Is3DBasemapLayer = 1 << 2, //!< Layer is considered a '3D basemap' layer. This flag is similar to IsBasemapLayer, but reserved for layers which contain 3D data \since QGIS 3.44
     };
     //! Map layer properties
     Q_DECLARE_FLAGS( MapLayerProperties, MapLayerProperty )
@@ -2258,6 +2259,7 @@ class CORE_EXPORT Qgis
       IsBasemapSource = 1 << 1, //!< Associated source should be considered a 'basemap' layer. See Qgis::MapLayerProperty::IsBasemapLayer.
       FastExtent2D = 1 << 2, //!< Provider's 2D extent retrieval via QgsDataProvider::extent() is always guaranteed to be trivial/fast to calculate \since QGIS 3.38
       FastExtent3D = 1 << 3, //!< Provider's 3D extent retrieval via QgsDataProvider::extent3D() is always guaranteed to be trivial/fast to calculate \since QGIS 3.38
+      Is3DBasemapSource = 1 << 4, //!< Associated source should be considered a '3D basemap' layer. See Qgis::MapLayerProperty::Is3DBasemapLayer. \since QGIS 3.44
     };
     //! Data provider flags
     Q_DECLARE_FLAGS( DataProviderFlags, DataProviderFlag )
@@ -2643,6 +2645,19 @@ class CORE_EXPORT Qgis
     Q_FLAG( CoordinateTransformationFlags )
 
     /**
+     * Policies controlling when rasterisation of content during renders is permitted.
+     *
+     * \since QGIS 3.44
+     */
+    enum class RasterizedRenderingPolicy : int
+    {
+      Default, //!< Allow raster-based rendering in situations where it is required for correct rendering or where it will be faster than vector based rendering.
+      PreferVector, //!< Prefer vector-based rendering, when the result will still be visually near-identical to a raster-based render. The render may be slower or result in larger output file sizes.
+      ForceVector, //!< Always force vector-based rendering, even when the result will be visually different to a raster-based render. For example, this policy will ignore effects which require flattened rasters during renders such as layer-wide opacity or blend modes.
+    };
+    Q_ENUM( RasterizedRenderingPolicy )
+
+    /**
      * Flags which adjust the way maps are rendered.
      *
      * \since QGIS 3.22
@@ -2651,8 +2666,8 @@ class CORE_EXPORT Qgis
     {
       Antialiasing             = 0x01,  //!< Enable anti-aliasing for map rendering
       DrawEditingInfo          = 0x02,  //!< Enable drawing of vertex markers for layers in editing mode
-      ForceVectorOutput        = 0x04,  //!< Vector graphics should not be cached and drawn as raster images
-      UseAdvancedEffects       = 0x08,  //!< Enable layer opacity and blending effects
+      ForceVectorOutput        = 0x04,  //!< Vector graphics should not be cached and drawn as raster images. \deprecated QGIS 3.44. Use Qgis::RasterizedRenderingPolicy instead.
+      UseAdvancedEffects       = 0x08,  //!< Enable layer opacity and blending effects \deprecated QGIS 3.44. Use Qgis::RasterizedRenderingPolicy instead.
       DrawLabeling             = 0x10,  //!< Enable drawing of labels on top of the map
       UseRenderingOptimization = 0x20,  //!< Enable vector simplification and other rendering optimizations
       DrawSelection            = 0x40,  //!< Whether vector selections should be shown in the rendered map
@@ -2682,8 +2697,8 @@ class CORE_EXPORT Qgis
     enum class RenderContextFlag SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsRenderContext, Flag ) : int SIP_ENUM_BASETYPE( IntFlag )
     {
       DrawEditingInfo          = 0x01,  //!< Enable drawing of vertex markers for layers in editing mode
-      ForceVectorOutput        = 0x02,  //!< Vector graphics should not be cached and drawn as raster images
-      UseAdvancedEffects       = 0x04,  //!< Enable layer opacity and blending effects
+      ForceVectorOutput        = 0x02,  //!< Vector graphics should not be cached and drawn as raster images \deprecated QGIS 3.44. Use Qgis::RasterizedRenderingPolicy instead.
+      UseAdvancedEffects       = 0x04,  //!< Enable layer opacity and blending effects \deprecated QGIS 3.44. Use Qgis::RasterizedRenderingPolicy instead.
       UseRenderingOptimization = 0x08,  //!< Enable vector simplification and other rendering optimizations
       DrawSelection            = 0x10,  //!< Whether vector selections should be shown in the rendered map
       DrawSymbolBounds         = 0x20,  //!< Draw bounds of symbols (for debugging/testing)
@@ -2703,6 +2718,7 @@ class CORE_EXPORT Qgis
       RecordProfile            = 0x80000, //!< Enable run-time profiling while rendering \since QGIS 3.34
       AlwaysUseGlobalMasks     = 0x100000, //!< When applying clipping paths for selective masking, always use global ("entire map") paths, instead of calculating local clipping paths per rendered feature. This results in considerably more complex vector exports in all current Qt versions. This flag only applies to vector map exports. \since QGIS 3.38
       DisableSymbolClippingToExtent = 0x200000, //!< Force symbol clipping to map extent to be disabled in all situations. This will result in slower rendering, and should only be used in situations where the feature clipping is always undesirable. \since QGIS 3.40
+      RenderLayerTree = 0x400000        //!< The render is for a layer tree display where map based properties are not available and where avoidance of long rendering freeze is crucial \since QGIS 3.44
     };
     //! Render context flags
     Q_DECLARE_FLAGS( RenderContextFlags, RenderContextFlag ) SIP_MONKEYPATCH_FLAGS_UNNEST( QgsRenderContext, Flags )
@@ -2729,6 +2745,25 @@ class CORE_EXPORT Qgis
      */
     Q_DECLARE_FLAGS( MapLayerRendererFlags, MapLayerRendererFlag )
     Q_FLAG( MapLayerRendererFlags )
+
+    /**
+     * Flags which control how paint effects behave.
+     *
+     * \since QGIS 3.44
+     */
+    enum class PaintEffectFlag : int SIP_ENUM_BASETYPE( IntFlag )
+    {
+      RequiresRasterization = 1 << 0, //!< The effect requires raster-based rendering.
+    };
+    Q_ENUM( PaintEffectFlag )
+
+    /**
+     * Flags which control how paint effects behave.
+     *
+     * \since QGIS 3.44
+     */
+    Q_DECLARE_FLAGS( PaintEffectFlags, PaintEffectFlag )
+    Q_FLAG( PaintEffectFlags )
 
     // refs for below dox: https://github.com/qgis/QGIS/pull/1286#issuecomment-39806854
     // https://github.com/qgis/QGIS/pull/8573#issuecomment-445585826
@@ -3527,6 +3562,21 @@ class CORE_EXPORT Qgis
     Q_ENUM( ProcessingLogLevel )
 
     /**
+     * Types of modes which Processing widgets can be created for.
+     *
+     * \note Prior to QGIS 3.44 this was available as QgsProcessingGui::WidgetType
+     *
+     * \since QGIS 3.44
+     */
+    enum class ProcessingMode
+    {
+      Standard, //!< Standard (single-run) algorithm mode
+      Batch, //!< Batch processing mode
+      Modeler, //!< Modeler mode
+    };
+    Q_ENUM( ProcessingMode )
+
+    /**
      * Flags which control behavior for a Processing feature source.
      *
      * \note Prior to QGIS 3.36 this was available as QgsProcessingFeatureSourceDefinition::Flag
@@ -3775,6 +3825,11 @@ class CORE_EXPORT Qgis
       DefaultValue, //!< Use default field value
       Sum, //!< Sum of values
       GeometryWeighted, //!< New values are computed as the weighted average of the source values
+      UnsetField, //!< Clears the field value so that the data provider backend will populate using any backend triggers or similar logic \since QGIS 3.44
+      LargestGeometry, //!< Use value from the feature with the largest geometry \since QGIS 3.44
+      MinimumValue, //!< Use the minimum value from the features-to-be-merged \since QGIS 3.44
+      MaximumValue, //!< Use the maximum value from the features-to-be-merged \since QGIS 3.44
+      SetToNull, //!< Use a null value \since QGIS 3.44
     };
     Q_ENUM( FieldDomainMergePolicy )
 
@@ -4000,9 +4055,22 @@ class CORE_EXPORT Qgis
     enum class NavigationMode : int
     {
       TerrainBased, //!< The default navigation based on the terrain
-      Walk //!< Uses WASD keys or arrows to navigate in walking (first person) manner
+      Walk, //!< Uses WASD keys or arrows to navigate in walking (first person) manner
+      GlobeTerrainBased  //!< Navigation similar to TerrainBased, but for use with globe  \since QGIS 3.44
     };
     Q_ENUM( NavigationMode )
+
+    /**
+     * The 3D scene mode used in 3D map views.
+     *
+     * \since QGIS 3.44
+     */
+    enum class SceneMode : int
+    {
+      Local,   //!< Local scene based on a projected CRS
+      Globe    //!< Scene is represented as a globe using a geocentric CRS
+    };
+    Q_ENUM( SceneMode )
 
     /**
      * Vertical axis inversion options for 3D views.
@@ -4394,6 +4462,7 @@ class CORE_EXPORT Qgis
       Symbol, //!< Symbol icon (excluding label)
       SymbolLabel, //!< Symbol label (excluding icon)
     };
+    // !!! WARNING: If adding new values to this enum, make sure you update QgsLegendSettings constructor accordingly!!
     Q_ENUM( LegendComponent )
 
     /**
@@ -5039,6 +5108,41 @@ class CORE_EXPORT Qgis
     Q_ENUM( LayoutUnitType )
 
     /**
+     * Flags for controlling how a layout is rendered.
+     *
+     * \note Prior to QGIS 3.44 this was available as QgsLayoutRenderContext::Flag
+     *
+     * \since QGIS 3.44
+    */
+    enum class LayoutRenderFlag SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsLayoutRenderContext, Flag ) : int SIP_ENUM_BASETYPE( IntFlag )
+    {
+      Debug SIP_MONKEYPATCH_COMPAT_NAME( FlagDebug ) = 1 << 1,  //!< Debug/testing mode, items are drawn as solid rectangles.
+      OutlineOnly SIP_MONKEYPATCH_COMPAT_NAME( FlagOutlineOnly ) = 1 << 2, //!< Render items as outlines only.
+      Antialiasing SIP_MONKEYPATCH_COMPAT_NAME( FlagAntialiasing ) = 1 << 3, //!< Use antialiasing when drawing items.
+      UseAdvancedEffects SIP_MONKEYPATCH_COMPAT_NAME( FlagUseAdvancedEffects ) = 1 << 4, //!< Enable advanced effects such as blend modes. \deprecated QGIS 3.44. Use rasterizedRenderingPolicy() instead.
+      ForceVectorOutput SIP_MONKEYPATCH_COMPAT_NAME( FlagForceVectorOutput ) = 1 << 5, //!< Force output in vector format where possible, even if items require rasterization to keep their correct appearance. \deprecated QGIS 3.44. Use rasterizedRenderingPolicy() instead.
+      HideCoverageLayer SIP_MONKEYPATCH_COMPAT_NAME( FlagHideCoverageLayer ) = 1 << 6, //!< Hide coverage layer in outputs
+      DrawSelection SIP_MONKEYPATCH_COMPAT_NAME( FlagDrawSelection ) = 1 << 7, //!< Draw selection
+      DisableTiledRasterLayerRenders SIP_MONKEYPATCH_COMPAT_NAME( FlagDisableTiledRasterLayerRenders ) = 1 << 8, //!< If set, then raster layers will not be drawn as separate tiles. This may improve the appearance in exported files, at the cost of much higher memory usage during exports.
+      RenderLabelsByMapLayer SIP_MONKEYPATCH_COMPAT_NAME( FlagRenderLabelsByMapLayer ) = 1 << 9, //!< When rendering map items to multi-layered exports, render labels belonging to different layers into separate export layers
+      LosslessImageRendering SIP_MONKEYPATCH_COMPAT_NAME( FlagLosslessImageRendering ) = 1 << 10, //!< Render images losslessly whenever possible, instead of the default lossy jpeg rendering used for some destination devices (e.g. PDF).
+      SynchronousLegendGraphics SIP_MONKEYPATCH_COMPAT_NAME( FlagSynchronousLegendGraphics ) = 1 << 11, //!< Query legend graphics synchronously.
+      AlwaysUseGlobalMasks SIP_MONKEYPATCH_COMPAT_NAME( FlagAlwaysUseGlobalMasks ) = 1 << 12, //!< When applying clipping paths for selective masking, always use global ("entire map") paths, instead of calculating local clipping paths per rendered feature. This results in considerably more complex layout exports in all current Qt versions. This flag only applies to vector layout exports. \since QGIS 3.38
+      LimitCoverageLayerRenderToCurrentFeature = 1 << 13, //!< Limit coverage layer rendering to the current atlas feature. \since QGIS 4.0
+    };
+    Q_ENUM( LayoutRenderFlag )
+
+    /**
+     * Flags for controlling how a layout is rendered.
+     *
+     * \note Prior to QGIS 3.44 this was available as QgsLayoutRenderContext::Flags
+     *
+     * \since QGIS 3.44
+    */
+    Q_DECLARE_FLAGS( LayoutRenderFlags, LayoutRenderFlag ) SIP_MONKEYPATCH_FLAGS_UNNEST( QgsLayoutRenderContext, Flags )
+    Q_FLAG( LayoutRenderFlags )
+
+    /**
      * Picture formats.
      *
      * \note Prior to QGIS 3.40 this was available as QgsLayoutItemPicture::Format.
@@ -5064,6 +5168,7 @@ class CORE_EXPORT Qgis
       HorizontalMiddle, //!< Calculate horizontally, across midle of map
       HorizontalBottom, //!< Calculate horizontally, across bottom of map
       HorizontalAverage, //!< Calculate horizontally, using the average of the top, middle and bottom scales
+      AtEquator, //!< Always calculate the scale at the equator, regardless of the actual visible map extent. This method can be used to provide a consistent, static scale for maps in geographic reference systems, regardless of the latitudes actually visible in the map (permitting consistent appearance of these maps when rendering relies on scale based visibility or calculations). This method is only applicable when calculating scales with a degree based reference system. \since QGIS 3.44
     };
     Q_ENUM( ScaleCalculationMethod )
 
@@ -5792,6 +5897,10 @@ class CORE_EXPORT Qgis
       ResizeRightUp, //!< Resize right up (Top right handle)
       ResizeLeftDown, //!< Resize left down (Bottom left handle)
       ResizeRightDown, //!< Resize right down (Bottom right handle)
+      RotateTopLeft, //!< Rotate from top left handle. \since QGIS 4.0
+      RotateTopRight, //!< Rotate from top right handle. \since QGIS 4.0
+      RotateBottomLeft, //!< Rotate from bottom left handle. \since QGIS 4.0
+      RotateBottomRight, //!< Rotate right bottom right handle. \since QGIS 4.0
       SelectItem, //!< Select item
       NoAction //!< No action
     };
@@ -5860,6 +5969,19 @@ class CORE_EXPORT Qgis
     Q_ENUM( SegmentCalculationMethod )
 
     /**
+    * Available types of stac objects
+    * \since QGIS 3.44
+    */
+    enum class StacObjectType : int
+    {
+      Unknown,      //!< Type is not known
+      Catalog,      //!< STAC catalog
+      Collection,   //!< STAC collection
+      Item,         //!< STAC item
+    };
+    Q_ENUM( StacObjectType )
+
+    /**
      * Identify search radius in mm
      */
     static const double DEFAULT_SEARCH_RADIUS_MM;
@@ -5923,6 +6045,26 @@ class CORE_EXPORT Qgis
     static const Qgis::MapToolUnit DEFAULT_SNAP_UNITS;
 
     /**
+     * Minimum ID number for a user-defined projection.
+    */
+    static const int USER_CRS_START_ID;
+
+    //! The default size (in millimeters) for point marker symbols
+    static const double DEFAULT_POINT_SIZE;
+
+    //! The default width (in millimeters) for line symbols
+    static const double DEFAULT_LINE_WIDTH;
+
+    //! Default snapping tolerance for segments
+    static const double DEFAULT_SEGMENT_EPSILON;
+
+    //! Delay between the scheduling of 2 preview jobs
+    SIP_SKIP static const int PREVIEW_JOB_DELAY_MS;
+
+    //! Maximum rendering time for a layer of a preview job
+    SIP_SKIP static const int MAXIMUM_LAYER_PREVIEW_TIME_MS;
+
+    /**
      * A string with default project scales.
      *
      * \since QGIS 3.12
@@ -5963,6 +6105,47 @@ class CORE_EXPORT Qgis
      * \since QGIS 3.20
      */
     static QString geosVersion();
+
+    /**
+     * Constant that holds the string representation for "No ellipse/No CRS".
+     *
+     * \since QGIS 3.44
+     */
+    static QString geoNone()
+    {
+      return QStringLiteral( "NONE" );
+    }
+
+    /**
+     * Geographic coordinate system auth:id string for a default geographic CRS (EPSG:4326).
+     *
+     * \since QGIS 3.44
+     */
+    static QString geographicCrsAuthId()
+    {
+      return QStringLiteral( "EPSG:4326" );
+    }
+
+    /**
+    * WKT string that represents a geographic coord system
+    * \deprecated QGIS 3.44. Will be removed in QGIS 4.0.
+    */
+    Q_DECL_DEPRECATED static QString geoWkt()
+    {
+      return QStringLiteral(
+               R"""(GEOGCRS["WGS 84",DATUM["World Geodetic System 1984",ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["unknown"],AREA["World"],BBOX[-90,-180,90,180]],ID["EPSG",4326]] )"""
+             );
+    }
+
+    /**
+     * PROJ4 string that represents a geographic coord system.
+     * \deprecated QGIS 3.44. Will be removed in QGIS 4.0.
+     */
+    Q_DECL_DEPRECATED static QString geoProj4()
+    {
+      return QStringLiteral( "+proj=longlat +datum=WGS84 +no_defs" );
+    }
+
 };
 
 QHASH_FOR_CLASS_ENUM( Qgis::CaptureTechnique )
@@ -6017,6 +6200,7 @@ Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolLayerFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolLayerUserFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolPreviewFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::SymbolRenderHints )
+Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::PaintEffectFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::TextComponents )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::TextRendererFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::TiledSceneProviderCapabilities )
@@ -6050,6 +6234,8 @@ Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::VectorRenderingSimplificationFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::DataProviderReadFlags )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::VectorProviderCapabilities )
 Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::MapCanvasFlags )
+Q_DECLARE_OPERATORS_FOR_FLAGS( Qgis::LayoutRenderFlags )
+Q_DECLARE_METATYPE( Qgis::LayoutRenderFlags )
 
 // hack to workaround warnings when casting void pointers
 // retrieved from QLibrary::resolve to function pointers.
@@ -6505,9 +6691,9 @@ template<class T> T qgsFlagKeysToValue( const QString &keys, const T &defaultVal
       const int intValue = keys.toInt( &canConvert );
       if ( canConvert )
       {
-        const QByteArray keys = metaEnum.valueToKeys( intValue );
-        const int intValueCheck = metaEnum.keysToValue( keys );
-        if ( intValue == intValueCheck )
+        const QByteArray keyArray = metaEnum.valueToKeys( intValue );
+        const int intValueCheck = metaEnum.keysToValue( keyArray );
+        if ( !keyArray.isEmpty() && intValue == intValueCheck )
         {
           if ( returnOk )
           {
@@ -6554,6 +6740,23 @@ CORE_EXPORT int qgsPermissiveToInt( QString string, bool &ok );
 CORE_EXPORT qlonglong qgsPermissiveToLongLong( QString string, bool &ok );
 
 /**
+ * Compares two QVariant values.
+ *
+ * \returns < 0 if lhs < rhs, > 0 if lhs > rhs, or 0 if lhs == rhs
+ *
+ * Useful for sorting lists of variants, correctly handling sorting of the various
+ * QVariant data types (such as strings, numeric values, dates and times)
+ *
+ * Invalid < NULL < Values
+ *
+ * \see qgsVariantLessThan()
+ * \see qgsVariantGreaterThan()
+ *
+ * \since QGIS 3.44
+ */
+CORE_EXPORT int qgsVariantCompare( const QVariant &lhs, const QVariant &rhs );
+
+/**
  * Compares two QVariant values and returns whether the first is less than the second.
  * Useful for sorting lists of variants, correctly handling sorting of the various
  * QVariant data types (such as strings, numeric values, dates and times)
@@ -6561,6 +6764,7 @@ CORE_EXPORT qlonglong qgsPermissiveToLongLong( QString string, bool &ok );
  * Invalid < NULL < Values
  *
  * \see qgsVariantGreaterThan()
+ * \see qgsVariantCompare()
  */
 CORE_EXPORT bool qgsVariantLessThan( const QVariant &lhs, const QVariant &rhs );
 
@@ -6578,7 +6782,9 @@ CORE_EXPORT bool qgsVariantEqual( const QVariant &lhs, const QVariant &rhs );
  * Compares two QVariant values and returns whether the first is greater than the second.
  * Useful for sorting lists of variants, correctly handling sorting of the various
  * QVariant data types (such as strings, numeric values, dates and times)
+ *
  * \see qgsVariantLessThan()
+ * \see qgsVariantCompare()
  */
 CORE_EXPORT bool qgsVariantGreaterThan( const QVariant &lhs, const QVariant &rhs );
 
@@ -6619,7 +6825,13 @@ inline bool operator< ( const QVariant &v1, const QVariant &v2 )
 template<> CORE_EXPORT bool qMapLessThanKey<QVariantList>( const QVariantList &key1, const QVariantList &key2 ) SIP_SKIP;
 #endif
 
-CORE_EXPORT QString qgsVsiPrefix( const QString &path );
+/**
+ * Returns a the vsi prefix which corresponds to a file \a path, or an empty
+ * string if the path is not associated with a vsi prefix.
+ *
+ * \deprecated QGIS 3.44. Use QgsGdalUtils::vsiPrefixForPath() instead.
+ */
+Q_DECL_DEPRECATED CORE_EXPORT QString qgsVsiPrefix( const QString &path ) SIP_DEPRECATED;
 
 /**
  * Allocates size bytes and returns a pointer to the allocated  memory.
@@ -6635,12 +6847,6 @@ void CORE_EXPORT *qgsMalloc( size_t size ) SIP_SKIP;
 void CORE_EXPORT qgsFree( void *ptr ) SIP_SKIP;
 
 #ifndef SIP_RUN
-
-#ifdef _MSC_VER
-#define CONSTLATIN1STRING inline const QLatin1String
-#else
-#define CONSTLATIN1STRING constexpr QLatin1String
-#endif
 
 ///@cond PRIVATE
 class ScopedIntIncrementor
@@ -6674,72 +6880,28 @@ class ScopedIntIncrementor
 };
 ///@endcond
 
-/**
-* Wkt string that represents a geographic coord sys
-* \since QGIS GEOWkt
-*/
-CONSTLATIN1STRING geoWkt()
-{
-  return QLatin1String(
-           R"""(GEOGCRS["WGS 84",DATUM["World Geodetic System 1984",ELLIPSOID["WGS 84",6378137,298.257223563,LENGTHUNIT["metre",1]]],PRIMEM["Greenwich",0,ANGLEUNIT["degree",0.0174532925199433]],CS[ellipsoidal,2],AXIS["geodetic latitude (Lat)",north,ORDER[1],ANGLEUNIT["degree",0.0174532925199433]],AXIS["geodetic longitude (Lon)",east,ORDER[2],ANGLEUNIT["degree",0.0174532925199433]],USAGE[SCOPE["unknown"],AREA["World"],BBOX[-90,-180,90,180]],ID["EPSG",4326]] )"""
-         );
-}
-
-//! PROJ4 string that represents a geographic coord sys
-CONSTLATIN1STRING geoProj4()
-{
-  return QLatin1String( "+proj=longlat +datum=WGS84 +no_defs" );
-}
-
-//! Geographic coord sys from EPSG authority
-CONSTLATIN1STRING geoEpsgCrsAuthId()
-{
-  return QLatin1String( "EPSG:4326" );
-}
-
-//! Constant that holds the string representation for "No ellips/No CRS"
-CONSTLATIN1STRING geoNone()
-{
-  return QLatin1String( "NONE" );
-}
-
-///@cond PRIVATE
-
-//! Delay between the scheduling of 2 preview jobs
-const int PREVIEW_JOB_DELAY_MS = 250;
-
-//! Maximum rendering time for a layer of a preview job
-const int MAXIMUM_LAYER_PREVIEW_TIME_MS = 250;
-
-///@endcond
-
 #endif
 
-//! Magic number for a geographic coord sys in POSTGIS SRID
-const long GEOSRID = 4326;
-
-//! Magic number for a geographic coord sys in QGIS srs.db tbl_srs.srs_id
-const long GEOCRS_ID = 3452;
-
-//! Magic number for a geographic coord sys in EpsgCrsId ID format
-const long GEO_EPSG_CRS_ID = 4326;
+/**
+ * Numeric ID for the EPSG:4326 geographic coordinate system.
+ *
+ * \deprecated QGIS 3.44. Will be removed in QGIS 4.0.
+ */
+Q_DECL_DEPRECATED const long GEOSRID = 4326;
 
 /**
- * Magick number that determines whether a projection crsid is a system (srs.db)
- * or user (~/.qgis.qgis.db) defined projection.
-*/
-const int USER_CRS_START_ID = 100000;
+ * Numeric ID for the EPSG:4326 geographic coordinate system in QGIS internal srs database.
+ *
+ * \deprecated QGIS 3.44. Will be removed in QGIS 4.0.
+ */
+Q_DECL_DEPRECATED const long GEOCRS_ID = 3452;
 
-//
-// Constants for point symbols
-//
-
-//! Magic number that determines the default point size for point symbols
-const double DEFAULT_POINT_SIZE = 2.0;
-const double DEFAULT_LINE_WIDTH = 0.26;
-
-//! Default snapping tolerance for segments
-const double DEFAULT_SEGMENT_EPSILON = 1e-8;
+/**
+ * Numeric ID for the EPSG:4326 geographic coordinate system.
+ *
+ * \deprecated QGIS 3.44. Will be removed in QGIS 4.0.
+ */
+Q_DECL_DEPRECATED const long GEO_EPSG_CRS_ID = 4326;
 
 typedef QMap<QString, QString> QgsStringMap SIP_SKIP;
 
@@ -6860,22 +7022,3 @@ typedef unsigned long long qgssize;
 #define BUILTIN_UNREACHABLE
 #endif
 #endif // SIP_RUN
-
-#ifdef SIP_RUN
-
-/**
- * Wkt string that represents a geographic coord sys
- * \since QGIS GEOWkt
- */
-QString CORE_EXPORT geoWkt();
-
-//! PROJ4 string that represents a geographic coord sys
-QString CORE_EXPORT geoProj4();
-
-//! Geographic coord sys from EPSG authority
-QString CORE_EXPORT geoEpsgCrsAuthId();
-
-//! Constant that holds the string representation for "No ellips/No CRS"
-QString CORE_EXPORT geoNone();
-
-#endif

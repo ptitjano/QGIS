@@ -13,6 +13,7 @@ __copyright__ = "Copyright 2012, The QGIS Project"
 import os
 import tempfile
 import json
+from pathlib import Path
 
 import osgeo.gdal  # NOQA
 from osgeo import gdal, ogr
@@ -1884,6 +1885,50 @@ class TestQgsVectorFileWriter(QgisTestCase):
         int(gdal.VersionInfo("VERSION_NUM")) < GDAL_COMPUTE_VERSION(3, 7, 0),
         "GDAL 3.7 required",
     )
+    def testWriteGpkgZipWithMetadata(self):
+        tmp_dir = QTemporaryDir()
+        tmp_path = tmp_dir.path()
+
+        layer = QgsVectorLayer(
+            (
+                "Point?crs=epsg:4326&field=name:string(20)&"
+                "field=age:integer&field=size:double"
+            ),
+            "test",
+            "memory",
+        )
+
+        # set some metadata on the source layer
+        metadata = QgsLayerMetadata()
+        metadata.setTitle("my title")
+        metadata.setAbstract("my abstract")
+        metadata.setLicenses(["l1", "l2"])
+
+        options = QgsVectorFileWriter.SaveVectorOptions()
+        options.driverName = "GPKG"
+        options.layerName = "test"
+        options.saveMetadata = True
+        options.layerMetadata = metadata
+
+        dest_file_name = os.path.join(tmp_path, "test_metadata.gpkg.zip")
+        write_result, error_message, new_file_name, new_layer = (
+            QgsVectorFileWriter.writeAsVectorFormatV3(
+                layer, dest_file_name, QgsProject.instance().transformContext(), options
+            )
+        )
+        self.assertEqual(
+            write_result, QgsVectorFileWriter.WriterError.NoError, error_message
+        )
+        self.assertEqual(new_file_name, dest_file_name)
+
+        dest_layer = QgsVectorLayer(dest_file_name, "test", "ogr")
+        dest_layer.loadDefaultMetadata()
+        self.assertEqual(dest_layer.metadata().title(), metadata.title())
+
+    @unittest.skipIf(
+        int(gdal.VersionInfo("VERSION_NUM")) < GDAL_COMPUTE_VERSION(3, 7, 0),
+        "GDAL 3.7 required",
+    )
     def test_field_capabilities(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             dest_file_name = os.path.join(temp_dir, "test_gpkg.gpkg")
@@ -2081,6 +2126,172 @@ class TestQgsVectorFileWriter(QgisTestCase):
 
         db_conn = QgsMapLayerUtils.databaseConnection(vl)
         self.assertIsNotNone(db_conn.fieldDomain("range_domain_int"))
+
+    def test_write_gpkg_fid_first(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_file_name = Path(temp_dir) / "test_fid_first.gpkg"
+
+            source_fields = QgsFields()
+            source_fields.append(QgsField("FID", QVariant.Int))
+            source_fields.append(QgsField("text_field", QVariant.String))
+            source_fields.append(QgsField("int_field", QVariant.Int))
+
+            save_options = QgsVectorFileWriter.SaveVectorOptions()
+            writer = QgsVectorFileWriter.create(
+                dest_file_name.as_posix(),
+                source_fields,
+                Qgis.WkbType.Point,
+                QgsCoordinateReferenceSystem("EPSG:4326"),
+                QgsCoordinateTransformContext(),
+                save_options,
+                QgsFeatureSink.SinkFlags(),
+            )
+            writer_field_map = writer.sourceFieldIndexToWriterFieldIndex()
+            del writer
+            layer = QgsVectorLayer(dest_file_name.as_posix())
+            self.assertTrue(layer.isValid())
+            layer_fields = layer.fields()
+
+            self.assertEqual(
+                [f.name() for f in layer_fields], ["fid", "text_field", "int_field"]
+            )
+            self.assertEqual(
+                writer_field_map,
+                {
+                    source_fields.indexOf("text_field"): layer_fields.lookupField(
+                        "text_field"
+                    ),
+                    source_fields.indexOf("int_field"): layer_fields.lookupField(
+                        "int_field"
+                    ),
+                    source_fields.indexOf("FID"): layer_fields.lookupField("FID"),
+                },
+            )
+
+    def test_write_gpkg_fid_not_first(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_file_name = Path(temp_dir) / "test_fid_not_first.gpkg"
+
+            source_fields = QgsFields()
+            source_fields.append(QgsField("text_field", QVariant.String))
+            source_fields.append(QgsField("FID", QVariant.Int))
+            source_fields.append(QgsField("int_field", QVariant.Int))
+
+            save_options = QgsVectorFileWriter.SaveVectorOptions()
+            writer = QgsVectorFileWriter.create(
+                dest_file_name.as_posix(),
+                source_fields,
+                Qgis.WkbType.Point,
+                QgsCoordinateReferenceSystem("EPSG:4326"),
+                QgsCoordinateTransformContext(),
+                save_options,
+                QgsFeatureSink.SinkFlags(),
+            )
+            writer_field_map = writer.sourceFieldIndexToWriterFieldIndex()
+            del writer
+            layer = QgsVectorLayer(dest_file_name.as_posix())
+            self.assertTrue(layer.isValid())
+            layer_fields = layer.fields()
+
+            self.assertEqual(
+                [f.name() for f in layer_fields], ["fid", "text_field", "int_field"]
+            )
+            self.assertEqual(
+                writer_field_map,
+                {
+                    source_fields.indexOf("text_field"): layer_fields.lookupField(
+                        "text_field"
+                    ),
+                    source_fields.indexOf("int_field"): layer_fields.lookupField(
+                        "int_field"
+                    ),
+                    source_fields.indexOf("FID"): layer_fields.lookupField("FID"),
+                },
+            )
+
+    def test_write_shp_fid_first(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_file_name = Path(temp_dir) / "test_fid_first.shp"
+
+            source_fields = QgsFields()
+            source_fields.append(QgsField("FID", QVariant.Int))
+            source_fields.append(QgsField("text_field", QVariant.String))
+            source_fields.append(QgsField("int_field", QVariant.Int))
+
+            save_options = QgsVectorFileWriter.SaveVectorOptions()
+            save_options.driverName = "ESRI Shapefile"
+            writer = QgsVectorFileWriter.create(
+                dest_file_name.as_posix(),
+                source_fields,
+                Qgis.WkbType.Point,
+                QgsCoordinateReferenceSystem("EPSG:4326"),
+                QgsCoordinateTransformContext(),
+                save_options,
+                QgsFeatureSink.SinkFlags(),
+            )
+            writer_field_map = writer.sourceFieldIndexToWriterFieldIndex()
+            del writer
+            layer = QgsVectorLayer(dest_file_name.as_posix())
+            self.assertTrue(layer.isValid())
+            layer_fields = layer.fields()
+
+            self.assertEqual(
+                [f.name() for f in layer_fields], ["FID", "text_field", "int_field"]
+            )
+            self.assertEqual(
+                writer_field_map,
+                {
+                    source_fields.indexOf("text_field"): layer_fields.lookupField(
+                        "text_field"
+                    ),
+                    source_fields.indexOf("int_field"): layer_fields.lookupField(
+                        "int_field"
+                    ),
+                    source_fields.indexOf("FID"): layer_fields.lookupField("FID"),
+                },
+            )
+
+    def test_write_shp_fid_not_first(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dest_file_name = Path(temp_dir) / "test_fid_not_first.shp"
+
+            source_fields = QgsFields()
+            source_fields.append(QgsField("text_field", QVariant.String))
+            source_fields.append(QgsField("FID", QVariant.Int))
+            source_fields.append(QgsField("int_field", QVariant.Int))
+
+            save_options = QgsVectorFileWriter.SaveVectorOptions()
+            save_options.driverName = "ESRI Shapefile"
+            writer = QgsVectorFileWriter.create(
+                dest_file_name.as_posix(),
+                source_fields,
+                Qgis.WkbType.Point,
+                QgsCoordinateReferenceSystem("EPSG:4326"),
+                QgsCoordinateTransformContext(),
+                save_options,
+                QgsFeatureSink.SinkFlags(),
+            )
+            writer_field_map = writer.sourceFieldIndexToWriterFieldIndex()
+            del writer
+            layer = QgsVectorLayer(dest_file_name.as_posix())
+            self.assertTrue(layer.isValid())
+            layer_fields = layer.fields()
+
+            self.assertEqual(
+                [f.name() for f in layer_fields], ["text_field", "FID", "int_field"]
+            )
+            self.assertEqual(
+                writer_field_map,
+                {
+                    source_fields.indexOf("text_field"): layer_fields.lookupField(
+                        "text_field"
+                    ),
+                    source_fields.indexOf("int_field"): layer_fields.lookupField(
+                        "int_field"
+                    ),
+                    source_fields.indexOf("FID"): layer_fields.lookupField("FID"),
+                },
+            )
 
 
 if __name__ == "__main__":

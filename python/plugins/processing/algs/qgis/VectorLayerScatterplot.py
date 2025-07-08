@@ -113,7 +113,6 @@ class VectorLayerScatterplot(QgisAlgorithm):
                 self.XAXIS_LOG,
                 self.tr("Use logarithmic scale for x-axis"),
                 defaultValue=False,
-                optional=True,
             )
         )
 
@@ -122,7 +121,6 @@ class VectorLayerScatterplot(QgisAlgorithm):
                 self.YAXIS_LOG,
                 self.tr("Use logarithmic scale for y-axis"),
                 defaultValue=False,
-                optional=True,
             )
         )
 
@@ -137,6 +135,9 @@ class VectorLayerScatterplot(QgisAlgorithm):
 
     def displayName(self):
         return self.tr("Vector layer scatterplot")
+
+    def shortDescription(self):
+        return self.tr("Creates a simple X - Y scatter plot for a vector layer.")
 
     def processAlgorithm(self, parameters, context, feedback):
         try:

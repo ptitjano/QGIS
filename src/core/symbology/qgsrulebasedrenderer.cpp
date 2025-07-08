@@ -31,6 +31,7 @@
 #include "qgsmarkersymbol.h"
 #include "qgspointdistancerenderer.h"
 #include "qgsscaleutils.h"
+#include "qgssldexportcontext.h"
 
 #include <QSet>
 
@@ -356,11 +357,20 @@ QDomElement QgsRuleBasedRenderer::Rule::save( QDomDocument &doc, QgsSymbolMap &s
 
 void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element, QVariantMap props ) const
 {
+  QgsSldExportContext context;
+  context.setExtraProperties( props );
+  toSld( doc, element, context );
+}
+
+bool QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &exportContext ) const
+{
   // do not convert this rule if there are no symbols
   QgsRenderContext context;
   if ( symbols( context ).isEmpty() )
-    return;
+    return false;
 
+  const QVariantMap oldProps = exportContext.extraProperties();
+  QVariantMap props = oldProps;
   if ( !mFilterExp.isEmpty() )
   {
     QString filter = props.value( QStringLiteral( "filter" ), QString() ).toString();
@@ -371,6 +381,7 @@ void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element,
   }
 
   QgsSymbolLayerUtils::mergeScaleDependencies( mMaximumScale, mMinimumScale, props );
+  exportContext.setExtraProperties( props );
 
   if ( mSymbol )
   {
@@ -402,12 +413,13 @@ void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element,
 
     if ( !props.value( QStringLiteral( "filter" ), QString() ).toString().isEmpty() )
     {
-      QgsSymbolLayerUtils::createFunctionElement( doc, ruleElem, props.value( QStringLiteral( "filter" ), QString() ).toString() );
+      QgsSymbolLayerUtils::createFunctionElement( doc, ruleElem, props.value( QStringLiteral( "filter" ), QString() ).toString(), exportContext );
     }
 
     QgsSymbolLayerUtils::applyScaleDependency( doc, ruleElem, props );
+    exportContext.setExtraProperties( props );
 
-    mSymbol->toSld( doc, ruleElem, props );
+    mSymbol->toSld( doc, ruleElem, exportContext );
 
     // Only create rules if symbol could be converted to SLD, and is not an "empty" symbol. Otherwise we do not generate a rule, as
     // SLD spec requires a Symbolizer element to be present
@@ -418,11 +430,14 @@ void QgsRuleBasedRenderer::Rule::toSld( QDomDocument &doc, QDomElement &element,
   }
 
   // loop into children rule list
-  const auto constMChildren = mChildren;
-  for ( Rule *rule : constMChildren )
+  bool result = true;
+  for ( Rule *rule : std::as_const( mChildren ) )
   {
-    rule->toSld( doc, element, props );
+    if ( !rule->toSld( doc, element, exportContext ) )
+      result = false;
   }
+  exportContext.setExtraProperties( oldProps );
+  return result;
 }
 
 bool QgsRuleBasedRenderer::Rule::startRender( QgsRenderContext &context, const QgsFields &fields, QString &filter )
@@ -1139,7 +1154,14 @@ QgsRuleBasedRenderer *QgsRuleBasedRenderer::clone() const
 
 void QgsRuleBasedRenderer::toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const
 {
-  mRootRule->toSld( doc, element, props );
+  QgsSldExportContext context;
+  context.setExtraProperties( props );
+  toSld( doc, element, context );
+}
+
+bool QgsRuleBasedRenderer::toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const
+{
+  return mRootRule->toSld( doc, element, context );
 }
 
 // TODO: ideally this function should be removed in favor of legendSymbol(ogy)Items
@@ -1603,21 +1625,36 @@ QgsRuleBasedRenderer *QgsRuleBasedRenderer::convertFromRenderer( const QgsFeatur
     auto rootrule = std::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
 
     QString expression;
+    const QgsRangeList ranges = graduatedRenderer->ranges();
+    const bool isInverted = ranges.size() > 1 ?
+                            ranges.at( 0 ).upperValue() > ranges.at( 1 ).upperValue() :
+                            false;
     QgsRendererRange range;
-    for ( int i = 0; i < graduatedRenderer->ranges().size(); ++i )
+    for ( int i = 0; i < ranges.size(); ++i )
     {
-      range = graduatedRenderer->ranges().value( i );
+      range = ranges.value( i );
       auto rule = std::make_unique< QgsRuleBasedRenderer::Rule >( nullptr );
+
       rule->setLabel( range.label() );
-      if ( i == 0 )//The lower boundary of the first range is included, while it is excluded for the others
+      const QString upperValue = QString::number( range.upperValue(), 'f', 16 );
+      const QString lowerValue = QString::number( range.lowerValue(), 'f', 16 );
+      // Lower and upper boundaries have to be open-ended
+      if ( i == 0 )
       {
-        expression = attr + " >= " + QString::number( range.lowerValue(), 'f' ) + " AND " + \
-                     attr + " <= " + QString::number( range.upperValue(), 'f' );
+        expression = !isInverted ?
+                     QStringLiteral( "%1 <= %2" ).arg( attr, upperValue ) :
+                     QStringLiteral( "%1 > %2" ).arg( attr, lowerValue );
+      }
+      else if ( i == ranges.size() - 1 )
+      {
+        expression = !isInverted ?
+                     QStringLiteral( "%1 > %2" ).arg( attr, lowerValue ) :
+                     QStringLiteral( "%1 <= %2" ).arg( attr, upperValue );
       }
       else
       {
-        expression = attr + " > " + QString::number( range.lowerValue(), 'f' ) + " AND " + \
-                     attr + " <= " + QString::number( range.upperValue(), 'f' );
+        expression = attr + " > " + lowerValue + " AND " + \
+                     attr + " <= " + upperValue;
       }
       rule->setFilterExpression( expression );
 

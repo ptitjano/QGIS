@@ -35,6 +35,7 @@ class QgsVectorLayerCache;
 /**
  * \ingroup gui
  * \class QgsFeatureListModel
+ * \brief A proxy model for feature lists.
  */
 class GUI_EXPORT QgsFeatureListModel : public QSortFilterProxyModel, public QgsFeatureModel
 {
@@ -97,8 +98,10 @@ class GUI_EXPORT QgsFeatureListModel : public QSortFilterProxyModel, public QgsF
     QgsAttributeTableModel *masterModel();
 
     /**
-     *  \param  expression   A QgsExpression compatible string.
-     *  \returns TRUE if the expression could be set, FALSE if there was a parse error.
+     * Sets the display expression.
+     *
+     * \param expression A QgsExpression compatible string.
+     * \returns TRUE if the expression could be set, FALSE if there was a parse error.
      *          If it fails, the old expression will still be applied. Call parserErrorString()
      *          for a meaningful error message.
      */

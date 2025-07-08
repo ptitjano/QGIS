@@ -19,6 +19,7 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
+#include "qgis.h"
 #include <QPainter>
 #include <QDomDocument>
 #include <QDomElement>
@@ -29,7 +30,7 @@ class QgsRenderContext;
 /**
  * \ingroup core
  * \class QgsPaintEffect
- * \brief Base class for visual effects which can be applied to QPicture drawings
+ * \brief Base class for visual effects which can be applied to QPicture drawings.
  *
  * QgsPaintEffect objects can be used to modify QPicture drawings prior to rendering
  * them with a QPainter operation. There are two methods for drawing using an effect,
@@ -123,6 +124,13 @@ class CORE_EXPORT QgsPaintEffect SIP_NODEFAULTCTORS
      * \returns clone of paint effect
      */
     virtual QgsPaintEffect *clone() const = 0 SIP_FACTORY;
+
+    /**
+     * Returns flags which specify how the paint effect behaves.
+     *
+     * \since QGIS 3.44
+     */
+    virtual Qgis::PaintEffectFlags flags() const;
 
     /**
      * Returns the properties describing the paint effect encoded in a
@@ -312,7 +320,7 @@ class CORE_EXPORT QgsPaintEffect SIP_NODEFAULTCTORS
 /**
  * \ingroup core
  * \class QgsDrawSourceEffect
- * \brief A paint effect which draws the source picture with minor or no alterations
+ * \brief A paint effect which draws the source picture with minor or no alterations.
  *
  * The draw source effect can be used to draw an unaltered copy of the original source
  * picture. Minor changes like lowering the opacity and applying a blend mode are
@@ -334,6 +342,7 @@ class CORE_EXPORT QgsDrawSourceEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
      */
     static QgsPaintEffect *create( const QVariantMap &map ) SIP_FACTORY;
 
+    Qgis::PaintEffectFlags flags() const override;
     QString type() const override { return QStringLiteral( "drawSource" ); }
     QgsDrawSourceEffect *clone() const override SIP_FACTORY;
     QVariantMap properties() const override;
@@ -384,7 +393,7 @@ class CORE_EXPORT QgsDrawSourceEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
 /**
  * \ingroup core
  * \class QgsEffectPainter
- * \brief A class to manager painter saving and restoring required for effect drawing
+ * \brief Manages painter saving and restoring required for effect drawing.
  *
  */
 class CORE_EXPORT QgsEffectPainter

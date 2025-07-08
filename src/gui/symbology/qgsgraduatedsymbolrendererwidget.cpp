@@ -24,6 +24,7 @@
 #include <QCompleter>
 #include <QPointer>
 #include <QScreen>
+#include <QUuid>
 
 #include "qgsgraduatedsymbolrendererwidget.h"
 #include "moc_qgsgraduatedsymbolrendererwidget.cpp"
@@ -497,7 +498,7 @@ QgsGraduatedSymbolRendererWidget::QgsGraduatedSymbolRendererWidget( QgsVectorLay
 
   mModel = new QgsGraduatedSymbolRendererModel( this, screen() );
 
-  mExpressionWidget->setFilters( QgsFieldProxyModel::Numeric | QgsFieldProxyModel::Date );
+  mExpressionWidget->setFilters( QgsFieldProxyModel::Numeric );
   mExpressionWidget->setLayer( mLayer );
 
   btnChangeGraduatedSymbol->setLayer( mLayer );
@@ -832,6 +833,7 @@ void QgsGraduatedSymbolRendererWidget::updateUiFromRenderer( bool updateCount )
 void QgsGraduatedSymbolRendererWidget::graduatedColumnChanged( const QString &field )
 {
   mRenderer->setClassAttribute( field );
+  emit widgetChanged();
 }
 
 void QgsGraduatedSymbolRendererWidget::methodComboBox_currentIndexChanged( int )
@@ -885,7 +887,7 @@ void QgsGraduatedSymbolRendererWidget::updateMethodParameters()
 
   for ( const QgsProcessingParameterDefinition *def : mClassificationMethod->parameterDefinitions() )
   {
-    QgsAbstractProcessingParameterWidgetWrapper *ppww = QgsGui::processingGuiRegistry()->createParameterWidgetWrapper( def, QgsProcessingGui::Standard );
+    QgsAbstractProcessingParameterWidgetWrapper *ppww = QgsGui::processingGuiRegistry()->createParameterWidgetWrapper( def, Qgis::ProcessingMode::Standard );
     mParametersLayout->addRow( ppww->createWrappedLabel(), ppww->createWrappedWidget( context ) );
 
     QVariant value = mClassificationMethod->parameterValues().value( def->name(), def->defaultValueForGui() );
@@ -1214,7 +1216,7 @@ void QgsGraduatedSymbolRendererWidget::changeRangeSymbol( int rangeIdx )
     QgsSymbolSelectorWidget *widget = QgsSymbolSelectorWidget::createWidgetWithSymbolOwnership( std::move( newSymbol ), mStyle, mLayer, panel );
     widget->setContext( mContext );
     widget->setPanelTitle( range.label() );
-    connect( widget, &QgsPanelWidget::widgetChanged, this, [=] { updateSymbolsFromWidget( widget ); } );
+    connect( widget, &QgsPanelWidget::widgetChanged, this, [this, widget] { updateSymbolsFromWidget( widget ); } );
     openPanel( widget );
   }
   else
@@ -1453,9 +1455,10 @@ void QgsGraduatedSymbolRendererWidget::keyPressEvent( QKeyEvent *event )
   }
   else if ( event->key() == Qt::Key_V && event->modifiers() == Qt::ControlModifier )
   {
-    QgsRangeList::const_iterator rIt = mCopyBuffer.constBegin();
-    for ( ; rIt != mCopyBuffer.constEnd(); ++rIt )
+    QgsRangeList::iterator rIt = mCopyBuffer.begin();
+    for ( ; rIt != mCopyBuffer.end(); ++rIt )
     {
+      rIt->mUuid = QUuid::createUuid().toString();
       mModel->addClass( *rIt );
     }
     emit widgetChanged();
@@ -1482,7 +1485,7 @@ void QgsGraduatedSymbolRendererWidget::dataDefinedSizeLegend()
   QgsDataDefinedSizeLegendWidget *panel = createDataDefinedSizeLegendWidget( s, mRenderer->dataDefinedSizeLegend() );
   if ( panel )
   {
-    connect( panel, &QgsPanelWidget::widgetChanged, this, [=] {
+    connect( panel, &QgsPanelWidget::widgetChanged, this, [this, panel] {
       mRenderer->setDataDefinedSizeLegend( panel->dataDefinedSizeLegend() );
       emit widgetChanged();
     } );

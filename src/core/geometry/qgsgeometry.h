@@ -67,7 +67,24 @@ typedef QVector<QgsPointXY> QgsPolylineXY;
  * This type has full support for Z/M dimensions.
  *
  */
+#ifndef SIP_RUN
 typedef QgsPointSequence QgsPolyline;
+#else
+typedef QVector<QgsPoint> QgsPolyline;
+#endif
+
+/**
+ * Multi polyline represented as a vector of polylines.
+ *
+ * This type has full support for Z/M dimensions.
+ *
+ * \since QGIS 3.44
+ */
+#ifndef SIP_RUN
+typedef QVector<QgsPolyline> QgsMultiPolyline;
+#else
+typedef QVector<QVector< QgsPoint >> QgsMultiPolyline;
+#endif
 
 //! Polygon: first item of the list is outer ring, inner rings (if any) start from second item
 #ifndef SIP_RUN
@@ -904,7 +921,7 @@ class CORE_EXPORT QgsGeometry
      * \param epsilon epsilon for segment snapping
      * \returns The squared Cartesian distance is also returned in sqrDist, negative number on error
      */
-    double closestSegmentWithContext( const QgsPointXY &point, QgsPointXY &minDistPoint SIP_OUT, int &nextVertexIndex SIP_OUT, int *leftOrRightOfSegment SIP_OUT = nullptr, double epsilon = DEFAULT_SEGMENT_EPSILON ) const;
+    double closestSegmentWithContext( const QgsPointXY &point, QgsPointXY &minDistPoint SIP_OUT, int &nextVertexIndex SIP_OUT, int *leftOrRightOfSegment SIP_OUT = nullptr, double epsilon = Qgis::DEFAULT_SEGMENT_EPSILON ) const;
 
     /**
      * Adds a new ring to this geometry. This makes only sense for polygon and multipolygons.
@@ -1213,6 +1230,8 @@ class CORE_EXPORT QgsGeometry
      * If an error was encountered while creating the result, more information can be retrieved
      * by calling lastError() on the returned geometry.
      *
+     * For singlepart point geometries, the result is equivalent to the bounding box of the geometry.
+     *
      * \see boundingBox()
      */
     QgsGeometry orientedMinimumBoundingBox( double &area SIP_OUT, double &angle SIP_OUT, double &width SIP_OUT, double &height SIP_OUT ) const;
@@ -1224,6 +1243,7 @@ class CORE_EXPORT QgsGeometry
      * If an error was encountered while creating the result, more information can be retrieved
      * by calling lastError() on the returned geometry.
      *
+     * For singlepart point geometries, the result is equivalent to the bounding box of the geometry.
      */
     QgsGeometry orientedMinimumBoundingBox() const SIP_SKIP;
 
@@ -2040,8 +2060,11 @@ class CORE_EXPORT QgsGeometry
      * \returns a LineString or MultiLineString geometry, with any connected lines
      * joined. An empty geometry will be returned if the input geometry was not a
      * MultiLineString geometry.
+     *
+     * Since QGIS 3.44 the optional \a parameters argument can be used to specify parameters which
+     * control the mergeLines results.
      */
-    QgsGeometry mergeLines() const;
+    QgsGeometry mergeLines( const QgsGeometryParameters &parameters = QgsGeometryParameters() ) const;
 
     /**
      * Returns a geometry representing the points making up this geometry that do not make up other.
@@ -2223,6 +2246,10 @@ class CORE_EXPORT QgsGeometry
      * to Z, M or ZM versions.
      * By default 0.0 is used for Z and M.
      *
+     * Since QGIS 3.44, the parameters \a avoidDuplicates controls whether to keep duplicated nodes (e.g. start/end of rings)
+     * when promoting polygon geometries to points.
+     * By default duplicated nodes are ignored.
+     *
      * \note This method is much stricter than convertToType(), as it considers the exact WKB type
      * of geometries instead of the geometry family (point/line/polygon), and tries more exhaustively
      * to coerce geometries to the desired \a type. It also correctly maintains curves and z/m values
@@ -2230,7 +2257,7 @@ class CORE_EXPORT QgsGeometry
      *
      * \since QGIS 3.14
      */
-    QVector< QgsGeometry > coerceToType( Qgis::WkbType type, double defaultZ = 0, double defaultM = 0 ) const;
+    QVector< QgsGeometry > coerceToType( Qgis::WkbType type, double defaultZ = 0, double defaultM = 0, bool avoidDuplicates = true ) const;
 
     /**
      * Try to convert the geometry to the requested type

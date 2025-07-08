@@ -49,7 +49,7 @@ struct QgsMesh;
 
 /**
  * \ingroup core
- * \brief Holds metadata about mesh driver
+ * \brief Holds metadata about mesh drivers.
  *
  * \since QGIS 3.12
  */
@@ -518,6 +518,8 @@ class CORE_EXPORT QgsProviderMetadata : public QObject
      * \since QGIS 3.28
      */
     virtual bool createDatabase( const QString &uri, QString &errorMessage SIP_OUT );
+
+    // TODO QGIS 4.0: rename createOptions to creationOptions for consistency with GDAL
 
     /**
      * Creates a new instance of the raster data provider.

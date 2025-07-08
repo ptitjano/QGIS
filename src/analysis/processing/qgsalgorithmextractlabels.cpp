@@ -398,6 +398,7 @@ QVariantMap QgsExtractLabelsAlgorithm::processAlgorithm( const QVariantMap &para
   mapSettings.setLayers( mMapLayers );
   mapSettings.setLayerStyleOverrides( mMapThemeStyleOverrides );
   mapSettings.setLabelingEngineSettings( mLabelSettings );
+  mapSettings.setScaleMethod( mScaleMethod );
 
   //build the expression context
   QgsExpressionContext expressionContext;
@@ -553,7 +554,7 @@ QVariantMap QgsExtractLabelsAlgorithm::processAlgorithm( const QVariantMap &para
       vl->setLabelsEnabled( true );
 
       QString errorMessage;
-      vl->saveStyleToDatabase( QString(), QString(), true, QString(), errorMessage );
+      vl->saveStyleToDatabaseV2( QString(), QString(), true, QString(), errorMessage );
     }
   }
 
@@ -612,6 +613,8 @@ bool QgsExtractLabelsAlgorithm::prepareAlgorithm( const QVariantMap &parameters,
   mLabelSettings = context.project()->labelingEngineSettings();
   mLabelSettings.setFlag( Qgis::LabelingFlag::DrawUnplacedLabels, includeUnplaced );
   mLabelSettings.setFlag( Qgis::LabelingFlag::CollectUnplacedLabels, includeUnplaced );
+
+  mScaleMethod = context.project()->scaleMethod();
 
   return true;
 }

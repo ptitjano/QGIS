@@ -49,9 +49,9 @@ QgsModelArrowItem::QgsModelArrowItem( QgsModelComponentGraphicItem *startItem, Q
   updatePath();
 
   connect( mStartItem, &QgsModelComponentGraphicItem::updateArrowPaths, this, &QgsModelArrowItem::updatePath );
-  connect( mStartItem, &QgsModelComponentGraphicItem::repaintArrows, this, [=] { update(); } );
+  connect( mStartItem, &QgsModelComponentGraphicItem::repaintArrows, this, [this] { update(); } );
   connect( mEndItem, &QgsModelComponentGraphicItem::updateArrowPaths, this, &QgsModelArrowItem::updatePath );
-  connect( mEndItem, &QgsModelComponentGraphicItem::repaintArrows, this, [=] { update(); } );
+  connect( mEndItem, &QgsModelComponentGraphicItem::repaintArrows, this, [this] { update(); } );
 }
 
 QgsModelArrowItem::QgsModelArrowItem( QgsModelComponentGraphicItem *startItem, Qt::Edge startEdge, int startIndex, Marker startMarker, QgsModelComponentGraphicItem *endItem, Marker endMarker )
@@ -97,6 +97,8 @@ void QgsModelArrowItem::paint( QPainter *painter, const QStyleOptionGraphicsItem
     case Marker::ArrowHead:
       drawArrowHead( painter, mStartPoint, path().pointAtPercent( 0.0 ) - path().pointAtPercent( 0.05 ) );
       break;
+    case Marker::NoMarker:
+      break;
   }
 
   switch ( mEndMarker )
@@ -106,6 +108,8 @@ void QgsModelArrowItem::paint( QPainter *painter, const QStyleOptionGraphicsItem
       break;
     case Marker::ArrowHead:
       drawArrowHead( painter, mEndPoint, path().pointAtPercent( 1.0 ) - path().pointAtPercent( 0.95 ) );
+      break;
+    case Marker::NoMarker:
       break;
   }
 

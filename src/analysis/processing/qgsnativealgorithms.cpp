@@ -43,18 +43,45 @@
 #include "qgsalgorithmcategorizeusingstyle.h"
 #include "qgsalgorithmcellstatistics.h"
 #include "qgsalgorithmcentroid.h"
+#include "qgsalgorithmcheckgeometrysegmentlength.h"
 #include "qgsalgorithmcheckgeometryangle.h"
 #include "qgsalgorithmcheckgeometryarea.h"
+#include "qgsalgorithmfixgeometryselfintersection.h"
+#include "qgsalgorithmfixgeometrydeletefeatures.h"
+#include "qgsalgorithmfixgeometrygap.h"
 #include "qgsalgorithmfixgeometryarea.h"
+#include "qgsalgorithmfixgeometryduplicatenodes.h"
+#include "qgsalgorithmfixgeometrymultipart.h"
+#include "qgsalgorithmfixgeometryoverlap.h"
 #include "qgsalgorithmfixgeometryhole.h"
 #include "qgsalgorithmfixgeometrymissingvertex.h"
+#include "qgsalgorithmcheckgeometrylinelayerintersection.h"
+#include "qgsalgorithmcheckgeometrypointcoveredbyline.h"
 #include "qgsalgorithmcheckgeometryhole.h"
 #include "qgsalgorithmcheckgeometrymissingvertex.h"
+#include "qgsalgorithmcheckgeometrylineintersection.h"
+#include "qgsalgorithmcheckgeometrypointinpolygon.h"
+#include "qgsalgorithmcheckgeometrygap.h"
+#include "qgsalgorithmcheckgeometrysliverpolygon.h"
+#include "qgsalgorithmcheckgeometryselfcontact.h"
+#include "qgsalgorithmcheckgeometryoverlap.h"
+#include "qgsalgorithmcheckgeometryfollowboundaries.h"
+#include "qgsalgorithmcheckgeometryduplicatenodes.h"
+#include "qgsalgorithmcheckgeometrydangle.h"
+#include "qgsalgorithmcheckgeometryduplicate.h"
+#include "qgsalgorithmcheckgeometryselfintersection.h"
+#include "qgsalgorithmcheckgeometrymultipart.h"
+#include "qgsalgorithmcheckgeometrydegeneratepolygon.h"
+#include "qgsalgorithmcheckgeometrycontained.h"
+#include "qgsalgorithmcheckvalidity.h"
+#include "qgsalgorithmclimb.h"
 #include "qgsalgorithmclip.h"
 #include "qgsalgorithmconcavehull.h"
+#include "qgsalgorithmconcavehullbyfeature.h"
 #include "qgsalgorithmconditionalbranch.h"
 #include "qgsalgorithmconstantraster.h"
 #include "qgsalgorithmconverttocurves.h"
+#include "qgsalgorithmconvertgeometrytype.h"
 #include "qgsalgorithmconvexhull.h"
 #include "qgsalgorithmcoveragesimplify.h"
 #include "qgsalgorithmcoverageunion.h"
@@ -83,6 +110,7 @@
 #include "qgsalgorithmexporttospreadsheet.h"
 #include "qgsalgorithmexplode.h"
 #include "qgsalgorithmexplodehstore.h"
+#include "qgsalgorithmexportgeometryattributes.h"
 #include "qgsalgorithmexportlayersinformation.h"
 #include "qgsalgorithmexporttopostgresql.h"
 #include "qgsalgorithmextendlines.h"
@@ -101,9 +129,11 @@
 #include "qgsalgorithmfieldcalculator.h"
 #include "qgsalgorithmfiledownloader.h"
 #include "qgsalgorithmfillnodata.h"
+#include "qgsalgorithmfillsinkswangliu.h"
 #include "qgsalgorithmfilter.h"
 #include "qgsalgorithmfilterbygeometry.h"
 #include "qgsalgorithmfiltervertices.h"
+#include "qgsalgorithmfindprojection.h"
 #include "qgsalgorithmfixgeometries.h"
 #include "qgsalgorithmflattenrelationships.h"
 #include "qgsalgorithmforcerhr.h"
@@ -333,17 +363,38 @@ void QgsNativeAlgorithms::loadAlgorithms()
   addAlgorithm( new QgsCellStatisticsPercentRankFromRasterAlgorithm() );
   addAlgorithm( new QgsCellStatisticsPercentRankFromValueAlgorithm() );
   addAlgorithm( new QgsCentroidAlgorithm() );
+  addAlgorithm( new QgsCheckValidityAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckSegmentLengthAlgorithm() );
   addAlgorithm( new QgsGeometryCheckAngleAlgorithm() );
   addAlgorithm( new QgsGeometryCheckAreaAlgorithm() );
   addAlgorithm( new QgsGeometryCheckHoleAlgorithm() );
   addAlgorithm( new QgsGeometryCheckMissingVertexAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckLineIntersectionAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckLineLayerIntersectionAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckPointCoveredByLineAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckPointInPolygonAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckGapAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckSliverPolygonAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckSelfContactAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckOverlapAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckFollowBoundariesAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckDuplicateNodesAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckDangleAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckDuplicateAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckSelfIntersectionAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckMultipartAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckDegeneratePolygonAlgorithm() );
+  addAlgorithm( new QgsGeometryCheckContainedAlgorithm() );
+  addAlgorithm( new QgsClimbAlgorithm() );
   addAlgorithm( new QgsClipAlgorithm() );
   addAlgorithm( new QgsCollectAlgorithm() );
   addAlgorithm( new QgsCombineStylesAlgorithm() );
   addAlgorithm( new QgsConcaveHullAlgorithm() );
+  addAlgorithm( new QgsConcaveHullByFeatureAlgorithm() );
   addAlgorithm( new QgsConditionalBranchAlgorithm() );
   addAlgorithm( new QgsConstantRasterAlgorithm() );
   addAlgorithm( new QgsConvertToCurvesAlgorithm() );
+  addAlgorithm( new QgsConvertGeometryTypeAlgorithm() );
   addAlgorithm( new QgsConvexHullAlgorithm() );
   addAlgorithm( new QgsCopyLayerMetadataAlgorithm() );
   addAlgorithm( new QgsCoverageSimplifyAlgorithm() );
@@ -369,6 +420,7 @@ void QgsNativeAlgorithms::loadAlgorithms()
   addAlgorithm( new QgsExecuteSpatialiteQueryAlgorithm() );
   addAlgorithm( new QgsExplodeAlgorithm() );
   addAlgorithm( new QgsExplodeHstoreAlgorithm() );
+  addAlgorithm( new QgsExportGeometryAttributesAlgorithm() );
   addAlgorithm( new QgsExportLayersInformationAlgorithm() );
   addAlgorithm( new QgsExportLayerMetadataAlgorithm() );
   addAlgorithm( new QgsExportMeshVerticesAlgorithm );
@@ -394,11 +446,13 @@ void QgsNativeAlgorithms::loadAlgorithms()
   addAlgorithm( new QgsFieldCalculatorAlgorithm() );
   addAlgorithm( new QgsFileDownloaderAlgorithm() );
   addAlgorithm( new QgsFillNoDataAlgorithm() );
+  addAlgorithm( new QgsFillSinksWangLiuAlgorithm() );
   addAlgorithm( new QgsFilterAlgorithm() );
   addAlgorithm( new QgsFilterByGeometryAlgorithm() );
   addAlgorithm( new QgsFilterByLayerTypeAlgorithm() );
   addAlgorithm( new QgsFilterVerticesByM() );
   addAlgorithm( new QgsFilterVerticesByZ() );
+  addAlgorithm( new QgsFindProjectionAlgorithm() );
   addAlgorithm( new QgsFixGeometriesAlgorithm() );
   addAlgorithm( new QgsFlattenRelationshipsAlgorithm() );
   addAlgorithm( new QgsForceRHRAlgorithm() );
@@ -591,7 +645,13 @@ void QgsNativeAlgorithms::loadAlgorithms()
   addAlgorithm( new QgsPolygonsToLinesAlgorithm() );
   addAlgorithm( new QgsDensifyGeometriesByIntervalAlgorithm() );
   addAlgorithm( new QgsDensifyGeometriesByCountAlgorithm() );
+  addAlgorithm( new QgsFixGeometryOverlapAlgorithm() );
+  addAlgorithm( new QgsFixGeometryDeleteFeaturesAlgorithm() );
   addAlgorithm( new QgsFixGeometryAngleAlgorithm() );
+  addAlgorithm( new QgsFixGeometryDuplicateNodesAlgorithm() );
+  addAlgorithm( new QgsFixGeometryMultipartAlgorithm() );
+  addAlgorithm( new QgsFixGeometrySelfIntersectionAlgorithm() );
+  addAlgorithm( new QgsFixGeometryGapAlgorithm() );
   addAlgorithm( new QgsFixGeometryAreaAlgorithm() );
   addAlgorithm( new QgsFixGeometryHoleAlgorithm() );
   addAlgorithm( new QgsFixGeometryMissingVertexAlgorithm() );

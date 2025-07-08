@@ -20,7 +20,6 @@
 #include "qgsmessagelog.h"
 #include "qgssettings.h"
 #include "qgsapplication.h"
-#include "qgsdockwidget.h"
 
 #include <QFile>
 #include <QDateTime>
@@ -41,6 +40,10 @@ QgsMessageLogViewer::QgsMessageLogViewer( QWidget *parent, Qt::WindowFlags fl )
   connect( QgsApplication::messageLog(), static_cast<void ( QgsMessageLog::* )( const QString &, const QString &, Qgis::MessageLevel )>( &QgsMessageLog::messageReceived ), this, static_cast<void ( QgsMessageLogViewer::* )( const QString &, const QString &, Qgis::MessageLevel )>( &QgsMessageLogViewer::logMessage ) );
 
   connect( tabWidget, &QTabWidget::tabCloseRequested, this, &QgsMessageLogViewer::closeTab );
+
+  connect( tabWidget, &QTabWidget::currentChanged, this, [this]( int index ) {
+    tabWidget->setTabIcon( index, QIcon() );
+  } );
 
   mTabBarContextMenu = new QMenu( this );
   tabWidget->tabBar()->setContextMenuPolicy( Qt::CustomContextMenu );
@@ -121,15 +124,17 @@ void QgsMessageLogViewer::logMessage( const QString &message, const QString &tag
   if ( i < tabWidget->count() )
   {
     w = qobject_cast<QPlainTextEdit *>( tabWidget->widget( i ) );
-    tabWidget->setCurrentIndex( i );
+    if ( i != tabWidget->currentIndex() )
+    {
+      tabWidget->setTabIcon( i, QgsApplication::getThemeIcon( QStringLiteral( "mMessageLog.svg" ) ) );
+    }
   }
   else
   {
     w = new QPlainTextEdit( this );
     w->setReadOnly( true );
     w->viewport()->installEventFilter( this );
-    tabWidget->addTab( w, cleanedTag );
-    tabWidget->setCurrentIndex( tabWidget->count() - 1 );
+    i = tabWidget->addTab( w, QgsApplication::getThemeIcon( QStringLiteral( "mMessageLog.svg" ) ), cleanedTag );
   }
 
   QString levelString;
@@ -164,7 +169,7 @@ void QgsMessageLogViewer::logMessage( const QString &message, const QString &tag
 
   const QString prefix = QStringLiteral( "<font color=\"%1\">%2 &nbsp;&nbsp;&nbsp; %3 &nbsp;&nbsp;&nbsp;</font>" )
                            .arg( color.name(), QDateTime::currentDateTime().toString( Qt::ISODate ), levelString );
-  QString cleanedMessage = message;
+  QString cleanedMessage = message.toHtmlEscaped();
   if ( mMessageLoggedCount == MESSAGE_COUNT_LIMIT )
     cleanedMessage = tr( "Message log truncated" );
 
@@ -173,6 +178,18 @@ void QgsMessageLogViewer::logMessage( const QString &message, const QString &tag
   w->verticalScrollBar()->setValue( w->verticalScrollBar()->maximum() );
   tabWidget->show();
   emptyLabel->hide();
+}
+
+void QgsMessageLogViewer::showTab( const QString &tag )
+{
+  for ( int i = 0; i < tabWidget->count(); i++ )
+  {
+    if ( tabWidget->tabText( i ).remove( QChar( '&' ) ) == tag )
+    {
+      tabWidget->setCurrentIndex( i );
+      return;
+    }
+  }
 }
 
 void QgsMessageLogViewer::closeTab( int index )

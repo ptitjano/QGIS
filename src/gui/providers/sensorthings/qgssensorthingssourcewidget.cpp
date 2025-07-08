@@ -387,7 +387,7 @@ void QgsSensorThingsSourceWidget::setCurrentEntityType( Qgis::SensorThingsEntity
     mComboGeometryType->addItem( QgsIconUtils::iconForWkbType( Qgis::WkbType::NoGeometry ), tr( "No Geometry" ), QVariant::fromValue( Qgis::WkbType::NoGeometry ) );
     setCurrentGeometryTypeFromString( mSourceParts.value( QStringLiteral( "geometryType" ) ).toString() );
   }
-  else if ( geometryTypeForEntity == Qgis::GeometryType::Null && mComboGeometryType->findData( QVariant::fromValue( Qgis::WkbType::NoGeometry ) ) < 0 )
+  else if ( geometryTypeForEntity == Qgis::GeometryType::Null && ( mComboGeometryType->findData( QVariant::fromValue( Qgis::WkbType::NoGeometry ) ) < 0 || mComboGeometryType->count() > 1 ) )
   {
     mComboGeometryType->clear();
     mComboGeometryType->addItem( QgsIconUtils::iconForWkbType( Qgis::WkbType::NoGeometry ), tr( "No Geometry" ), QVariant::fromValue( Qgis::WkbType::NoGeometry ) );
@@ -851,7 +851,7 @@ QWidget *QgsSensorThingsExpansionsDelegate::createEditor( QWidget *parent, const
       // need to find out entity type for this row
       const Qgis::SensorThingsEntity entityType = index.model()->data( index.model()->index( index.row(), 0 ), Qt::EditRole ).value<Qgis::SensorThingsEntity>();
       QgsSensorThingsFilterWidget *w = new QgsSensorThingsFilterWidget( parent, entityType );
-      connect( w, &QgsSensorThingsFilterWidget::filterChanged, this, [=]() {
+      connect( w, &QgsSensorThingsFilterWidget::filterChanged, this, [this, w]() {
         const_cast<QgsSensorThingsExpansionsDelegate *>( this )->emit commitData( w );
       } );
       return w;

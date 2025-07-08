@@ -284,12 +284,13 @@ void QgsVectorFileWriter::init( QString vectorFileName,
   {
     if ( metadataFound )
     {
-      QStringList allExts = metadata.ext.split( ' ', Qt::SkipEmptyParts );
+      QStringList allExts = metadata.glob.split( ' ', Qt::SkipEmptyParts );
       bool found = false;
       const auto constAllExts = allExts;
       for ( const QString &ext : constAllExts )
       {
-        if ( vectorFileName.endsWith( '.' + ext, Qt::CaseInsensitive ) )
+        // Remove the wildcard (*) at the beginning of the extension
+        if ( vectorFileName.endsWith( ext.mid( 1 ), Qt::CaseInsensitive ) )
         {
           found = true;
           break;
@@ -298,6 +299,7 @@ void QgsVectorFileWriter::init( QString vectorFileName,
 
       if ( !found )
       {
+        allExts = metadata.ext.split( ' ', Qt::SkipEmptyParts );
         vectorFileName += '.' + allExts[0];
       }
     }
@@ -604,6 +606,14 @@ void QgsVectorFileWriter::init( QString vectorFileName,
 #if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,6,0)
       QSet< QString > usedAlternativeNames;
 #endif
+
+      const QString ogrFidColumnName { OGR_L_GetFIDColumn( mLayer ) };
+      const int fidNameIndex = OGR_FD_GetFieldIndex( defn, ogrFidColumnName.toUtf8() );
+      // if native fid column in created layer matches an attribute from the user-specified fields, we'll be
+      // promoting that to a real attribute.
+      const bool promoteFidColumnToAttribute = !ogrFidColumnName.isEmpty() && fidNameIndex < 0 && fields.lookupField( ogrFidColumnName ) >= 0;
+      int offsetRoomForFid = promoteFidColumnToAttribute ? 1 : 0;
+
       for ( int fldIdx = 0; fldIdx < fields.count(); ++fldIdx )
       {
         QgsField attrField = fields.at( fldIdx );
@@ -972,8 +982,9 @@ void QgsVectorFileWriter::init( QString vectorFileName,
         if ( OGR_L_CreateField( mLayer, fld.get(), true ) != OGRERR_NONE )
         {
           QgsDebugError( "error creating field " + attrField.name() );
-          mErrorMessage = QObject::tr( "Creation of field %1 failed (OGR error: %2)" )
+          mErrorMessage = QObject::tr( "Creation of field %1 (%2) failed (OGR error: %3)" )
                           .arg( attrField.name(),
+                                QVariant::typeToName( attrField.type() ),
                                 QString::fromUtf8( CPLGetLastErrorMsg() ) );
           mError = ErrAttributeCreationFailed;
           return;
@@ -994,6 +1005,20 @@ void QgsVectorFileWriter::init( QString vectorFileName,
                                   QString::fromUtf8( CPLGetLastErrorMsg() ) );
             mError = ErrAttributeCreationFailed;
             return;
+          }
+        }
+
+        if ( promoteFidColumnToAttribute )
+        {
+          if ( ogrFidColumnName.compare( attrField.name(), Qt::CaseInsensitive ) == 0 )
+          {
+            ogrIdx = 0;
+            offsetRoomForFid = 0;
+          }
+          else
+          {
+            // shuffle to make space for fid column
+            ogrIdx += offsetRoomForFid;
           }
         }
 
@@ -1154,9 +1179,15 @@ class QgsVectorFileWriterMetadataContainer
                              true // Allow None
                            ) );
 
+      layerOptions.insert( QStringLiteral( "GEOMETRY_NAME" ), new QgsVectorFileWriter::StringOption(
+                             QObject::tr( "Name of geometry column. Only used if GEOMETRY=AS_WKT. Defaults to 'WKT'." ),
+                             QStringLiteral( "WKT" )  // Default value
+                           ) );
+
       layerOptions.insert( QStringLiteral( "CREATE_CSVT" ), new QgsVectorFileWriter::BoolOption(
                              QObject::tr( "Create the associated .csvt file to describe the type of each "
-                                          "column of the layer and its optional width and precision." ),
+                                          "column of the layer and its optional width and precision. "
+                                          "This option also creates a .prj file which stores coordinate system information." ),
                              false  // Default value
                            ) );
 
@@ -1165,8 +1196,12 @@ class QgsVectorFileWriterMetadataContainer
                              QStringList()
                              << QStringLiteral( "COMMA" )
                              << QStringLiteral( "SEMICOLON" )
-                             << QStringLiteral( "TAB" ),
-                             QStringLiteral( "COMMA" ) // Default value
+                             << QStringLiteral( "TAB" )
+                             << QStringLiteral( "SPACE" )
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,12,0)
+                             << QStringLiteral( "PIPE" )
+#endif
+                             , QStringLiteral( "COMMA" ) // Default value
                            ) );
 
       layerOptions.insert( QStringLiteral( "STRING_QUOTING" ), new QgsVectorFileWriter::SetOption(
@@ -1182,6 +1217,13 @@ class QgsVectorFileWriterMetadataContainer
                              QObject::tr( "Write a UTF-8 Byte Order Mark (BOM) at the start of the file." ),
                              false  // Default value
                            ) );
+
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,12,0)
+      layerOptions.insert( QStringLiteral( "HEADER" ), new QgsVectorFileWriter::BoolOption(
+                             QObject::tr( "Whether to write a header line with the field names." ),
+                             true  // Default value
+                           ) );
+#endif
 
       driverMetadata.insert( QStringLiteral( "CSV" ),
                              QgsVectorFileWriter::MetaData(
@@ -2119,6 +2161,33 @@ class QgsVectorFileWriterMetadataContainer
                                QObject::tr( "Override the trailer file used - in place of trailer.dxf." ),
                                QString()  // Default value
                              ) );
+
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,11,0)
+      datasetOptions.insert( QStringLiteral( "INSUNITS" ), new QgsVectorFileWriter::SetOption(
+                               QObject::tr( "Drawing units for the model space ($INSUNITS system variable)." ),
+                               QStringList()
+                               << QStringLiteral( "AUTO" )
+                               << QStringLiteral( "HEADER_VALUE" )
+                               << QStringLiteral( "UNITLESS" )
+                               << QStringLiteral( "INCHES" )
+                               << QStringLiteral( "FEET" )
+                               << QStringLiteral( "MILLIMETERS" )
+                               << QStringLiteral( "CENTIMETERS" )
+                               << QStringLiteral( "METERS" )
+                               << QStringLiteral( "US_SURVEY_FEET" ),
+                               QStringLiteral( "AUTO" ) // Default value
+                             ) );
+
+      datasetOptions.insert( QStringLiteral( "MEASUREMENT" ), new QgsVectorFileWriter::SetOption(
+                               QObject::tr( "Whether the current drawing uses imperial or metric hatch "
+                                            "pattern and linetype ($MEASUREMENT system variable)." ),
+                               QStringList()
+                               << QStringLiteral( "HEADER_VALUE" )
+                               << QStringLiteral( "IMPERIAL" )
+                               << QStringLiteral( "METRIC" ),
+                               QStringLiteral( "HEADER_VALUE" ) // Default value
+                             ) );
+#endif
 
       driverMetadata.insert( QStringLiteral( "DXF" ),
                              QgsVectorFileWriter::MetaData(

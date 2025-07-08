@@ -58,7 +58,7 @@ QgsProcessingFieldMapPanelWidget::QgsProcessingFieldMapPanelWidget( QWidget *par
   connect( mLoadLayerFieldsButton, &QPushButton::clicked, this, &QgsProcessingFieldMapPanelWidget::loadLayerFields );
 
 
-  connect( mFieldsView, &QgsFieldMappingWidget::changed, this, [=] {
+  connect( mFieldsView, &QgsFieldMappingWidget::changed, this, [this] {
     if ( !mBlockChangedSignal )
     {
       emit changed();
@@ -199,7 +199,6 @@ void QgsProcessingFieldMapPanelWidget::loadLayerFields()
 {
   if ( QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( mLayerCombo->currentLayer() ) )
   {
-    mFieldsView->setSourceFields( vl->fields() );
     mFieldsView->setDestinationFields( vl->fields() );
   }
 }
@@ -270,7 +269,7 @@ QgsProcessingParameterDefinition *QgsProcessingFieldMapParameterDefinitionWidget
 // QgsProcessingFieldMapWidgetWrapper
 //
 
-QgsProcessingFieldMapWidgetWrapper::QgsProcessingFieldMapWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type, QWidget *parent )
+QgsProcessingFieldMapWidgetWrapper::QgsProcessingFieldMapWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type, QWidget *parent )
   : QgsAbstractProcessingParameterWidgetWrapper( parameter, type, parent )
 {
 }
@@ -280,7 +279,7 @@ QString QgsProcessingFieldMapWidgetWrapper::parameterType() const
   return QgsProcessingParameterFieldMapping::typeName();
 }
 
-QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingFieldMapWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type )
+QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingFieldMapWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type )
 {
   return new QgsProcessingFieldMapWidgetWrapper( parameter, type );
 }
@@ -291,7 +290,7 @@ QWidget *QgsProcessingFieldMapWidgetWrapper::createWidget()
   mPanel->setToolTip( parameterDefinition()->toolTip() );
   mPanel->registerExpressionContextGenerator( this );
 
-  connect( mPanel, &QgsProcessingFieldMapPanelWidget::changed, this, [=] {
+  connect( mPanel, &QgsProcessingFieldMapPanelWidget::changed, this, [this] {
     emit widgetValueHasChanged( this );
   } );
 
@@ -308,15 +307,15 @@ void QgsProcessingFieldMapWidgetWrapper::postInitialize( const QList<QgsAbstract
   QgsAbstractProcessingParameterWidgetWrapper::postInitialize( wrappers );
   switch ( type() )
   {
-    case QgsProcessingGui::Standard:
-    case QgsProcessingGui::Batch:
+    case Qgis::ProcessingMode::Standard:
+    case Qgis::ProcessingMode::Batch:
     {
       for ( const QgsAbstractProcessingParameterWidgetWrapper *wrapper : wrappers )
       {
         if ( wrapper->parameterDefinition()->name() == static_cast<const QgsProcessingParameterFieldMapping *>( parameterDefinition() )->parentLayerParameterName() )
         {
           setParentLayerWrapperValue( wrapper );
-          connect( wrapper, &QgsAbstractProcessingParameterWidgetWrapper::widgetValueHasChanged, this, [=] {
+          connect( wrapper, &QgsAbstractProcessingParameterWidgetWrapper::widgetValueHasChanged, this, [this, wrapper] {
             setParentLayerWrapperValue( wrapper );
           } );
           break;
@@ -325,7 +324,7 @@ void QgsProcessingFieldMapWidgetWrapper::postInitialize( const QList<QgsAbstract
       break;
     }
 
-    case QgsProcessingGui::Modeler:
+    case Qgis::ProcessingMode::Modeler:
       break;
   }
 }
@@ -383,17 +382,6 @@ void QgsProcessingFieldMapWidgetWrapper::setWidgetValue( const QVariant &value, 
 QVariant QgsProcessingFieldMapWidgetWrapper::widgetValue() const
 {
   return mPanel ? mPanel->value() : QVariant();
-}
-
-QStringList QgsProcessingFieldMapWidgetWrapper::compatibleParameterTypes() const
-{
-  return QStringList()
-         << QgsProcessingParameterFieldMapping::typeName();
-}
-
-QStringList QgsProcessingFieldMapWidgetWrapper::compatibleOutputTypes() const
-{
-  return QStringList();
 }
 
 QString QgsProcessingFieldMapWidgetWrapper::modelerExpressionFormatString() const

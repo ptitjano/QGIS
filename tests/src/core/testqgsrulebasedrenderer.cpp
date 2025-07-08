@@ -16,13 +16,12 @@
 #include <QDomDocument>
 #include <QFile>
 #include <QTemporaryFile>
-//header for class being tested
-#include <qgsrulebasedrenderer.h>
 
-#include <qgsapplication.h>
-#include <qgsreadwritecontext.h>
-#include <qgssymbol.h>
-#include <qgsvectorlayer.h>
+#include "qgsrulebasedrenderer.h"
+#include "qgsapplication.h"
+#include "qgsreadwritecontext.h"
+#include "qgssymbol.h"
+#include "qgsvectorlayer.h"
 #include "qgsfillsymbol.h"
 #include "qgsmarkersymbol.h"
 #include "qgsmultirenderchecker.h"
@@ -33,6 +32,7 @@
 #include "qgsmarkersymbollayer.h"
 #include "qgsgeometry.h"
 #include "qgsembeddedsymbolrenderer.h"
+#include "qgssldexportcontext.h"
 
 typedef QgsRuleBasedRenderer::Rule RRule;
 
@@ -200,9 +200,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 0, 0, "\"id\" = 2" );
@@ -238,9 +238,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 0, 0, "\"id\" = 2" );
@@ -278,8 +278,8 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       r1->setMaximumScale( 1000 );
@@ -336,9 +336,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 0, 0, "\"id\" = 2" );
@@ -391,9 +391,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *rx1 = new QgsRuleBasedRenderer::Rule( nullptr, 0, 0, "\"id\" < 3" );
       QgsRuleBasedRenderer::Rule *rx2 = new QgsRuleBasedRenderer::Rule( sym3, 0, 0, "ELSE" );
@@ -436,9 +436,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 0, 0, "\"id\" = 2" );
@@ -486,9 +486,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 200" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 1000, 100000000, "ELSE" ); // < match this!
@@ -535,8 +535,8 @@ class TestQgsRuleBasedRenderer : public QgsTest
     void testUsedAttributes()
     {
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 200" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 1000, 100000000, "ELSE" );
@@ -622,9 +622,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 0, 0, "\"id\" = 2" );
@@ -678,9 +678,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 0, 0, "\"id\" = 2" );
@@ -742,9 +742,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 0, 0, "\"id\" = 2" );
@@ -797,9 +797,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 0, 0, "\"id\" = 2" );
@@ -873,9 +873,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       // Test converting categorised renderer to rule based
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 0, 0, "\"id\" = 2" );
@@ -956,9 +956,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       layer->addExpressionField( QStringLiteral( "\"id\"" ), vfield );
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 0, 0, "\"id\" = 2" );
@@ -973,12 +973,27 @@ class TestQgsRuleBasedRenderer : public QgsTest
       QList<QgsRendererRange> ranges;
       ranges.append( QgsRendererRange( 0, 1, new QgsMarkerSymbol(), "0-1" ) );
       ranges.append( QgsRendererRange( 1, 2, new QgsMarkerSymbol(), "1-2" ) );
+      ranges.append( QgsRendererRange( 2, 3, new QgsMarkerSymbol(), "2-3" ) );
       auto c = std::make_unique<QgsGraduatedSymbolRenderer>( "id", ranges );
 
       std::unique_ptr<QgsRuleBasedRenderer> r( QgsRuleBasedRenderer::convertFromRenderer( c.get(), layer.get() ) );
-      QCOMPARE( r->rootRule()->children().size(), 2 );
-      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "\"id\" >= 0.000000 AND \"id\" <= 1.000000" );
-      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "\"id\" > 1.000000 AND \"id\" <= 2.000000" );
+      QCOMPARE( r->rootRule()->children().size(), 3 );
+      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "\"id\" <= 1.0000000000000000" );
+      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "\"id\" > 1.0000000000000000 AND \"id\" <= 2.0000000000000000" );
+      QCOMPARE( r->rootRule()->children()[2]->filterExpression(), "\"id\" > 2.0000000000000000" );
+
+      // Next try the same with inverted ranges
+      ranges.clear();
+      ranges.append( QgsRendererRange( 2, 3, new QgsMarkerSymbol(), "2-3" ) );
+      ranges.append( QgsRendererRange( 1, 2, new QgsMarkerSymbol(), "1-2" ) );
+      ranges.append( QgsRendererRange( 0, 1, new QgsMarkerSymbol(), "0-1" ) );
+      c = std::make_unique<QgsGraduatedSymbolRenderer>( "id", ranges );
+
+      r.reset( QgsRuleBasedRenderer::convertFromRenderer( c.get(), layer.get() ) );
+      QCOMPARE( r->rootRule()->children().size(), 3 );
+      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "\"id\" > 2.0000000000000000" );
+      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "\"id\" > 1.0000000000000000 AND \"id\" <= 2.0000000000000000" );
+      QCOMPARE( r->rootRule()->children()[2]->filterExpression(), "\"id\" <= 1.0000000000000000" );
 
       // Next try with an expression based range
       ranges.clear();
@@ -988,8 +1003,8 @@ class TestQgsRuleBasedRenderer : public QgsTest
 
       r.reset( QgsRuleBasedRenderer::convertFromRenderer( c.get(), layer.get() ) );
       QCOMPARE( r->rootRule()->children().size(), 2 );
-      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "(id / 2) >= 0.000000 AND (id / 2) <= 1.000000" );
-      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "(id / 2) > 1.000000 AND (id / 2) <= 2.000000" );
+      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "(id / 2) <= 1.0000000000000000" );
+      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "(id / 2) > 1.0000000000000000" );
 
       // Last try with an expression which is just a quoted field name
       ranges.clear();
@@ -999,8 +1014,8 @@ class TestQgsRuleBasedRenderer : public QgsTest
 
       r.reset( QgsRuleBasedRenderer::convertFromRenderer( c.get(), layer.get() ) );
       QCOMPARE( r->rootRule()->children().size(), 2 );
-      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "\"id\" >= 0.000000 AND \"id\" <= 1.000000" );
-      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "\"id\" > 1.000000 AND \"id\" <= 2.000000" );
+      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "\"id\" <= 1.0000000000000000" );
+      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "\"id\" > 1.0000000000000000" );
 
       // Next try with a complex name
       ranges.clear();
@@ -1010,8 +1025,8 @@ class TestQgsRuleBasedRenderer : public QgsTest
 
       r.reset( QgsRuleBasedRenderer::convertFromRenderer( c.get(), layer.get() ) );
       QCOMPARE( r->rootRule()->children().size(), 2 );
-      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "\"fa_cy-fie+ld\" >= 0.000000 AND \"fa_cy-fie+ld\" <= 1.000000" );
-      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "\"fa_cy-fie+ld\" > 1.000000 AND \"fa_cy-fie+ld\" <= 2.000000" );
+      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "\"fa_cy-fie+ld\" <= 1.0000000000000000" );
+      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "\"fa_cy-fie+ld\" > 1.0000000000000000" );
     }
 
     void testConvertFromGraduatedRendererNoLayer()
@@ -1019,9 +1034,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       // Test converting graduated renderer to rule based
 
       // Create rulebased style
-      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) );
-      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) );
+      QgsSymbol *sym1 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#fdbf6f" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym2 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#71bd6c" }, { "outline_color", "black" } } ) ).release();
+      QgsSymbol *sym3 = QgsFillSymbol::createSimple( QVariantMap( { { "color", "#1f78b4" }, { "outline_color", "black" } } ) ).release();
 
       QgsRuleBasedRenderer::Rule *r1 = new QgsRuleBasedRenderer::Rule( sym1, 0, 0, "\"id\" = 1" );
       QgsRuleBasedRenderer::Rule *r2 = new QgsRuleBasedRenderer::Rule( sym2, 0, 0, "\"id\" = 2" );
@@ -1040,8 +1055,8 @@ class TestQgsRuleBasedRenderer : public QgsTest
 
       std::unique_ptr<QgsRuleBasedRenderer> r( QgsRuleBasedRenderer::convertFromRenderer( c.get() ) );
       QCOMPARE( r->rootRule()->children().size(), 2 );
-      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "\"id\" >= 0.000000 AND \"id\" <= 1.000000" );
-      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "\"id\" > 1.000000 AND \"id\" <= 2.000000" );
+      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "\"id\" <= 1.0000000000000000" );
+      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "\"id\" > 1.0000000000000000" );
 
       // Next try with an expression based range
       ranges.clear();
@@ -1051,8 +1066,8 @@ class TestQgsRuleBasedRenderer : public QgsTest
 
       r.reset( QgsRuleBasedRenderer::convertFromRenderer( c.get() ) );
       QCOMPARE( r->rootRule()->children().size(), 2 );
-      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "(id / 2) >= 0.000000 AND (id / 2) <= 1.000000" );
-      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "(id / 2) > 1.000000 AND (id / 2) <= 2.000000" );
+      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "(id / 2) <= 1.0000000000000000" );
+      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "(id / 2) > 1.0000000000000000" );
 
       // Last try with an expression which is just a quoted field name
       ranges.clear();
@@ -1062,8 +1077,8 @@ class TestQgsRuleBasedRenderer : public QgsTest
 
       r.reset( QgsRuleBasedRenderer::convertFromRenderer( c.get() ) );
       QCOMPARE( r->rootRule()->children().size(), 2 );
-      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "\"id\" >= 0.000000 AND \"id\" <= 1.000000" );
-      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "\"id\" > 1.000000 AND \"id\" <= 2.000000" );
+      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "\"id\" <= 1.0000000000000000" );
+      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "\"id\" > 1.0000000000000000" );
 
       // Next try with a complex name -- in this case since we don't have a layer or
       // actual field names available, we must assume the complex field name is actually an expression
@@ -1074,8 +1089,8 @@ class TestQgsRuleBasedRenderer : public QgsTest
 
       r.reset( QgsRuleBasedRenderer::convertFromRenderer( c.get() ) );
       QCOMPARE( r->rootRule()->children().size(), 2 );
-      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "(fa_cy-fie+ld) >= 0.000000 AND (fa_cy-fie+ld) <= 1.000000" );
-      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "(fa_cy-fie+ld) > 1.000000 AND (fa_cy-fie+ld) <= 2.000000" );
+      QCOMPARE( r->rootRule()->children()[0]->filterExpression(), "(fa_cy-fie+ld) <= 1.0000000000000000" );
+      QCOMPARE( r->rootRule()->children()[1]->filterExpression(), "(fa_cy-fie+ld) > 1.0000000000000000" );
     }
 
     void testConvertFromEmbedded()
@@ -1087,19 +1102,19 @@ class TestQgsRuleBasedRenderer : public QgsTest
       QgsFeature f;
       f.setGeometry( QgsGeometry::fromWkt( "Point(-100 30)" ) );
       f.setEmbeddedSymbol(
-        QgsMarkerSymbol::createSimple( { { "name", "triangle" }, { "size", 10 }, { "color", "#ff0000" }, { "outline_style", "no" } } )
+        QgsMarkerSymbol::createSimple( { { "name", "triangle" }, { "size", 10 }, { "color", "#ff0000" }, { "outline_style", "no" } } ).release()
       );
       QVERIFY( layer->dataProvider()->addFeature( f ) );
       f.setGeometry( QgsGeometry::fromWkt( "Point(-110 40)" ) );
       f.setEmbeddedSymbol(
-        QgsMarkerSymbol::createSimple( { { "name", "square" }, { "size", 7 }, { "color", "#00ff00" }, { "outline_style", "no" } } )
+        QgsMarkerSymbol::createSimple( { { "name", "square" }, { "size", 7 }, { "color", "#00ff00" }, { "outline_style", "no" } } ).release()
       );
       QVERIFY( layer->dataProvider()->addFeature( f ) );
       f.setGeometry( QgsGeometry::fromWkt( "Point(-90 50)" ) );
       f.setEmbeddedSymbol( nullptr );
       QVERIFY( layer->dataProvider()->addFeature( f ) );
 
-      QgsEmbeddedSymbolRenderer *renderer = new QgsEmbeddedSymbolRenderer( QgsMarkerSymbol::createSimple( { { "name", "star" }, { "size", 10 }, { "color", "#ff00ff" }, { "outline_style", "no" } } ) );
+      QgsEmbeddedSymbolRenderer *renderer = new QgsEmbeddedSymbolRenderer( QgsMarkerSymbol::createSimple( { { "name", "star" }, { "size", 10 }, { "color", "#ff00ff" }, { "outline_style", "no" } } ).release() );
       layer->setRenderer( renderer );
 
       std::unique_ptr<QgsRuleBasedRenderer> rule_based( QgsRuleBasedRenderer::convertFromRenderer( renderer, layer.get() ) );
@@ -1385,9 +1400,9 @@ class TestQgsRuleBasedRenderer : public QgsTest
       QgsFields fields;
       auto vl = std::make_unique<QgsVectorLayer>( QStringLiteral( "Point?crs=epsg:4326&field=field_name:integer" ), QStringLiteral( "vl" ), QStringLiteral( "memory" ) );
       vl->setRenderer( renderer.release() );
-      QString error;
-      QDomDocument dom;
-      vl->exportSldStyle( dom, error );
+
+      QgsSldExportContext context;
+      QDomDocument dom = vl->exportSldStyleV3( context );
 
       const QString sld = dom.toString();
 

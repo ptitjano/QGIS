@@ -30,7 +30,7 @@
 
 /**
  * \ingroup gui
- * \brief This class is a factory of editor for flags settings
+ * \brief A factory for editors of flags settings.
  *
  * \since QGIS 3.32
  */
@@ -45,7 +45,7 @@ class GUI_EXPORT QgsSettingsFlagsEditorWidgetWrapper : public QgsSettingsEditorW
 
     void enableAutomaticUpdatePrivate() override
     {
-      QObject::connect( &mModel, &QStandardItemModel::itemChanged, this, [=]( const QStandardItem *item ) {
+      QObject::connect( &mModel, &QStandardItemModel::itemChanged, this, [this]( const QStandardItem *item ) {
         Q_UNUSED( item )
         setSettingFromWidget();
       } );
@@ -138,7 +138,7 @@ class GUI_EXPORT QgsSettingsFlagsEditorWidgetWrapper : public QgsSettingsEditorW
 
 /**
  * \ingroup gui
- * \brief This class is a factory of editor for enum settings
+ * \brief A factory for editors for enum settings.
  *
  * \since QGIS 3.32
  */
@@ -153,7 +153,7 @@ class QgsSettingsEnumEditorWidgetWrapper : public QgsSettingsEditorWidgetWrapper
 
     void enableAutomaticUpdatePrivate() override
     {
-      QObject::connect( this->mEditor, qOverload<int>( &QComboBox::currentIndexChanged ), this, [=]( int index ) {
+      QObject::connect( this->mEditor, qOverload<int>( &QComboBox::currentIndexChanged ), this, [this]( int index ) {
         Q_UNUSED( index );
         ENUM value = this->mEditor->currentData().template value<ENUM>();
         this->mSetting->setValue( value, this->mDynamicKeyPartList );

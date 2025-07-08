@@ -483,7 +483,7 @@ bool QgsField::convertCompatible( QVariant &v, QString *errorMessage ) const
     return true;
   }
 
-  if ( v.userType() == qMetaTypeId< QgsUnsetAttributeValue >() )
+  if ( QgsVariantUtils::isUnsetAttributeValue( v ) )
   {
     return true;
   }
@@ -776,6 +776,16 @@ Qgis::FieldDuplicatePolicy QgsField::duplicatePolicy() const
 void QgsField::setDuplicatePolicy( Qgis::FieldDuplicatePolicy policy )
 {
   d->duplicatePolicy = policy;
+}
+
+Qgis::FieldDomainMergePolicy QgsField::mergePolicy() const
+{
+  return d->mergePolicy;
+}
+
+void QgsField::setMergePolicy( Qgis::FieldDomainMergePolicy policy )
+{
+  d->mergePolicy = policy;
 }
 
 /***************************************************************************

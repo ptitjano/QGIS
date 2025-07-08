@@ -144,7 +144,7 @@ bool QgsOgrProvider::convertField( QgsField &field, const QTextCodec &encoding )
       }
       else
       {
-        // other lists are supported at this moment
+        // other lists are not supported at this moment
         return false;
       }
       break;
@@ -354,7 +354,7 @@ Qgis::VectorExportResult QgsOgrProvider::createEmptyLayer( const QString &uri,
     return static_cast<Qgis::VectorExportResult>( error );
   }
 
-  QMap<int, int> attrIdxMap = writer->attrIdxToOgrIdx();
+  QMap<int, int> attrIdxMap = writer->sourceFieldIndexToWriterFieldIndex();
   writer.reset();
 
   {
@@ -830,6 +830,20 @@ void QgsOgrProvider::loadFields()
     QMutexLocker locker( mutex );
     mOGRGeomType = getOgrGeomType( mGDALDriverName, ogrLayer );
   }
+
+  mCrs = QgsCoordinateReferenceSystem();
+  if ( mOGRGeomType != wkbNone )
+  {
+    if ( OGRSpatialReferenceH spatialRefSys = mOgrLayer->GetSpatialRef() )
+    {
+      mCrs = QgsOgrUtils::OGRSpatialReferenceToCrs( spatialRefSys );
+    }
+    else
+    {
+      QgsDebugMsgLevel( QStringLiteral( "no spatial reference found" ), 2 );
+    }
+  }
+
   QgsOgrFeatureDefn &fdef = mOgrLayer->GetLayerDefn();
 
   // Expose the OGR FID if it comes from a "real" column (typically GPKG)
@@ -886,15 +900,120 @@ void QgsOgrProvider::loadFields()
   QMutexLocker locker( datasetMutex );
 #endif
 
-  for ( int i = 0; i < fdef.GetFieldCount(); ++i )
+  for ( int fieldIndex = 0; fieldIndex < fdef.GetFieldCount(); ++fieldIndex )
   {
-    OGRFieldDefnH fldDef = fdef.GetFieldDefn( i );
+    OGRFieldDefnH fldDef = fdef.GetFieldDefn( fieldIndex );
     const OGRFieldType ogrType = OGR_Fld_GetType( fldDef );
     const OGRFieldSubType ogrSubType = OGR_Fld_GetSubType( fldDef );
 
     QMetaType::Type varType = QMetaType::Type::UnknownType;
     QMetaType::Type varSubType = QMetaType::Type::UnknownType;
     QgsOgrUtils::ogrFieldTypeToQVariantType( ogrType, ogrSubType, varType, varSubType );
+
+    // Handle special case for OGRFieldType::OFSTJSON which is not necessarily a map.
+    // If subtype is JSON try to load a feature and check if it's
+    // really an object (rather than something else like an array)
+    // fallback to string.
+    if ( ( ogrType == OFTString || ogrType == OFTWideString ) && ogrSubType == OFSTJSON )
+    {
+      QRecursiveMutex *layerMutex = nullptr;
+      OGRLayerH ogrLayer = mOgrLayer->getHandleAndMutex( layerMutex );
+      QMutexLocker layerLocker( layerMutex );
+      gdal::ogr_feature_unique_ptr f( OGR_L_GetNextFeature( ogrLayer ) );
+      if ( f )
+      {
+        const char *json = OGR_F_GetFieldAsString( f.get(), fieldIndex );
+        if ( json && json[0] != '\0' )
+        {
+          try
+          {
+            const nlohmann::json json_element = json::parse( json );
+            // Check if it's an homogeneous array of numbers or strings
+            if ( json_element.is_array() )
+            {
+              // Check whether the values are all of the same type
+              bool allNumbers = true;
+              bool allIntegers = true;
+              bool allStrings = true;
+              for ( auto &value : json_element )
+              {
+                if ( allStrings && !value.is_string() )
+                {
+                  allStrings = false;
+                }
+                if ( allNumbers && !value.is_number() )
+                {
+                  allNumbers = false;
+                }
+                if ( allIntegers && !value.is_number_integer() )
+                {
+                  allIntegers = false;
+                }
+              }
+              if ( allNumbers )
+              {
+                if ( allIntegers )
+                {
+                  varType = QMetaType::Type::QVariantList;
+                  varSubType = QMetaType::Type::LongLong;
+                }
+                else
+                {
+                  varType = QMetaType::Type::QVariantList;
+                  varSubType = QMetaType::Type::Double;
+                }
+              }
+              else if ( allStrings )
+              {
+                varType = QMetaType::Type::QStringList;
+                varSubType = QMetaType::Type::UnknownType;
+              }
+              else
+              {
+                QgsDebugMsgLevel( QStringLiteral( "JSON array contains mixed types, falling back to string" ), 2 );
+                varType = QMetaType::Type::QString;
+                varSubType = QMetaType::Type::UnknownType;
+              }
+            }
+            else if ( ! json_element.is_object() )
+            {
+              QgsDebugMsgLevel( QStringLiteral( "JSON is neither an array nor an object, falling back to string" ), 2 );
+              varType = QMetaType::Type::QString;
+              varSubType = QMetaType::Type::UnknownType;
+            }
+            else if ( json_element.is_number() )
+            {
+              if ( json_element.is_number_float() )
+              {
+                varType = QMetaType::Type::Double;
+                varSubType = QMetaType::Type::UnknownType;
+              }
+              else
+              {
+                varType = QMetaType::Type::LongLong;
+                varSubType = QMetaType::Type::UnknownType;
+              }
+            }
+            else if ( json_element.is_string() )
+            {
+              varType = QMetaType::Type::QString;
+              varSubType = QMetaType::Type::UnknownType;
+            }
+            else
+            {
+              QgsDebugMsgLevel( QStringLiteral( "JSON is not valid, falling back to string" ), 2 );
+            }
+          }
+          catch ( const json::parse_error & )
+          {
+            QgsDebugMsgLevel( QStringLiteral( "JSON is not valid, falling back to string" ), 2 );
+            varType = QMetaType::Type::QString;
+            varSubType = QMetaType::Type::UnknownType;
+          }
+        }
+        OGR_L_ResetReading( ogrLayer );
+      }
+    }
 
     //TODO: fix this hack
 #ifdef ANDROID
@@ -1799,7 +1918,9 @@ bool QgsOgrProvider::addFeaturePrivate( QgsFeature &f, Flags flags, QgsFeatureId
     // continue;
     //
     OGRFieldDefnH fldDef = featureDefinition.GetFieldDefn( ogrAttributeId );
-    OGRFieldType type = OGR_Fld_GetType( fldDef );
+    const QString ogrFieldName = textEncoding()->toUnicode( OGR_Fld_GetNameRef( fldDef ) );
+    const OGRFieldType type = OGR_Fld_GetType( fldDef );
+    const OGRFieldSubType subType = OGR_Fld_GetSubType( fldDef );
 
     QVariant attrVal = attributes.at( qgisAttributeId );
     const QMetaType::Type qType = static_cast<QMetaType::Type>( attrVal.userType() );
@@ -1829,13 +1950,11 @@ bool QgsOgrProvider::addFeaturePrivate( QgsFeature &f, Flags flags, QgsFeatureId
     {
       bool errorEmitted = false;
       bool ok = false;
-      // Get an updated copy
-      const QgsFields fieldsCopy { f.fields() };
       switch ( type )
       {
         case OFTInteger:
         {
-          if ( OGR_Fld_GetSubType( fldDef ) == OFSTBoolean && qType == QMetaType::Type::QString )
+          if ( subType == OFSTBoolean && qType == QMetaType::Type::QString )
           {
             // compatibility with use case of https://github.com/qgis/QGIS/issues/55517
             const QString strVal = attrVal.toString();
@@ -1843,7 +1962,7 @@ bool QgsOgrProvider::addFeaturePrivate( QgsFeature &f, Flags flags, QgsFeatureId
             if ( !ok )
             {
               pushError( tr( "wrong value for attribute %1 of feature %2: %3" )
-                         .arg( fieldsCopy.at( qgisAttributeId ).name() )
+                         .arg( ogrFieldName )
                          .arg( f.id() )
                          .arg( strVal ) );
               errorEmitted = true;
@@ -1922,7 +2041,7 @@ bool QgsOgrProvider::addFeaturePrivate( QgsFeature &f, Flags flags, QgsFeatureId
           ok = true;
           QString stringValue;
 
-          if ( OGR_Fld_GetSubType( fldDef ) == OFSTJSON )
+          if ( subType == OFSTJSON )
           {
             stringValue = QString::fromStdString( QgsJsonUtils::jsonFromVariant( attrVal ).dump() );
           }
@@ -2060,10 +2179,14 @@ bool QgsOgrProvider::addFeaturePrivate( QgsFeature &f, Flags flags, QgsFeatureId
       {
         if ( !errorEmitted )
         {
+          QMetaType::Type ogrVariantType = QMetaType::Type::UnknownType;
+          QMetaType::Type ogrVariantSubType = QMetaType::Type::UnknownType;
+          QgsOgrUtils::ogrFieldTypeToQVariantType( type, subType, ogrVariantType, ogrVariantSubType );
+
           pushError( tr( "wrong data type for attribute %1 of feature %2: Got %3, expected %4" )
-                     .arg( fieldsCopy.at( qgisAttributeId ).name() )
+                     .arg( ogrFieldName )
                      .arg( f.id() )
-                     .arg( attrVal.typeName(), QVariant::typeToName( fieldsCopy.at( qgisAttributeId ).type() ) ) );
+                     .arg( attrVal.typeName(), QVariant::typeToName( ogrVariantType ) ) );
         }
         returnValue = false;
       }
@@ -2843,7 +2966,7 @@ bool QgsOgrProvider::changeAttributeValues( const QgsChangedAttributesMap &attr_
     for ( QgsAttributeMap::const_iterator it2 = attr.begin(); it2 != attr.end(); ++it2 )
     {
       int f = it2.key();
-      if ( it2->userType() == qMetaTypeId< QgsUnsetAttributeValue >() )
+      if ( QgsVariantUtils::isUnsetAttributeValue( it2.value() ) )
         continue;
 
       if ( mFirstFieldIsFid )
@@ -3755,20 +3878,10 @@ QString  QgsOgrProvider::description() const
 
 QgsCoordinateReferenceSystem QgsOgrProvider::crs() const
 {
-  QgsCoordinateReferenceSystem srs;
   if ( !mValid || ( mOGRGeomType == wkbNone ) )
-    return srs;
+    return QgsCoordinateReferenceSystem();
 
-  if ( OGRSpatialReferenceH spatialRefSys = mOgrLayer->GetSpatialRef() )
-  {
-    srs = QgsOgrUtils::OGRSpatialReferenceToCrs( spatialRefSys );
-  }
-  else
-  {
-    QgsDebugMsgLevel( QStringLiteral( "no spatial reference found" ), 2 );
-  }
-
-  return srs;
+  return mCrs;
 }
 
 QString QgsOgrProvider::dataComment() const

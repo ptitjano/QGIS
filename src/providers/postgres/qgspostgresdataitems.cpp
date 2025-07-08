@@ -28,9 +28,8 @@
 #include "qgsproviderregistry.h"
 #include "qgsprovidermetadata.h"
 #include "qgsabstractdatabaseproviderconnection.h"
+#include "qgsproject.h"
 
-#include <QMessageBox>
-#include <climits>
 
 // ---------------------------------------------------------------------------
 QgsPGConnectionItem::QgsPGConnectionItem( QgsDataItem *parent, const QString &name, const QString &path )
@@ -46,16 +45,18 @@ QVector<QgsDataItem *> QgsPGConnectionItem::createChildren()
 
   QgsDataSourceUri uri = QgsPostgresConn::connUri( mName );
   // TODO: we need to cancel somehow acquireConnection() if deleteLater() was called on this item to avoid later credential dialog if connection failed
-  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( uri.connectionInfo( false ) );
+  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( QgsPostgresConn::connectionInfo( uri, false ) );
   if ( !conn )
   {
     items.append( new QgsErrorItem( this, tr( "Connection failed" ), mPath + "/error" ) );
-    QgsDebugError( "Connection failed - " + uri.connectionInfo( false ) );
+    QgsDebugError( "Connection failed - " + QgsPostgresConn::connectionInfo( uri, false ) );
     return items;
   }
 
   QList<QgsPostgresSchemaProperty> schemas;
-  bool ok = conn->getSchemas( schemas );
+  const QString restrictToSchema = QgsPostgresConn::publicSchemaOnly( mName ) ? QStringLiteral( "public" ) : QgsPostgresConn::schemaToRestrict( mName );
+  const bool ok = conn->getSchemas( schemas, !restrictToSchema.isEmpty() ? QStringList { restrictToSchema } : QStringList {} );
+
   QgsPostgresConnPool::instance()->releaseConnection( conn );
 
   if ( !ok )
@@ -64,8 +65,7 @@ QVector<QgsDataItem *> QgsPGConnectionItem::createChildren()
     return items;
   }
 
-  const auto constSchemas = schemas;
-  for ( const QgsPostgresSchemaProperty &schema : constSchemas )
+  for ( const QgsPostgresSchemaProperty &schema : std::as_const( schemas ) )
   {
     QgsPGSchemaItem *schemaItem = new QgsPGSchemaItem( this, mName, schema.name, mPath + '/' + schema.name );
     if ( !schema.description.isEmpty() )
@@ -135,22 +135,22 @@ QString QgsPGLayerItem::createUri()
 
   const QString &connName = connItem->name();
 
-  QgsDataSourceUri uri( QgsPostgresConn::connUri( connName ).connectionInfo( false ) );
+  QgsDataSourceUri uri( QgsPostgresConn::connectionInfo( QgsPostgresConn::connUri( connName ), false ) );
 
   const QgsSettings &settings = QgsSettings();
   QString basekey = QStringLiteral( "/PostgreSQL/connections/%1" ).arg( connName );
 
-  QStringList defPk( settings.value(
-                               QStringLiteral( "%1/keys/%2/%3" ).arg( basekey, mLayerProperty.schemaName, mLayerProperty.tableName ),
-                               QVariant( !mLayerProperty.pkCols.isEmpty() ? QStringList( mLayerProperty.pkCols.at( 0 ) ) : QStringList() )
+  const QStringList defPk( settings.value(
+                                     QStringLiteral( "%1/keys/%2/%3" ).arg( basekey, mLayerProperty.schemaName, mLayerProperty.tableName ),
+                                     QVariant( !mLayerProperty.pkCols.isEmpty() ? QStringList( mLayerProperty.pkCols.at( 0 ) ) : QStringList() )
   )
-                       .toStringList() );
+                             .toStringList() );
 
   const bool useEstimatedMetadata = QgsPostgresConn::useEstimatedMetadata( connName );
   uri.setUseEstimatedMetadata( useEstimatedMetadata );
 
   QStringList cols;
-  for ( const auto &col : defPk )
+  for ( const QString &col : defPk )
   {
     cols << QgsPostgresConn::quotedIdentifier( col );
   }
@@ -177,17 +177,17 @@ QVector<QgsDataItem *> QgsPGSchemaItem::createChildren()
   QVector<QgsDataItem *> items;
 
   QgsDataSourceUri uri = QgsPostgresConn::connUri( mConnectionName );
-  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( uri.connectionInfo( false ) );
+  QgsPostgresConn *conn = QgsPostgresConnPool::instance()->acquireConnection( QgsPostgresConn::connectionInfo( uri, false ) );
 
   if ( !conn )
   {
     items.append( new QgsErrorItem( this, tr( "Connection failed" ), mPath + "/error" ) );
-    QgsDebugError( "Connection failed - " + uri.connectionInfo( false ) );
+    QgsDebugError( "Connection failed - " + QgsPostgresConn::connectionInfo( uri, false ) );
     return items;
   }
 
   QVector<QgsPostgresLayerProperty> layerProperties;
-  const bool ok = conn->supportedLayers( layerProperties, QgsPostgresConn::geometryColumnsOnly( mConnectionName ), QgsPostgresConn::publicSchemaOnly( mConnectionName ), QgsPostgresConn::allowGeometrylessTables( mConnectionName ), QgsPostgresConn::allowRasterOverviewTables( mConnectionName ), mName );
+  const bool ok = conn->supportedLayers( layerProperties, QgsPostgresConn::geometryColumnsOnly( mConnectionName ), QgsPostgresConn::allowGeometrylessTables( mConnectionName ), QgsPostgresConn::allowRasterOverviewTables( mConnectionName ), mName );
 
   if ( !ok )
   {
@@ -282,7 +282,7 @@ QVector<QgsDataItem *> QgsPGSchemaItem::createChildren()
     {
       QgsPostgresProjectUri projectUri( postUri );
       projectUri.projectName = projectName;
-      items.append( new QgsProjectItem( this, projectName, QgsPostgresProjectStorage::encodeUri( projectUri ) ) );
+      items.append( new QgsPGProjectItem( this, projectName, projectUri ) );
     }
   }
 
@@ -350,7 +350,7 @@ QgsPGLayerItem *QgsPGSchemaItem::createLayer( QgsPostgresLayerProperty layerProp
       default:
         if ( !layerProperty.geometryColName.isEmpty() )
         {
-          QgsDebugMsgLevel( QStringLiteral( "Adding layer item %1.%2 without type constraint as geometryless table" ).arg( layerProperty.schemaName ).arg( layerProperty.tableName ), 2 );
+          QgsDebugMsgLevel( QStringLiteral( "Adding layer item %1.%2 without type constraint as geometryless table" ).arg( layerProperty.schemaName, layerProperty.tableName ), 2 );
         }
         layerType = Qgis::BrowserLayerType::TableLayer;
         tip = tr( "as geometryless table" );
@@ -419,4 +419,17 @@ QgsDataItem *QgsPostgresDataItemProvider::createDataItem( const QString &pathIn,
 bool QgsPGSchemaItem::layerCollection() const
 {
   return true;
+}
+
+QgsPGProjectItem::QgsPGProjectItem( QgsDataItem *parent, const QString name, const QgsPostgresProjectUri postgresProjectUri )
+  : QgsProjectItem( parent, name, QgsPostgresProjectStorage::encodeUri( postgresProjectUri ), QStringLiteral( "postgres" ) ), mProjectUri( postgresProjectUri )
+{
+  mCapabilities |= Qgis::BrowserItemCapability::Delete | Qgis::BrowserItemCapability::Fertile;
+}
+
+QString QgsPGProjectItem::uriWithNewName( const QString &newProjectName )
+{
+  QgsPostgresProjectUri postgresProjectUri( mProjectUri );
+  postgresProjectUri.projectName = newProjectName;
+  return QgsPostgresProjectStorage::encodeUri( postgresProjectUri );
 }

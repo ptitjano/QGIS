@@ -151,7 +151,7 @@ void QgsProcessingDxfLayersPanelWidget::configureLayer()
     widget->setPanelTitle( tr( "Configure Layer" ) );
     widget->buttonBox()->hide();
 
-    connect( widget, &QgsProcessingDxfLayerDetailsWidget::widgetChanged, this, [=]() {
+    connect( widget, &QgsProcessingDxfLayerDetailsWidget::widgetChanged, this, [this, item, widget]() {
       setItemValue( item, widget->value() );
     } );
     panel->openPanel( widget );
@@ -253,7 +253,7 @@ void QgsProcessingDxfLayersWidget::showDialog()
   {
     QgsProcessingDxfLayersPanelWidget *widget = new QgsProcessingDxfLayersPanelWidget( mValue, mProject );
     widget->setPanelTitle( tr( "Input layers" ) );
-    connect( widget, &QgsProcessingMultipleSelectionPanelWidget::selectionChanged, this, [=]() {
+    connect( widget, &QgsProcessingMultipleSelectionPanelWidget::selectionChanged, this, [this, widget]() {
       setValue( widget->selectedOptions() );
     } );
     connect( widget, &QgsProcessingMultipleSelectionPanelWidget::acceptClicked, widget, &QgsPanelWidget::acceptPanel );
@@ -287,7 +287,7 @@ void QgsProcessingDxfLayersWidget::updateSummaryText()
 // QgsProcessingDxfLayersWidgetWrapper
 //
 
-QgsProcessingDxfLayersWidgetWrapper::QgsProcessingDxfLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type, QWidget *parent )
+QgsProcessingDxfLayersWidgetWrapper::QgsProcessingDxfLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type, QWidget *parent )
   : QgsAbstractProcessingParameterWidgetWrapper( parameter, type, parent )
 {
 }
@@ -297,7 +297,7 @@ QString QgsProcessingDxfLayersWidgetWrapper::parameterType() const
   return QgsProcessingParameterDxfLayers::typeName();
 }
 
-QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingDxfLayersWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type )
+QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingDxfLayersWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type )
 {
   return new QgsProcessingDxfLayersWidgetWrapper( parameter, type );
 }
@@ -306,7 +306,7 @@ QWidget *QgsProcessingDxfLayersWidgetWrapper::createWidget()
 {
   mPanel = new QgsProcessingDxfLayersWidget( nullptr );
   mPanel->setProject( widgetContext().project() );
-  connect( mPanel, &QgsProcessingDxfLayersWidget::changed, this, [=] {
+  connect( mPanel, &QgsProcessingDxfLayersWidget::changed, this, [this] {
     emit widgetValueHasChanged( this );
   } );
   return mPanel;
@@ -333,27 +333,6 @@ void QgsProcessingDxfLayersWidgetWrapper::setWidgetValue( const QVariant &value,
 QVariant QgsProcessingDxfLayersWidgetWrapper::widgetValue() const
 {
   return mPanel ? mPanel->value() : QVariant();
-}
-
-QStringList QgsProcessingDxfLayersWidgetWrapper::compatibleParameterTypes() const
-{
-  return QStringList()
-         << QgsProcessingParameterMultipleLayers::typeName()
-         << QgsProcessingParameterMapLayer::typeName()
-         << QgsProcessingParameterVectorLayer::typeName()
-         << QgsProcessingParameterFeatureSource::typeName()
-         << QgsProcessingParameterFile::typeName()
-         << QgsProcessingParameterString::typeName();
-}
-
-QStringList QgsProcessingDxfLayersWidgetWrapper::compatibleOutputTypes() const
-{
-  return QStringList()
-         << QgsProcessingOutputString::typeName()
-         << QgsProcessingOutputMapLayer::typeName()
-         << QgsProcessingOutputVectorLayer::typeName()
-         << QgsProcessingOutputMultipleLayers::typeName()
-         << QgsProcessingOutputFile::typeName();
 }
 
 /// @endcond

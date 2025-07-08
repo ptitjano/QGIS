@@ -300,6 +300,7 @@
         <file>themes/default/mActionEditCut.svg</file>
         <file>themes/default/mActionEditPaste.svg</file>
         <file>themes/default/mActionEditTable.svg</file>
+        <file>themes/default/mActionEditCutDisabled.svg</file>
         <file>themes/default/mActionExpandNewTree.svg</file>
         <file>themes/default/mActionExpandTree.svg</file>
         <file>themes/default/mActionFileExit.svg</file>
@@ -338,6 +339,7 @@
         <file>themes/default/mActionKeyboardShortcuts.svg</file>
         <file>themes/default/mActionLabel.svg</file>
         <file>themes/default/mActionLabeling.svg</file>
+        <file>themes/default/mActionLayers.svg</file>
         <file>themes/default/mActionLocalCumulativeCutStretch.svg</file>
         <file>themes/default/mActionLocalHistogramStretch.svg</file>
         <file>themes/default/mActionLockItems.svg</file>
@@ -774,6 +776,7 @@
         <file>themes/default/mesh/SingleTop.svg</file>
         <file>themes/default/mesh/SingleBottom.svg</file>
         <file>themes/default/mActionNew3DMap.svg</file>
+        <file>themes/default/mActionNew3DMapGlobe.svg</file>
         <file>themes/default/mActionNewMap.svg</file>
         <file>themes/default/mActionNext.svg</file>
         <file>themes/default/mActionMapSettings.svg</file>
@@ -1019,6 +1022,8 @@
         <file>themes/default/mIconStac.svg</file>
         <file>themes/default/mIconQt.svg</file>
         <file>themes/default/mIconStoredQueries.svg</file>
+        <file>themes/default/mIconQueryHistory.svg</file>
+        <file>themes/default/mToggleAliases.svg</file>
     </qresource>
     <qresource prefix="/images/tips">
         <file alias="symbol_levels.png">qgis_tips/symbol_levels.png</file>

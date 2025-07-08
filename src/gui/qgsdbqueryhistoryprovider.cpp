@@ -21,6 +21,7 @@
 #include "qgsprovidermetadata.h"
 #include "qgsproviderregistry.h"
 #include "qgsapplication.h"
+#include "qgshistorywidgetcontext.h"
 
 #include <QIcon>
 #include <QAction>
@@ -150,27 +151,33 @@ class DatabaseQueryRootNode : public DatabaseQueryHistoryNode
       return editor;
     }
 
-    bool doubleClicked( const QgsHistoryWidgetContext & ) override
+    bool doubleClicked( const QgsHistoryWidgetContext &context ) override
     {
-      mProvider->emitOpenSqlDialog( mEntry.entry.value( QStringLiteral( "connection" ) ).toString(), mEntry.entry.value( QStringLiteral( "provider" ) ).toString(), mEntry.entry.value( QStringLiteral( "query" ) ).toString() );
+      if ( QgsDatabaseQueryHistoryWidget *queryHistoryWidget = qobject_cast< QgsDatabaseQueryHistoryWidget * >( context.historyWidget() ) )
+      {
+        queryHistoryWidget->emitSqlTriggered( mEntry.entry.value( QStringLiteral( "connection" ) ).toString(), mEntry.entry.value( QStringLiteral( "provider" ) ).toString(), mEntry.entry.value( QStringLiteral( "query" ) ).toString() );
+      }
       return true;
     }
 
-    void populateContextMenu( QMenu *menu, const QgsHistoryWidgetContext & ) override
+    void populateContextMenu( QMenu *menu, const QgsHistoryWidgetContext &context ) override
     {
-      QAction *executeAction = new QAction(
-        QObject::tr( "Execute SQL Command…" ), menu
-      );
-      QObject::connect( executeAction, &QAction::triggered, menu, [=] {
-        mProvider->emitOpenSqlDialog( mEntry.entry.value( QStringLiteral( "connection" ) ).toString(), mEntry.entry.value( QStringLiteral( "provider" ) ).toString(), mEntry.entry.value( QStringLiteral( "query" ) ).toString() );
-      } );
-      menu->addAction( executeAction );
+      if ( QgsDatabaseQueryHistoryWidget *queryHistoryWidget = qobject_cast< QgsDatabaseQueryHistoryWidget * >( context.historyWidget() ) )
+      {
+        QAction *executeAction = new QAction(
+          QObject::tr( "Execute SQL Command…" ), menu
+        );
+        QObject::connect( executeAction, &QAction::triggered, menu, [this, queryHistoryWidget] {
+          queryHistoryWidget->emitSqlTriggered( mEntry.entry.value( QStringLiteral( "connection" ) ).toString(), mEntry.entry.value( QStringLiteral( "provider" ) ).toString(), mEntry.entry.value( QStringLiteral( "query" ) ).toString() );
+        } );
+        menu->addAction( executeAction );
+      }
 
       QAction *copyAction = new QAction(
         QObject::tr( "Copy SQL Command" ), menu
       );
       copyAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "mActionEditCopy.svg" ) ) );
-      QObject::connect( copyAction, &QAction::triggered, menu, [=] {
+      QObject::connect( copyAction, &QAction::triggered, menu, [this] {
         QMimeData *m = new QMimeData();
         m->setText( mEntry.entry.value( QStringLiteral( "query" ) ).toString() );
         QApplication::clipboard()->setMimeData( m );
@@ -211,7 +218,16 @@ void QgsDatabaseQueryHistoryProvider::updateNodeForEntry( QgsHistoryEntryNode *n
   }
 }
 
-void QgsDatabaseQueryHistoryProvider::emitOpenSqlDialog( const QString &connectionUri, const QString &provider, const QString &sql )
+//
+// QgsDatabaseQueryHistoryWidget
+//
+
+QgsDatabaseQueryHistoryWidget::QgsDatabaseQueryHistoryWidget( Qgis::HistoryProviderBackends backends, QgsHistoryProviderRegistry *registry, const QgsHistoryWidgetContext &context, QWidget *parent )
+  : QgsHistoryWidget( QStringLiteral( "dbquery" ), backends, registry, context, parent )
 {
-  emit openSqlDialog( connectionUri, provider, sql );
+}
+
+void QgsDatabaseQueryHistoryWidget::emitSqlTriggered( const QString &connectionUri, const QString &provider, const QString &sql )
+{
+  emit sqlTriggered( connectionUri, provider, sql );
 }

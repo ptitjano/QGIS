@@ -43,6 +43,7 @@
 #include "qgslogger.h"
 
 class QgsAbstract3DRenderer;
+class QgsAbstractProfileSource;
 class QgsDataProvider;
 class QgsMapLayerLegend;
 class QgsMapLayerRenderer;
@@ -70,7 +71,8 @@ class QgsBox3D;
 /**
  * \ingroup core
  * \brief Base class for all map layer types.
- * This is the base class for all map layer types (vector, raster).
+ *
+ * This is the base class for all map layer types (vector, raster, mesh, point cloud, annotations, etc).
  */
 class CORE_EXPORT QgsMapLayer : public QObject
 {
@@ -757,7 +759,29 @@ class CORE_EXPORT QgsMapLayer : public QObject
     virtual bool deleteStyleFromDatabase( const QString &styleId, QString &msgError SIP_OUT );
 
     /**
-     * Saves named and sld style of the layer to the style table in the db.
+     * Results of saving styles to database.
+     *
+     * \since QGIS 4.0
+     */
+    enum class SaveStyleResult SIP_ENUM_BASETYPE( IntFlag )
+    {
+      Success = 0, //!< Both QML and SLD formats were successfully written to the database.
+      QmlGenerationFailed = 1 << 0, //!< Generation of the QML failed, and was not written to the database.
+      SldGenerationFailed = 1 << 1,  //!< Generation of the SLD failed, and was not written to the database.
+      DatabaseWriteFailed = 1 << 2, //!< An error occurred when attempting to write to the database.
+    };
+    Q_ENUM( SaveStyleResult )
+
+    /**
+     * Results of saving styles to database.
+     *
+     * \since QGIS 4.0
+     */
+    Q_DECLARE_FLAGS( SaveStyleResults, SaveStyleResult )
+    Q_FLAG( SaveStyleResults )
+
+    /**
+     * Saves QML and SLD representations of the layer's style to a table in the database.
      * \param name Style name
      * \param description A description of the style
      * \param useAsDefault Set to TRUE if style should be used as the default style for the layer
@@ -765,18 +789,36 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * \param msgError will be set to a descriptive error message if any occurs
      * \param categories the style categories to be saved.
      *
-     *
      * \note Prior to QGIS 3.24, this method would show a message box warning when a
      * style with the same \a styleName already existed to confirm replacing the style with the user.
      * Since 3.24, calling this method will ALWAYS overwrite any existing style with the same name.
      * Use QgsProviderRegistry::styleExists() to test in advance if a style already exists and handle this appropriately
      * in your client code.
+     *
+     * \deprecated QGIS 4.0. Use saveStyleToDatabaseV2() instead.
      */
-    virtual void saveStyleToDatabase( const QString &name, const QString &description,
-                                      bool useAsDefault, const QString &uiFileContent,
-                                      QString &msgError SIP_OUT,
-                                      QgsMapLayer::StyleCategories categories = QgsMapLayer::AllStyleCategories );
+    Q_DECL_DEPRECATED virtual void saveStyleToDatabase( const QString &name, const QString &description,
+        bool useAsDefault, const QString &uiFileContent,
+        QString &msgError SIP_OUT,
+        QgsMapLayer::StyleCategories categories = QgsMapLayer::AllStyleCategories ) SIP_DEPRECATED;
 
+    /**
+     * Saves QML and SLD representations of the layer's style to a table in the database.
+     * \param name Style name
+     * \param description A description of the style
+     * \param useAsDefault Set to TRUE if style should be used as the default style for the layer
+     * \param uiFileContent
+     * \param msgError will be set to a descriptive error message if any occurs
+     * \param categories the style categories to be saved.
+     *
+     * \returns flags representing whether QML or SLD storing was successful
+     *
+     * \since QGIS 4.0
+     */
+    QgsMapLayer::SaveStyleResults saveStyleToDatabaseV2( const QString &name, const QString &description,
+        bool useAsDefault, const QString &uiFileContent,
+        QString &msgError SIP_OUT,
+        QgsMapLayer::StyleCategories categories = QgsMapLayer::AllStyleCategories );
 
     // TODO QGIS 4.0 -- fix this. We incorrectly have a single boolean flag which in which false is used inconsistently for "a style WAS found but an error occurred loading it" vs "no style was found".
     // The first (style found, error occurred loading it) should trigger a user-facing warning, whereas the second (no style found) isn't reflective of an error at all.
@@ -1090,7 +1132,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
     /**
      * Export the current metadata of this layer as named metadata in a QDomDocument
      * \param doc the target QDomDocument
-     * \param errorMsg this QString will be initialized on error
+     * \param errorMsg will be set to a descriptive message if an error occurs
      */
     void exportNamedMetadata( QDomDocument &doc, QString &errorMsg ) const;
 
@@ -1098,7 +1140,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * Save the current metadata of this layer as the default metadata
      * (either as a .qmd file on disk or as a
      * record in the users style table in their personal qgis.db)
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      * we did not manage to save the default metadata.
      * \returns a QString with any status messages
      */
@@ -1113,11 +1155,11 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * is a file and save to that, if that fails the qgis.db metadata
      * table will be used to create a metadata entry who's
      * key matches the URI.
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      * we did not manage to save the default metadata.
      * \returns a QString with any status messages
      */
-    QString saveNamedMetadata( const QString &uri, bool &resultFlag );
+    QString saveNamedMetadata( const QString &uri, bool &resultFlag SIP_OUT );
 
     // TODO QGIS 4.0 -- fix this. We incorrectly have a single boolean flag which in which false is used inconsistently for "metadata WAS found but an error occurred loading it" vs "no metadata was found".
     // The first (metadata found, error occurred loading it) should trigger a user-facing warning, whereas the second (no metadata found) isn't reflective of an error at all.
@@ -1131,7 +1173,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * is a file and load that, if that fails the qgis.db metadata
      * table will be consulted to see if there is a metadata who's
      * key matches the URI.
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      * we did not manage to load the default metadata.
      * \returns a QString with any status messages
      */
@@ -1144,11 +1186,11 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * Retrieve the default metadata for this layer if one
      * exists (either as a .qmd file on disk or as a
      * record in the users metadata table in their personal qgis.db)
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      * we did not manage to load the default metadata.
      * \returns a QString with any status messages
      */
-    virtual QString loadDefaultMetadata( bool &resultFlag );
+    virtual QString loadDefaultMetadata( bool &resultFlag SIP_OUT );
 
     /**
      * Retrieve a named metadata for this layer from a sqlite database.
@@ -1162,7 +1204,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
     /**
      * Import the metadata of this layer from a QDomDocument
      * \param document source QDomDocument
-     * \param errorMessage this QString will be initialized on error
+     * \param errorMessage will be set to a descriptive message if an error occurs
      * \returns TRUE on success
      */
     bool importNamedMetadata( QDomDocument &document, QString &errorMessage );
@@ -1184,7 +1226,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * Retrieve the default style for this layer if one
      * exists (either as a .qml file on disk or as a
      * record in the users style table in their personal qgis.db)
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      * we did not manage to load the default style.
      * \returns a QString with any status messages
      * \see loadNamedStyle()
@@ -1203,7 +1245,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * is a file and load that, if that fails the qgis.db styles
      * table will be consulted to see if there is a style who's
      * key matches the URI.
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      * we did not manage to load the default style.
      * \param categories the style categories to be loaded.
      * \param flags flags controlling how the style should be loaded (since QGIS 3.38)
@@ -1224,8 +1266,8 @@ class CORE_EXPORT QgsMapLayer : public QObject
     /**
      * Import the properties of this layer from a QDomDocument
      * \param doc source QDomDocument
-     * \param errorMsg this QString will be initialized on error
-     * during the execution of readSymbology
+     * \param errorMsg will be set to a descriptive message if an error occurs
+     * during the execution of readSymbology()
      * \param categories the style categories to import
      * \returns TRUE on success
      */
@@ -1235,7 +1277,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
     /**
      * Export the properties of this layer as named style in a QDomDocument
      * \param doc the target QDomDocument
-     * \param errorMsg this QString will be initialized on error
+     * \param errorMsg will be set to a descriptive message if an error occurs
      * \param context read write context
      * \param categories the style categories to export
      * during the execution of writeSymbology
@@ -1247,27 +1289,37 @@ class CORE_EXPORT QgsMapLayer : public QObject
     /**
      * Export the properties of this layer as SLD style in a QDomDocument
      * \param doc the target QDomDocument
-     * \param errorMsg this QString will be initialized on error
+     * \param errorMsg will be set to a descriptive message if an error occurs
      * during the execution of writeSymbology
-     * \see exportSldStyleV2()
+     * \deprecated QGIS 3.44. Use exportSldStyleV3() instead.
      */
-    virtual void exportSldStyle( QDomDocument &doc, QString &errorMsg ) const;
+    Q_DECL_DEPRECATED virtual void exportSldStyle( QDomDocument &doc, QString &errorMsg ) const SIP_DEPRECATED;
 
     /**
      * Export the properties of this layer as SLD style in a QDomDocument
      * \param doc the target QDomDocument
-     * \param errorMsg this QString will be initialized on error
-     *                 during the execution of writeSymbology
+     * \param errorMsg will be set to a descriptive message if an error occurs during the execution of writeSymbology()
      * \param exportContext SLD export context
-     * \since QGIS 3.30
+     * \deprecated QGIS 3.44. Use exportSldStyleV3() instead.
      */
-    virtual void exportSldStyleV2( QDomDocument &doc, QString &errorMsg, const QgsSldExportContext &exportContext ) const;
+    Q_DECL_DEPRECATED virtual void exportSldStyleV2( QDomDocument &doc, QString &errorMsg, QgsSldExportContext &exportContext ) const SIP_DEPRECATED;
+
+    /**
+     * Export the properties of this layer as SLD style in a QDomDocument.
+     *
+     * Errors and warnings raised during the conversion should be retrieved from \a exportContext.
+     *
+     * \param exportContext SLD export context
+     *
+     * \since QGIS 3.44
+     */
+    virtual QDomDocument exportSldStyleV3( QgsSldExportContext &exportContext ) const;
 
     /**
      * Save the properties of this layer as the default style
      * (either as a .qml file on disk or as a
      * record in the users style table in their personal qgis.db)
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      * we did not manage to save the default style.
      * \param categories the style categories to be saved (since QGIS 3.26)
      * \returns a QString with any status messages
@@ -1280,7 +1332,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * Save the properties of this layer as the default style
      * (either as a .qml file on disk or as a
      * record in the users style table in their personal qgis.db)
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      * we did not manage to save the default style.
      * \returns a QString with any status messages
      * \see loadNamedStyle()
@@ -1298,7 +1350,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * is a file and save to that, if that fails the qgis.db styles
      * table will be used to create a style entry who's
      * key matches the URI.
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      * we did not manage to save the default style.
      * \param categories the style categories to be saved.
      * \returns a QString with any status messages
@@ -1309,17 +1361,17 @@ class CORE_EXPORT QgsMapLayer : public QObject
     /**
      * Saves the properties of this layer to an SLD format file.
      * \param uri uri of destination for exported SLD file.
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      * the SLD file could not be generated
      * \returns a string with any status or error messages
      * \see loadSldStyle()
      * \see saveSldStyleV2()
      */
-    virtual QString saveSldStyle( const QString &uri, bool &resultFlag ) const;
+    virtual QString saveSldStyle( const QString &uri, bool &resultFlag SIP_OUT ) const;
 
     /**
      * Saves the properties of this layer to an SLD format file.
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      *        the SLD file could not be generated
      * \param exportContext SLD export context
      * \returns a string with any status or error messages
@@ -1327,17 +1379,17 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * \see loadSldStyle()
      * \since QGIS 3.30
      */
-    virtual QString saveSldStyleV2( bool &resultFlag SIP_OUT, const QgsSldExportContext &exportContext ) const;
+    virtual QString saveSldStyleV2( bool &resultFlag SIP_OUT, QgsSldExportContext &exportContext ) const;
 
     /**
      * Attempts to style the layer using the formatting from an SLD type file.
      * \param uri uri of source SLD file
-     * \param resultFlag a reference to a flag that will be set to FALSE if
+     * \param resultFlag will be set to FALSE if
      * the SLD file could not be loaded
      * \returns a string with any status or error messages
      * \see saveSldStyle()
      */
-    virtual QString loadSldStyle( const QString &uri, bool &resultFlag );
+    virtual QString loadSldStyle( const QString &uri, bool &resultFlag SIP_OUT );
 
     virtual bool readSld( const QDomNode &node, QString &errorMessage )
     { Q_UNUSED( node ) errorMessage = QStringLiteral( "Layer type %1 not supported" ).arg( static_cast<int>( type() ) ); return false; }
@@ -1750,6 +1802,14 @@ class CORE_EXPORT QgsMapLayer : public QObject
      * \since QGIS 3.18
      */
     virtual QgsMapLayerElevationProperties *elevationProperties() { return nullptr; }
+
+
+    /**
+     * Returns the layer's profile source if it has profile capabilities. This may be NULLPTR, depending on the layer type.
+     *
+     * \since QGIS 3.44
+     */
+    virtual QgsAbstractProfileSource *profileSource() { return nullptr; }
 
     /**
      * Returns path to the placeholder image or an empty string if a generated legend is shown
@@ -2445,10 +2505,10 @@ class CORE_EXPORT QgsMapLayer : public QObject
     QgsObjectCustomProperties mCustomProperties;
 
     //! Controller of legend items of this layer
-    QgsMapLayerLegend *mLegend = nullptr;
+    std::unique_ptr<QgsMapLayerLegend> mLegend;
 
     //! Manager of multiple styles available for a layer (may be NULLPTR)
-    QgsMapLayerStyleManager *mStyleManager = nullptr;
+    std::unique_ptr<QgsMapLayerStyleManager> mStyleManager;
 
     Qgis::AutoRefreshMode mAutoRefreshMode = Qgis::AutoRefreshMode::Disabled;
 
@@ -2458,7 +2518,7 @@ class CORE_EXPORT QgsMapLayer : public QObject
     QgsLayerMetadata mMetadata;
 
     //! Renderer for 3D views
-    QgsAbstract3DRenderer *m3DRenderer = nullptr;
+    std::unique_ptr<QgsAbstract3DRenderer> m3DRenderer;
 
     //! 3D Extent of the layer
     mutable QgsBox3D mExtent3D;

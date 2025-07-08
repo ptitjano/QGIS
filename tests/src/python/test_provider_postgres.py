@@ -2362,6 +2362,82 @@ class TestPyQgsPostgresProvider(QgisTestCase, ProviderTestCase):
                 0, QgsFieldConstraints.Constraint.ConstraintUnique, 59
             )
         )
+        self.assertTrue(
+            vl.dataProvider().skipConstraintCheck(
+                0,
+                QgsFieldConstraints.Constraint.ConstraintUnique,
+                QgsUnsetAttributeValue(),
+            )
+        )
+        self.assertTrue(
+            vl.dataProvider().skipConstraintCheck(
+                0,
+                QgsFieldConstraints.Constraint.ConstraintNotNull,
+                QgsUnsetAttributeValue(),
+            )
+        )
+
+    def testUnsetAttributeValue(self):
+        """Test that QgsUnsetAttributeValue is handled correctly by the provider."""
+
+        self.execSQLCommand(
+            'DROP TABLE IF EXISTS qgis_test."test_unset_attribute_value" CASCADE'
+        )
+        self.execSQLCommand(
+            'CREATE TABLE qgis_test."test_unset_attribute_value" ( pk SERIAL NOT NULL PRIMARY KEY, test_int SMALLINT UNIQUE NOT NULL DEFAULT 16, test_int_no_default SMALLINT NOT NULL)'
+        )
+
+        vl = QgsVectorLayer(
+            self.dbconn
+            + ' sslmode=disable table="qgis_test"."test_unset_attribute_value" sql=',
+            "test",
+            "postgres",
+        )
+
+        self.assertTrue(vl.isValid())
+
+        feature = QgsFeature(vl.fields())
+        feature.setAttribute("test_int", QgsUnsetAttributeValue())
+        feature.setAttribute("test_int_no_default", 17)
+
+        self.assertTrue(vl.dataProvider().addFeatures([feature]))
+
+        # Reload the layer and check the value
+        vl = QgsVectorLayer(
+            self.dbconn
+            + ' sslmode=disable table="qgis_test"."test_unset_attribute_value" sql=',
+            "test",
+            "postgres",
+        )
+        self.assertTrue(vl.isValid())
+        self.assertEqual(vl.featureCount(), 1)
+        f = next(vl.getFeatures())
+        self.assertEqual(f.attribute("test_int"), 16)
+        self.assertEqual(f.attribute("test_int_no_default"), 17)
+
+        self.assertFalse(
+            QgsVectorLayerUtils.valueExists(vl, 1, QgsUnsetAttributeValue())
+        )
+        self.assertTrue(QgsVectorLayerUtils.valueExists(vl, 1, 16))
+        self.assertFalse(QgsVectorLayerUtils.valueExists(vl, 1, 17))
+        self.assertTrue(QgsVectorLayerUtils.valueExists(vl, 2, 17))
+        self.assertFalse(QgsVectorLayerUtils.valueExists(vl, 2, 16))
+        self.assertTrue(QgsVectorLayerUtils.validateAttribute(vl, f, 1)[0])
+        f["test_int"] = QgsUnsetAttributeValue()
+        self.assertTrue(QgsVectorLayerUtils.validateAttribute(vl, f, 1)[0])
+        f["test_int_no_default"] = QgsUnsetAttributeValue()
+
+        self.assertFalse(
+            vl.dataProvider().skipConstraintCheck(
+                2, QgsFieldConstraints.Constraint.ConstraintUnique, 18
+            )
+        )
+        self.assertFalse(
+            vl.dataProvider().skipConstraintCheck(
+                2, QgsFieldConstraints.Constraint.ConstraintNotNull, 18
+            )
+        )
+        self.assertFalse(QgsVectorLayerUtils.validateAttribute(vl, f, 2)[0])
 
     def testVectorLayerUtilsCreateFeatureWithProviderDefault(self):
         vl = QgsVectorLayer(
@@ -3261,6 +3337,44 @@ class TestPyQgsPostgresProvider(QgisTestCase, ProviderTestCase):
         self.assertGreater(vl.featureCount(), 0)
         vl.setSubsetString('"pk" = 3')
         self.assertGreaterEqual(vl.featureCount(), 1)
+
+    def testFeatureCountOnTable(self):
+        """
+        Test feature count on table
+        """
+        vl = QgsVectorLayer(
+            self.dbconn
+            + ' sslmode=disable key=\'pk\' srid=4326 type=POINT table="qgis_test"."someData" (geom) sql=',
+            "test",
+            "postgres",
+        )
+        self.assertTrue(vl.isValid())
+        self.assertEqual(vl.featureCount(), 5)
+        # pk's are 1,2,3,4,5
+        vl.setSubsetString('"pk" > 3')
+        # so 4 and 5
+        self.assertEqual(vl.featureCount(), 2)
+        vl.setSubsetString('"pk" < 3')
+        # so 1 and 3
+        self.assertEqual(vl.featureCount(), 2)
+        # now dublicate it
+        dup_vl = vl.clone()
+        self.assertTrue(dup_vl.isValid())
+        # still 1 and 3
+        self.assertEqual(dup_vl.featureCount(), 2)
+        dup_vl.setSubsetString(None)
+        # so all 1,2,3,4,5
+        self.assertEqual(dup_vl.featureCount(), 5)
+        # testing regression of issue https://github.com/qgis/QGIS/issues/60926
+        # and the original layer still 1 and 3
+        self.assertEqual(vl.featureCount(), 2)
+        # and changing again vl filter
+        vl.setSubsetString('"pk" > 1')
+        # and dup_vl filter
+        dup_vl.setSubsetString('"pk" < 2')
+        # vl has 4 and dup_vl has 1
+        self.assertEqual(vl.featureCount(), 4)
+        self.assertEqual(dup_vl.featureCount(), 1)
 
     def testFeatureCountEstimatedOnView(self):
         """

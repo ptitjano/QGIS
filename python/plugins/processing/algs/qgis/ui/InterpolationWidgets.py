@@ -164,8 +164,10 @@ class InterpolationDataWidget(BASE, WIDGET):
             layer = QgsProcessingUtils.mapLayerFromString(
                 v[0], dataobjects.createContext()
             )
-            field_index = int(v[2])
+            if layer is None or not layer.isValid():
+                continue
 
+            field_index = int(v[2])
             if field_index == -1:
                 field_name = "Z_COORD"
             else:
@@ -194,9 +196,9 @@ class InterpolationDataWidget(BASE, WIDGET):
                     continue
 
                 interpolationAttribute = item.text(1)
-                interpolationSource = QgsInterpolator.ValueSource.ValueAttribute
+                interpolationSource = QgsInterpolator.ValueSource.Attribute
                 if interpolationAttribute == "Z_COORD":
-                    interpolationSource = QgsInterpolator.ValueSource.ValueZ
+                    interpolationSource = QgsInterpolator.ValueSource.Z
                     fieldIndex = -1
                 else:
                     fieldIndex = layer.fields().indexFromName(interpolationAttribute)
@@ -206,11 +208,11 @@ class InterpolationDataWidget(BASE, WIDGET):
                 )
                 inputTypeName = comboBox.currentText()
                 if inputTypeName == self.tr("Points"):
-                    inputType = QgsInterpolator.SourceType.SourcePoints
+                    inputType = QgsInterpolator.SourceType.Points
                 elif inputTypeName == self.tr("Structure lines"):
-                    inputType = QgsInterpolator.SourceType.SourceStructureLines
+                    inputType = QgsInterpolator.SourceType.StructureLines
                 else:
-                    inputType = QgsInterpolator.SourceType.SourceBreakLines
+                    inputType = QgsInterpolator.SourceType.BreakLines
 
                 layers += "{}::~::{:d}::~::{:d}::~::{:d}::|::".format(
                     layer.source(), interpolationSource, fieldIndex, inputType
@@ -425,10 +427,16 @@ class PixelSizeWidgetWrapper(WidgetWrapper):
             return
 
         for wrapper in wrappers:
-            if wrapper.parameterDefinition().name() == self.param.layersData:
+            if (
+                wrapper.parameterDefinition().name()
+                == self.parameterDefinition().layersData
+            ):
                 self.setLayers(wrapper.parameterValue())
                 wrapper.widgetValueHasChanged.connect(self.layersChanged)
-            elif wrapper.parameterDefinition().name() == self.param.extent:
+            elif (
+                wrapper.parameterDefinition().name()
+                == self.parameterDefinition().extent
+            ):
                 self.setExtent(wrapper.parameterValue())
                 wrapper.widgetValueHasChanged.connect(self.extentChanged)
 

@@ -23,6 +23,7 @@
 #include "qgsmessagelog.h"
 #include <fcgi_stdio.h>
 #include <QDebug>
+#include <QThread>
 
 #include "qgslogger.h"
 
@@ -114,9 +115,8 @@ void QgsSocketMonitoringThread::run()
   }
 
 #if defined( Q_OS_UNIX ) && !defined( Q_OS_ANDROID )
-  const pid_t threadId = gettid();
+  quint64 threadId = reinterpret_cast<quint64>( QThread::currentThreadId() );
 
-  mShouldStop.store( false );
   char c;
 
   fd_set setOptions;
@@ -177,7 +177,7 @@ void QgsSocketMonitoringThread::run()
 
   if ( mShouldStop.load() )
   {
-    QgsDebugMsgLevel( QStringLiteral( "FCGIServer::run %1: socket monitoring quits normally." ).arg( threadId ), 2 );
+    QgsMessageLog::logMessage( QStringLiteral( "FCGIServer::run %1: socket monitoring quits normally." ).arg( threadId ), QStringLiteral( "FCGIServer" ), Qgis::MessageLevel::Info );
   }
   else
   {

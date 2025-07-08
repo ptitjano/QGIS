@@ -13,11 +13,14 @@ __copyright__ = "Copyright 2019, The QGIS Project"
 
 import os
 
-from qgis.PyQt.QtCore import QTemporaryDir
+from qgis.PyQt.QtCore import QTemporaryDir, QMetaType
 from qgis.core import (
     Qgis,
     QgsAbstractDatabaseProviderConnection,
+    QgsCoordinateReferenceSystem,
     QgsDataSourceUri,
+    QgsField,
+    QgsFields,
     QgsProviderConnectionException,
     QgsProviderRegistry,
     QgsRasterLayer,
@@ -886,6 +889,126 @@ CREATE FOREIGN TABLE IF NOT EXISTS points_csv (
         self.assertEqual(res_ds.schema(), "dest_schema")
         self.assertEqual(res_ds.geometryColumn(), "geometry")
         self.assertEqual(res_ds.keyColumn(), "pk,pk2")
+
+    def test_create_layer_w_roles(self):
+        """
+        Test layer creation with roles
+        """
+
+        uriUserWithrole = (
+            self.uri
+            + " user=qgis_test_user password=qgis_test_user_password session_role=qgis_test_group"
+        )
+        uriOtherUserWithrole = (
+            self.uri
+            + " user=qgis_test_another_user password=qgis_test_another_user_password session_role=qgis_test_group"
+        )
+        uriUnprivilegedUser = (
+            self.uri
+            + " user=qgis_test_unprivileged_user password=qgis_test_unprivileged_user_password"
+        )
+        schema = "qgis_test"
+
+        md = QgsProviderRegistry.instance().providerMetadata("postgres")
+        connUserWithrole = md.createConnection(uriUserWithrole, {})
+        self.assertTrue(connUserWithrole)
+
+        connOtherUserWithrole = md.createConnection(uriOtherUserWithrole, {})  # spellok
+        self.assertTrue(connOtherUserWithrole)  # spellok
+
+        connUnprivilegedUser = md.createConnection(uriUnprivilegedUser, {})
+        self.assertTrue(connUnprivilegedUser)
+
+        sql = """
+        DROP TABLE IF EXISTS qgis_test.layer_w_role;
+        """
+
+        connUserWithrole.executeSql(sql)
+
+        fields = QgsFields()
+        fields.append(QgsField("test", QMetaType.Type.QString))
+        crs = QgsCoordinateReferenceSystem.fromEpsgId(4326)
+
+        connUserWithrole.createVectorTable(
+            schema, "layer_w_role", fields, QgsWkbTypes.Type.Point, crs, False, {}
+        )
+        table_names = self._table_names(connUserWithrole.tables(schema))
+        self.assertIn("layer_w_role", table_names)
+
+        table_names = self._table_names(connOtherUserWithrole.tables(schema))  # spellok
+        self.assertIn("layer_w_role", table_names)
+
+        table_names = self._table_names(connUnprivilegedUser.tables(schema))
+        self.assertNotIn("layer_w_role", table_names)
+
+    def test_rename_field(self):
+        """Test rename fields"""
+        md = QgsProviderRegistry.instance().providerMetadata("postgres")
+        conn = md.createConnection(self.uri, {})
+
+        sql = """
+        CREATE TABLE qgis_test.rename_field (id SERIAL PRIMARY KEY);
+        ALTER TABLE qgis_test.rename_field ADD COLUMN geom geometry(POINT,4326);
+        ALTER TABLE qgis_test.rename_field ADD COLUMN column_1 TEXT;
+        INSERT INTO qgis_test.rename_field (id, geom, column_1) VALUES (221, ST_GeomFromText('point(9 45)', 4326), 'text');
+        """
+
+        conn.executeSql(sql)
+        fields = conn.fields("qgis_test", "rename_field")
+        self.assertEqual(fields.names(), ["id", "geom", "column_1"])
+
+        conn.renameField("qgis_test", "rename_field", "column_1", "new_column")
+
+        fields = conn.fields("qgis_test", "rename_field")
+        self.assertEqual(fields.names(), ["id", "geom", "new_column"])
+
+    def test_move_table_to_schema(self):
+        """Test that table can be moved to another schema."""
+
+        md = QgsProviderRegistry.instance().providerMetadata("postgres")
+        conn = md.createConnection(self.uri, {})
+
+        sql = """
+        DROP TABLE IF EXISTS qgis_test.table_to_move;
+        CREATE TABLE qgis_test.table_to_move (
+            id SERIAL PRIMARY KEY,
+            geom geometry(Geometry,4326)
+        );
+        CREATE SCHEMA schema_test;
+        """
+
+        conn.executeSql(sql)
+
+        # test table exist
+        table = conn.table("qgis_test", "table_to_move")
+        self.assertEqual(table.tableName(), "table_to_move")
+
+        # test fail in move - target schema does not exist
+        with self.assertRaises(QgsProviderConnectionException):
+            conn.moveTableToSchema(
+                "qgis_test",
+                "table_to_move",
+                "schema_test_non_existent",
+            )
+
+        # test fail in move - table does not exist
+        with self.assertRaises(QgsProviderConnectionException):
+            conn.moveTableToSchema(
+                "qgis_test",
+                "table_to_move_non_existent",
+                "schema_test",
+            )
+
+        # move table to another schema
+        conn.moveTableToSchema(
+            "qgis_test",
+            "table_to_move",
+            "schema_test",
+        )
+
+        # test moved table exist in the schema
+        table = conn.table("schema_test", "table_to_move")
+        self.assertEqual(table.tableName(), "table_to_move")
 
 
 if __name__ == "__main__":

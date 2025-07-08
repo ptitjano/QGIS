@@ -144,6 +144,11 @@ class TinInterpolation(QgisAlgorithm):
     def displayName(self):
         return self.tr("TIN interpolation")
 
+    def shortDescription(self):
+        return self.tr(
+            "Generates a Triangulated Irregular Network (TIN) interpolation of a point vector layer."
+        )
+
     def processAlgorithm(self, parameters, context, feedback):
         interpolationData = ParameterInterpolationData.parseValue(
             parameters[self.INTERPOLATION_DATA]
@@ -180,10 +185,10 @@ class TinInterpolation(QgisAlgorithm):
             if not crs.isValid():
                 crs = layer.sourceCrs()
 
-            data.valueSource = int(v[1])
+            data.valueSource = QgsInterpolator.ValueSource(int(v[1]))
             data.interpolationAttribute = int(v[2])
             if (
-                data.valueSource == QgsInterpolator.ValueSource.ValueAttribute
+                data.valueSource == QgsInterpolator.ValueSource.Attribute
                 and data.interpolationAttribute == -1
             ):
                 raise QgsProcessingException(
@@ -192,12 +197,7 @@ class TinInterpolation(QgisAlgorithm):
                     ).format(i + 1)
                 )
 
-            if v[3] == "0":
-                data.sourceType = QgsInterpolator.SourceType.SourcePoints
-            elif v[3] == "1":
-                data.sourceType = QgsInterpolator.SourceType.SourceStructureLines
-            else:
-                data.sourceType = QgsInterpolator.SourceType.SourceBreakLines
+            data.sourceType = QgsInterpolator.SourceType(int(v[3]))
             layerData.append(data)
 
         if method == 0:

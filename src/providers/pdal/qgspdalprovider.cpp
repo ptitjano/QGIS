@@ -293,9 +293,11 @@ bool QgsPdalProvider::load( const QString &uri )
 
     if ( pdal::Reader *reader = dynamic_cast<pdal::Reader *>( stageFactory.createStage( driver ) ) )
     {
-      pdal::Options options;
-      options.add( pdal::Option( "filename", uri.toStdString() ) );
-      reader->setOptions( options );
+      {
+        pdal::Options options;
+        options.add( pdal::Option( "filename", uri.toStdString() ) );
+        reader->setOptions( std::move( options ) );
+      }
       pdal::PointTable table;
       reader->prepare( table );
 
@@ -467,7 +469,7 @@ void QgsPdalProviderMetadata::buildSupportedPointCloudFileFilterAndExtensions()
 {
   // get supported extensions
   static std::once_flag initialized;
-  std::call_once( initialized, [=] {
+  std::call_once( initialized, [] {
     const pdal::StageFactory f;
     pdal::PluginManager<pdal::Stage>::loadAll();
     const pdal::StringList stages = pdal::PluginManager<pdal::Stage>::names();

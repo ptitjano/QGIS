@@ -147,7 +147,7 @@ void QgsProcessingVectorTileWriterLayersPanelWidget::configureLayer()
     widget->setPanelTitle( tr( "Configure Layer" ) );
     widget->buttonBox()->hide();
 
-    connect( widget, &QgsProcessingVectorTileWriteLayerDetailsWidget::widgetChanged, this, [=]() {
+    connect( widget, &QgsProcessingVectorTileWriteLayerDetailsWidget::widgetChanged, this, [this, item, widget]() {
       setItemValue( item, widget->value() );
     } );
     panel->openPanel( widget );
@@ -262,7 +262,7 @@ void QgsProcessingVectorTileWriterLayersWidget::showDialog()
   {
     QgsProcessingVectorTileWriterLayersPanelWidget *widget = new QgsProcessingVectorTileWriterLayersPanelWidget( mValue, mProject );
     widget->setPanelTitle( tr( "Input layers" ) );
-    connect( widget, &QgsProcessingMultipleSelectionPanelWidget::selectionChanged, this, [=]() {
+    connect( widget, &QgsProcessingMultipleSelectionPanelWidget::selectionChanged, this, [this, widget]() {
       setValue( widget->selectedOptions() );
     } );
     connect( widget, &QgsProcessingMultipleSelectionPanelWidget::acceptClicked, widget, &QgsPanelWidget::acceptPanel );
@@ -295,7 +295,7 @@ void QgsProcessingVectorTileWriterLayersWidget::updateSummaryText()
 // QgsProcessingVectorTileWriterLayersWidgetWrapper
 //
 
-QgsProcessingVectorTileWriterLayersWidgetWrapper::QgsProcessingVectorTileWriterLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type, QWidget *parent )
+QgsProcessingVectorTileWriterLayersWidgetWrapper::QgsProcessingVectorTileWriterLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type, QWidget *parent )
   : QgsAbstractProcessingParameterWidgetWrapper( parameter, type, parent )
 {
 }
@@ -305,7 +305,7 @@ QString QgsProcessingVectorTileWriterLayersWidgetWrapper::parameterType() const
   return QgsProcessingParameterVectorTileWriterLayers::typeName();
 }
 
-QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingVectorTileWriterLayersWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type )
+QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingVectorTileWriterLayersWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type )
 {
   return new QgsProcessingVectorTileWriterLayersWidgetWrapper( parameter, type );
 }
@@ -314,7 +314,7 @@ QWidget *QgsProcessingVectorTileWriterLayersWidgetWrapper::createWidget()
 {
   mPanel = new QgsProcessingVectorTileWriterLayersWidget( nullptr );
   mPanel->setProject( widgetContext().project() );
-  connect( mPanel, &QgsProcessingVectorTileWriterLayersWidget::changed, this, [=] {
+  connect( mPanel, &QgsProcessingVectorTileWriterLayersWidget::changed, this, [this] {
     emit widgetValueHasChanged( this );
   } );
   return mPanel;
@@ -341,16 +341,6 @@ void QgsProcessingVectorTileWriterLayersWidgetWrapper::setWidgetValue( const QVa
 QVariant QgsProcessingVectorTileWriterLayersWidgetWrapper::widgetValue() const
 {
   return mPanel ? mPanel->value() : QVariant();
-}
-
-QStringList QgsProcessingVectorTileWriterLayersWidgetWrapper::compatibleParameterTypes() const
-{
-  return QStringList();
-}
-
-QStringList QgsProcessingVectorTileWriterLayersWidgetWrapper::compatibleOutputTypes() const
-{
-  return QStringList();
 }
 
 /// @endcond

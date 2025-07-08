@@ -29,7 +29,7 @@
 /**
  * \ingroup core
  * \class QgsGlowEffect
- * \brief Base class for paint effect which draw a glow inside or outside a
+ * \brief Base class for paint effects which draw a glow inside or outside a
  * picture.
  *
  */
@@ -50,6 +50,7 @@ class CORE_EXPORT QgsGlowEffect : public QgsPaintEffect
     QgsGlowEffect( const QgsGlowEffect &other );
     ~QgsGlowEffect() override;
 
+    Qgis::PaintEffectFlags flags() const override;
     QVariantMap properties() const override;
     void readProperties( const QVariantMap &props ) override;
 

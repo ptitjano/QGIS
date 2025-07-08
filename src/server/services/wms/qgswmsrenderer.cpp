@@ -78,6 +78,7 @@
 #include <QTemporaryFile>
 #include <QDir>
 #include <QUrl>
+#include <QXmlStreamReader>
 #include <nlohmann/json.hpp>
 
 //for printing
@@ -584,7 +585,7 @@ namespace QgsWms
       // Set scales
       exportSettings.predefinedMapScales = QgsLayoutUtils::predefinedScales( layout.get() );
       // Draw selections
-      exportSettings.flags |= QgsLayoutRenderContext::FlagDrawSelection;
+      exportSettings.flags |= Qgis::LayoutRenderFlag::DrawSelection;
       if ( atlas )
       {
         //export first page of atlas
@@ -619,7 +620,7 @@ namespace QgsWms
       // Set scales
       exportSettings.predefinedMapScales = QgsLayoutUtils::predefinedScales( layout.get() );
       // Draw selections
-      exportSettings.flags |= QgsLayoutRenderContext::FlagDrawSelection;
+      exportSettings.flags |= Qgis::LayoutRenderFlag::DrawSelection;
       // Destination image size in px
       QgsLayoutSize layoutSize( layout->pageCollection()->page( 0 )->sizeWithUnits() );
 
@@ -686,7 +687,7 @@ namespace QgsWms
           exportSettings.dpi = dpi;
       }
       // Draw selections
-      exportSettings.flags |= QgsLayoutRenderContext::FlagDrawSelection;
+      exportSettings.flags |= Qgis::LayoutRenderFlag::DrawSelection;
       // Print as raster
       exportSettings.rasterizeWholeImage = layout->customProperty( QStringLiteral( "rasterize" ), false ).toBool();
       // Set scales. 1. Prio: request, 2. Prio: predefined mapscales in layout
@@ -713,11 +714,11 @@ namespace QgsWms
       exportSettings.useIso32000ExtensionFormatGeoreferencing = mWmsParameters.pdfUseIso32000ExtensionFormatGeoreferencing();
       if ( mWmsParameters.pdfLosslessImageCompression() )
       {
-        exportSettings.flags |= QgsLayoutRenderContext::FlagLosslessImageRendering;
+        exportSettings.flags |= Qgis::LayoutRenderFlag::LosslessImageRendering;
       }
       if ( mWmsParameters.pdfDisableTiledRasterRendering() )
       {
-        exportSettings.flags |= QgsLayoutRenderContext::FlagDisableTiledRasterLayerRenders;
+        exportSettings.flags |= Qgis::LayoutRenderFlag::DisableTiledRasterLayerRenders;
       }
 
       // Export all pages
@@ -901,7 +902,7 @@ namespace QgsWms
       }
 
       //grid space x / y
-      if ( cMapParams.mGridX > 0 && cMapParams.mGridY > 0 )
+      if ( cMapParams.mGridX >= 0 && cMapParams.mGridY >= 0 )
       {
         map->grid()->setIntervalX( static_cast<double>( cMapParams.mGridX ) );
         map->grid()->setIntervalY( static_cast<double>( cMapParams.mGridY ) );
@@ -1470,6 +1471,8 @@ namespace QgsWms
     // add labeling engine settings
     mapSettings.setLabelingEngineSettings( mProject->labelingEngineSettings() );
 
+    mapSettings.setScaleMethod( mProject->scaleMethod() );
+
     // enable rendering optimization
     mapSettings.setFlag( Qgis::MapSettingsFlag::UseRenderingOptimization );
 
@@ -1527,7 +1530,7 @@ namespace QgsWms
     context.setMapToPixel( QgsMapToPixel( 1 / ( mmPerMapUnit * context.scaleFactor() ) ) );
     QgsDistanceArea distanceArea = QgsDistanceArea();
     distanceArea.setSourceCrs( QgsCoordinateReferenceSystem( mWmsParameters.crs() ), mProject->transformContext() );
-    distanceArea.setEllipsoid( geoNone() );
+    distanceArea.setEllipsoid( Qgis::geoNone() );
     context.setDistanceArea( distanceArea );
     return context;
   }
@@ -1877,10 +1880,14 @@ namespace QgsWms
       fReq.setFilterExpression( QString( "intersects( $geometry, geom_from_wkt('%1') )" ).arg( layerFilterGeom->asWkt() ) );
     }
 
+    Q_NOWARN_DEPRECATED_PUSH
     mFeatureFilter.filterFeatures( layer, fReq );
+    Q_NOWARN_DEPRECATED_POP
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
+    Q_NOWARN_DEPRECATED_PUSH
     mContext.accessControl()->filterFeatures( layer, fReq );
+    Q_NOWARN_DEPRECATED_POP
 
     QStringList attributes;
     for ( const QgsField &field : fields )
@@ -3556,10 +3563,21 @@ namespace QgsWms
           // OGC filter
           QDomDocument filterXml;
           QString errorMsg;
+
+#if QT_VERSION < QT_VERSION_CHECK( 6, 5, 0 )
           if ( !filterXml.setContent( filter.mFilter, true, &errorMsg ) )
           {
             throw QgsBadRequestException( QgsServiceException::QGIS_InvalidParameterValue, QStringLiteral( "Filter string rejected. Error message: %1. The XML string was: %2" ).arg( errorMsg, filter.mFilter ) );
           }
+#else
+          QXmlStreamReader xmlReader( filter.mFilter );
+          xmlReader.addExtraNamespaceDeclaration( QXmlStreamNamespaceDeclaration( QStringLiteral( "fes" ), QStringLiteral( "http://www.opengis.net/fes/2.0" ) ) );
+          xmlReader.addExtraNamespaceDeclaration( QXmlStreamNamespaceDeclaration( QStringLiteral( "ogc" ), QStringLiteral( "http://www.opengis.net/ogc" ) ) );
+          if ( QDomDocument::ParseResult result = filterXml.setContent( &xmlReader, QDomDocument::ParseOption::UseNamespaceProcessing ); !result )
+          {
+            throw QgsBadRequestException( QgsServiceException::QGIS_InvalidParameterValue, QStringLiteral( "Filter string rejected. Error %1:%2 : %3. The XML string was: %4" ).arg( QString::number( result.errorLine ), QString::number( result.errorColumn ), result.errorMessage, filter.mFilter ) );
+          }
+#endif
           QDomElement filterElem = filterXml.firstChildElement();
           std::unique_ptr<QgsExpression> filterExp( QgsOgcUtils::expressionFromOgcFilter( filterElem, filter.mVersion, filteredLayer ) );
 
@@ -3618,7 +3636,9 @@ namespace QgsWms
         auto expression = std::make_unique<QgsExpression>( exp );
         if ( expression )
         {
+          Q_NOWARN_DEPRECATED_PUSH
           mFeatureFilter.setFilter( filteredLayer, *expression );
+          Q_NOWARN_DEPRECATED_POP
         }
       }
     }

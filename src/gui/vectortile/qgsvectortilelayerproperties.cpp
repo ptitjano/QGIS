@@ -99,6 +99,8 @@ QgsVectorTileLayerProperties::QgsVectorTileLayerProperties( QgsVectorTileLayer *
 
   setMetadataWidget( mMetadataWidget, mOptsPage_Metadata );
 
+  mMapLayerServerPropertiesWidget->setHasWfsTitle( false );
+
   // update based on lyr's current state
   syncToLayer();
 
@@ -154,25 +156,14 @@ void QgsVectorTileLayerProperties::apply()
   mLayer->setMinimumScale( mScaleRangeWidget->minimumScale() );
   mLayer->setMaximumScale( mScaleRangeWidget->maximumScale() );
 
-  //layer title and abstract
-  mLayer->serverProperties()->setShortName( mLayerShortNameLineEdit->text() );
-  mLayer->serverProperties()->setTitle( mLayerTitleLineEdit->text() );
-  mLayer->serverProperties()->setAbstract( mLayerAbstractTextEdit->toPlainText() );
-  mLayer->serverProperties()->setKeywordList( mLayerKeywordListLineEdit->text() );
-  mLayer->serverProperties()->setDataUrl( mLayerDataUrlLineEdit->text() );
-  mLayer->serverProperties()->setDataUrlFormat( mLayerDataUrlFormatComboBox->currentText() );
-
-  //layer attribution
-  mLayer->serverProperties()->setAttribution( mLayerAttributionLineEdit->text() );
-  mLayer->serverProperties()->setAttributionUrl( mLayerAttributionUrlLineEdit->text() );
-
-  // LegendURL
-  mLayer->serverProperties()->setLegendUrl( mLayerLegendUrlLineEdit->text() );
-  mLayer->serverProperties()->setLegendUrlFormat( mLayerLegendUrlFormatComboBox->currentText() );
+  mMapLayerServerPropertiesWidget->save();
 }
 
 void QgsVectorTileLayerProperties::syncToLayer()
 {
+  if ( !mLayer )
+    return;
+
   /*
    * Information Tab
    */
@@ -200,7 +191,7 @@ void QgsVectorTileLayerProperties::syncToLayer()
         mSourceGroupBox->setTitle( mSourceWidget->groupTitle() );
       mSourceGroupBox->show();
 
-      connect( mSourceWidget, &QgsProviderSourceWidget::validChanged, this, [=]( bool isValid ) {
+      connect( mSourceWidget, &QgsProviderSourceWidget::validChanged, this, [this]( bool isValid ) {
         buttonBox->button( QDialogButtonBox::Apply )->setEnabled( isValid );
         buttonBox->button( QDialogButtonBox::Ok )->setEnabled( isValid );
       } );
@@ -229,31 +220,7 @@ void QgsVectorTileLayerProperties::syncToLayer()
   chkUseScaleDependentRendering->setChecked( mLayer->hasScaleBasedVisibility() );
   mScaleRangeWidget->setScaleRange( mLayer->minimumScale(), mLayer->maximumScale() );
 
-  /*
-   * Server
-   */
-  //layer title and abstract
-  mLayerShortNameLineEdit->setText( mLayer->serverProperties()->shortName() );
-  mLayerTitleLineEdit->setText( mLayer->serverProperties()->title() );
-  mLayerAbstractTextEdit->setPlainText( mLayer->serverProperties()->abstract() );
-  mLayerKeywordListLineEdit->setText( mLayer->serverProperties()->keywordList() );
-  mLayerDataUrlLineEdit->setText( mLayer->serverProperties()->dataUrl() );
-  mLayerDataUrlFormatComboBox->setCurrentIndex(
-    mLayerDataUrlFormatComboBox->findText(
-      mLayer->serverProperties()->dataUrlFormat()
-    )
-  );
-  //layer attribution
-  mLayerAttributionLineEdit->setText( mLayer->serverProperties()->attribution() );
-  mLayerAttributionUrlLineEdit->setText( mLayer->serverProperties()->attributionUrl() );
-
-  // layer legend url
-  mLayerLegendUrlLineEdit->setText( mLayer->serverProperties()->legendUrl() );
-  mLayerLegendUrlFormatComboBox->setCurrentIndex(
-    mLayerLegendUrlFormatComboBox->findText(
-      mLayer->serverProperties()->legendUrlFormat()
-    )
-  );
+  mMapLayerServerPropertiesWidget->setServerProperties( mLayer->serverProperties() );
 }
 
 void QgsVectorTileLayerProperties::saveDefaultStyle()

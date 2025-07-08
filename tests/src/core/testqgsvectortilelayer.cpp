@@ -36,6 +36,7 @@
 #include "qgsprovidersublayerdetails.h"
 #include "qgsproviderutils.h"
 #include "qgsvectortileloader.h"
+#include "qgsvectortilemvtdecoder.h"
 
 /**
  * \ingroup UnitTests
@@ -81,6 +82,8 @@ class TestQgsVectorTileLayer : public QgsTest
 
     void test_styleMinZoomBeyondTileMaxZoom();
     void test_filterRuleAllLayers();
+
+    void test_longIntAttributes();
 };
 
 
@@ -110,13 +113,13 @@ void TestQgsVectorTileLayer::initTestCase()
   QColor polygonFillColor = Qt::blue;
   const QColor polygonStrokeColor = polygonFillColor;
   polygonFillColor.setAlpha( 100 );
-  const double polygonStrokeWidth = DEFAULT_LINE_WIDTH * 2;
+  const double polygonStrokeWidth = Qgis::DEFAULT_LINE_WIDTH * 2;
   const QColor lineStrokeColor = Qt::blue;
-  const double lineStrokeWidth = DEFAULT_LINE_WIDTH * 2;
+  const double lineStrokeWidth = Qgis::DEFAULT_LINE_WIDTH * 2;
   QColor pointFillColor = Qt::red;
   const QColor pointStrokeColor = pointFillColor;
   pointFillColor.setAlpha( 100 );
-  const double pointSize = DEFAULT_POINT_SIZE;
+  const double pointSize = Qgis::DEFAULT_POINT_SIZE;
 
   QgsVectorTileBasicRenderer *rend = new QgsVectorTileBasicRenderer;
   rend->setStyles( QgsVectorTileBasicRenderer::simpleStyle(
@@ -201,7 +204,7 @@ void TestQgsVectorTileLayer::test_labeling()
   // use a different renderer to make the labels stand out more
   QgsVectorTileBasicRenderer *rend = new QgsVectorTileBasicRenderer;
   rend->setStyles( QgsVectorTileBasicRenderer::simpleStyle(
-    Qt::transparent, Qt::white, DEFAULT_LINE_WIDTH * 2,
+    Qt::transparent, Qt::white, Qgis::DEFAULT_LINE_WIDTH * 2,
     Qt::transparent, 0,
     Qt::transparent, Qt::transparent, 0
   ) );
@@ -552,7 +555,7 @@ void TestQgsVectorTileLayer::test_polygonWithLineStyle()
   mMapSettings->setLayers( QList<QgsMapLayer *>() << layer.get() );
 
   const QColor lineStrokeColor = Qt::blue;
-  const double lineStrokeWidth = DEFAULT_LINE_WIDTH * 2;
+  const double lineStrokeWidth = Qgis::DEFAULT_LINE_WIDTH * 2;
 
   QgsSimpleLineSymbolLayer *lineSymbolLayer = new QgsSimpleLineSymbolLayer;
   lineSymbolLayer->setColor( lineStrokeColor );
@@ -630,7 +633,7 @@ void TestQgsVectorTileLayer::test_styleMinZoomBeyondTileMaxZoom()
   mMapSettings->setLayers( QList<QgsMapLayer *>() << layer.get() );
 
   const QColor lineStrokeColor = Qt::blue;
-  const double lineStrokeWidth = DEFAULT_LINE_WIDTH * 2;
+  const double lineStrokeWidth = Qgis::DEFAULT_LINE_WIDTH * 2;
 
   QgsSimpleLineSymbolLayer *lineSymbolLayer = new QgsSimpleLineSymbolLayer;
   lineSymbolLayer->setColor( lineStrokeColor );
@@ -670,7 +673,7 @@ void TestQgsVectorTileLayer::test_filterRuleAllLayers()
   mMapSettings->setLayers( QList<QgsMapLayer *>() << layer.get() );
 
   const QColor lineStrokeColor = Qt::blue;
-  const double lineStrokeWidth = DEFAULT_LINE_WIDTH * 4;
+  const double lineStrokeWidth = Qgis::DEFAULT_LINE_WIDTH * 4;
 
   QgsSimpleLineSymbolLayer *lineSymbolLayer = new QgsSimpleLineSymbolLayer;
   lineSymbolLayer->setColor( lineStrokeColor );
@@ -696,6 +699,35 @@ void TestQgsVectorTileLayer::test_filterRuleAllLayers()
   mMapSettings->setExtent( layer->extent() );
   mMapSettings->setDestinationCrs( layer->crs() );
   QGSVERIFYRENDERMAPSETTINGSCHECK( QStringLiteral( "render_test_filter_all_layers" ), QStringLiteral( "render_test_filter_all_layers" ), *mMapSettings, 0, 15 );
+}
+
+void TestQgsVectorTileLayer::test_longIntAttributes()
+{
+  // test using a filter with field access for an "all layers" rule
+  QgsDataSourceUri ds;
+  ds.setParam( "type", "mbtiles" );
+  ds.setParam( "url", QString( "/%1/longint.mbtiles" ).arg( mDataDir ) );
+  auto layer = std::make_unique<QgsVectorTileLayer>( ds.encodedUri(), "Vector Tiles Test" );
+  QVERIFY( layer->isValid() );
+
+  const QgsVectorTileRawData tile0 = layer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
+  QgsVectorTileMVTDecoder decoder( QgsVectorTileMatrixSet::fromWebMercator() );
+  const bool resDecode0 = decoder.decode( tile0 );
+  QVERIFY( resDecode0 );
+  const QStringList fieldNamesLines = decoder.layerFieldNames( "lines" );
+  QCOMPARE( fieldNamesLines, QStringList() << "Name" << "Value" );
+
+  QgsFields fields;
+  fields.append( QgsField( "Value", QMetaType::Type::QString ) );
+  QMap<QString, QgsFields> perLayerFields;
+  perLayerFields["lines"] = fields;
+
+  QgsVectorTileFeatures features = decoder.layerFeatures( perLayerFields, QgsCoordinateTransform() );
+  QCOMPARE( features["lines"].count(), 1 );
+
+  QgsAttributes attrs = features["lines"][0].attributes();
+  QCOMPARE( attrs.count(), 1 );
+  QCOMPARE( attrs[0].toString(), "103097205262536" );
 }
 
 

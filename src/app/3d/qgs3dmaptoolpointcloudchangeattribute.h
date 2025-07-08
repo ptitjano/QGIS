@@ -17,6 +17,9 @@
 #define QGS3DMAPTOOLPOINTCLOUDCHANGEATTRIBUTE_H
 
 #include "qgs3dmaptool.h"
+#include "qgsabstract3drenderer.h"
+#include "qgspointcloudindex.h"
+#include "qgspointcloudlayerelevationproperties.h"
 #include "qgsvector3d.h"
 
 #include <QMatrix4x4>
@@ -93,9 +96,15 @@ class Qgs3DMapToolPointCloudChangeAttribute : public Qgs3DMapTool
   private:
     SelectedPoints searchPoints( QgsPointCloudLayer *layer, const QgsGeos &searchPolygon, Qgs3DMapCanvas &canvas );
 
-    QVector<int> selectedPointsInNode( const QgsGeos &searchPolygon, const QgsPointCloudNodeId &n, const MapToPixel3D &mapToPixel3D, QgsPointCloudLayer *layer, Qgs3DMapCanvas &canvas );
+    QVector<int> selectedPointsInNode( const QgsGeos &searchPolygon, const QgsPointCloudNodeId &n, const MapToPixel3D &mapToPixel3D, QgsPointCloudIndex index, QgsRectangle mapExtent, QgsPointCloudLayerElevationProperties &elevationProperties, QgsAbstract3DRenderer *renderer3D );
 
     QgsGeometry box3DToPolygonInScreenSpace( const QgsBox3D &box, const MapToPixel3D &mapToPixel3D );
+
+    /**
+     * Returns whether point is outside the intersection of half-spaces defined
+     * by clip planes.
+     */
+    bool pointIsClipped( const QgsVector3D &mapOrigin, const QList<QVector4D> &clipPlanes, double x, double y, double z );
 };
 
 #endif // QGS3DMAPTOOLPOINTCLOUDCHANGEATTRIBUTE_H

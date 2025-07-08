@@ -74,6 +74,16 @@ class QgsWFSSharedData : public QObject, public QgsBackgroundCachedSharedData
     //! Creates a deep copy of this shared data
     QgsWFSSharedData *clone() const;
 
+    /** Returns TRUE if the initial GetFeature request was issued
+     * \note This does not mean that the request actually returned any feature, only that it was completed successfully.
+     */
+    bool initialGetFeatureIssued() const;
+
+    /** Sets whether the initial GetFeature request was \a issued
+     * \note This does not mean that the request actually returned any feature, only that it was completed successfully.
+     */
+    void setInitialGetFeatureIssued( bool issued );
+
   signals:
 
     //! Raise error
@@ -108,6 +118,9 @@ class QgsWFSSharedData : public QObject, public QgsBackgroundCachedSharedData
     //! Map a namespace prefix to its URI
     QMap<QString, QString> mNamespacePrefixToURIMap;
 
+    //! Preferred HTTP method
+    Qgis::HttpMethod mHttpMethod = Qgis::HttpMethod::Get;
+
     //! Page size for WFS 2.0. 0 = disabled
     long long mPageSize = 0;
 
@@ -127,9 +140,6 @@ class QgsWFSSharedData : public QObject, public QgsBackgroundCachedSharedData
      * If the server (typically ESRI with WFS-T 1.1 in 2020) does not like "pos" and "posList", and requires "coordinates" for WFS 1.1 transactions
      */
     bool mServerPrefersCoordinatesForTransactions_1_1 = false;
-
-    //! Geometry type of the features in this layer
-    Qgis::WkbType mWKBType = Qgis::WkbType::Unknown;
 
     //! Geometry type filter to ensure geometries returned by the layer are of type mWKBType.
     QString mWFSGeometryTypeFilter;
@@ -167,6 +177,8 @@ class QgsWFSSharedData : public QObject, public QgsBackgroundCachedSharedData
     long long getFeatureCountFromServer() const override;
 
     void getVersionValues( QgsOgcUtils::GMLVersion &gmlVersion, QgsOgcUtils::FilterVersion &filterVersion, bool &honourAxisOrientation ) const;
+
+    bool mInitialGetFeatureIssued = false;
 };
 
 //! Utility class to issue a GetFeature resultType=hits request

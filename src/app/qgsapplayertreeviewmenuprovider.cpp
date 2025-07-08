@@ -79,7 +79,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
     menu->addAction( actions->actionAddGroup( menu ) );
     menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionExpandTree.svg" ) ), tr( "&Expand All" ), mView, &QgsLayerTreeView::expandAll );
     menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCollapseTree.svg" ) ), tr( "&Collapse All" ), mView, &QgsLayerTreeView::collapseAll );
-    menu->addSeparator();
+    menu->addSeparator()->setObjectName( QLatin1String( "GlobalSeparator" ) );
     if ( QgisApp::instance()->clipboard()->hasFormat( QGSCLIPBOARD_MAPLAYER_MIME ) )
     {
       QAction *actionPasteLayerOrGroup = new QAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionEditPaste.svg" ) ), tr( "Paste Layer/Group" ), menu );
@@ -104,18 +104,21 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         menu->addAction( actionPasteLayerOrGroup );
       }
 
-      menu->addAction( actions->actionRenameGroupOrLayer( menu ) );
+      if ( mView->selectedNodes( true ).count() == 1 )
+      {
+        menu->addAction( actions->actionRenameGroupOrLayer( menu ) );
+      }
 
-      menu->addSeparator();
+      menu->addSeparator()->setObjectName( QLatin1String( "RenameGroupOrLayerSeparator" ) );
       menu->addAction( actions->actionAddGroup( menu ) );
       QAction *removeAction = menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionRemoveLayer.svg" ) ), tr( "&Remove Group…" ), QgisApp::instance(), &QgisApp::removeLayer );
       removeAction->setEnabled( removeActionEnabled() );
-      menu->addSeparator();
+      menu->addSeparator()->setObjectName( QLatin1String( "RemoveSeparator" ) );
 
       menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionSetCRS.png" ) ), tr( "Set Group &CRS…" ), QgisApp::instance(), &QgisApp::legendGroupSetCrs );
       menu->addAction( tr( "Set Group &WMS Data…" ), QgisApp::instance(), &QgisApp::legendGroupSetWmsData );
 
-      menu->addSeparator();
+      menu->addSeparator()->setObjectName( QLatin1String( "WmsSeparator" ) );
 
       menu->addAction( actions->actionMutuallyExclusiveGroup( menu ) );
 
@@ -135,7 +138,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         menu->addAction( actions->actionMoveToBottom( menu ) );
       }
 
-      menu->addSeparator();
+      menu->addSeparator()->setObjectName( QLatin1String( "ExclusionSeparator" ) );
 
       if ( !mView->selectedNodes( true ).empty() )
         menu->addAction( actions->actionGroupSelected( menu ) );
@@ -145,7 +148,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         menu->addAction( tr( "Paste Style" ), QgisApp::instance(), &QgisApp::applyStyleToGroup );
       }
 
-      menu->addSeparator();
+      menu->addSeparator()->setObjectName( QLatin1String( "GroupSeparator" ) );
 
       QMenu *menuExportGroup = new QMenu( tr( "E&xport" ), menu );
       menuExportGroup->setObjectName( QStringLiteral( "exportMenu" ) );
@@ -212,13 +215,16 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         menu->addAction( actionShowLabels );
       }
 
-      QAction *actionCopyLayer = new QAction( tr( "Copy Layer" ), menu );
+      QAction *actionCopyLayer = new QAction( tr( "Copy Layer(s)" ), menu );
       connect( actionCopyLayer, &QAction::triggered, QgisApp::instance(), &QgisApp::copyLayer );
       menu->addAction( actionCopyLayer );
 
-      menu->addAction( actions->actionRenameGroupOrLayer( menu ) );
+      if ( mView->selectedLayerNodes().count() == 1 )
+      {
+        menu->addAction( actions->actionRenameGroupOrLayer( menu ) );
+      }
 
-      if ( rlayer )
+      if ( rlayer && mView->selectedLayerNodes().count() == 1 )
       {
         QAction *zoomToNative = menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionZoomActual.svg" ) ), tr( "Zoom to Nat&ive Resolution (100%)" ), QgisApp::instance(), &QgisApp::legendLayerZoomNative );
         zoomToNative->setEnabled( rlayer->isValid() );
@@ -243,7 +249,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
       }
 
       // No raster support in createSqlVectorLayer (yet)
-      if ( vlayer )
+      if ( vlayer && mView->selectedLayerNodes().count() == 1 )
       {
         const std::unique_ptr<QgsAbstractDatabaseProviderConnection> conn { QgsMapLayerUtils::databaseConnection( layer ) };
         if ( conn )
@@ -391,19 +397,19 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
       }
 
       addCustomLayerActions( menu, layer );
-      if ( layer && vlayer && vlayer->providerType() == QLatin1String( "virtual" ) )
+      if ( layer && vlayer && vlayer->providerType() == QLatin1String( "virtual" ) && mView->selectedLayerNodes().count() == 1 )
       {
         menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionAddVirtualLayer.svg" ) ), tr( "Edit Virtual Layer…" ), QgisApp::instance(), &QgisApp::addVirtualLayer );
       }
 
-      menu->addSeparator();
+      menu->addSeparator()->setObjectName( QLatin1String( "LayerSeparator" ) );
 
       // duplicate layer
       QAction *duplicateLayersAction = menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionDuplicateLayer.svg" ) ), tr( "&Duplicate Layer" ), QgisApp::instance(), [] { QgisApp::instance()->duplicateLayers(); } );
       QAction *removeAction = menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionRemoveLayer.svg" ) ), tr( "&Remove Layer…" ), QgisApp::instance(), &QgisApp::removeLayer );
       removeAction->setEnabled( removeActionEnabled() );
 
-      menu->addSeparator();
+      menu->addSeparator()->setObjectName( QLatin1String( "LayerActionSeparator" ) );
 
       if ( node->parent() != mView->layerTreeModel()->rootGroup() )
         menu->addAction( actions->actionMoveOutOfGroup( menu ) );
@@ -425,7 +431,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
       if ( mView->selectedNodes( true ).count() >= 2 )
         menu->addAction( actions->actionGroupSelected( menu ) );
 
-      menu->addSeparator();
+      menu->addSeparator()->setObjectName( QLatin1String( "ActionPositionSeparator" ) );
 
       if ( vlayer || meshLayer || pcLayer )
       {
@@ -434,11 +440,11 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         QAction *allEditsAction = QgisApp::instance()->actionAllEdits();
 
         // attribute table
-        if ( vlayer )
+        if ( vlayer && mView->selectedLayerNodes().count() == 1 )
         {
           QgsSettings settings;
           const QgsAttributeTableFilterModel::FilterMode initialMode = settings.enumValue( QStringLiteral( "qgis/attributeTableBehavior" ), QgsAttributeTableFilterModel::ShowAll );
-          const auto lambdaOpenAttributeTable = [=] { QgisApp::instance()->attributeTable( initialMode ); };
+          const auto lambdaOpenAttributeTable = [initialMode] { QgisApp::instance()->attributeTable( initialMode ); };
           QAction *attributeTableAction = menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionOpenTable.svg" ) ), tr( "Open &Attribute Table" ), QgisApp::instance(), lambdaOpenAttributeTable );
           attributeTableAction->setEnabled( vlayer->isValid() );
         }
@@ -462,7 +468,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           menu->addAction( allEditsAction );
       }
 
-      if ( layer && layer->dataProvider() && layer->dataProvider()->supportsSubsetString() )
+      if ( layer && layer->dataProvider() && layer->dataProvider()->supportsSubsetString() && mView->selectedLayerNodes().count() == 1 )
       {
         QAction *action = menu->addAction( tr( "&Filter…" ), QgisApp::instance(), qOverload<>( &QgisApp::layerSubsetString ) );
         action->setEnabled( !layer->isEditable() );
@@ -477,7 +483,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           supportsChangeDataSource = metadata->providerCapabilities() & QgsProviderMetadata::FileBasedUris;
         }
       }
-      if ( supportsChangeDataSource )
+      if ( supportsChangeDataSource && mView->selectedLayerNodes().count() == 1 )
       {
         QAction *a = new QAction( layer->isValid() ? tr( "C&hange Data Source…" ) : tr( "Repair Data Source…" ), menu );
         if ( !layer->isValid() )
@@ -489,7 +495,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         }
         else
         {
-          connect( a, &QAction::triggered, this, [=] {
+          connect( a, &QAction::triggered, this, [layer] {
             QgisApp::instance()->changeDataSource( layer );
           } );
         }
@@ -511,7 +517,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           {
             if ( target == Qgis::MapLayerActionTarget::SingleFeature )
             {
-              actionMenu->addAction( action->text(), action, [=]() {
+              actionMenu->addAction( action->text(), action, [action, vlayer, context]() {
                 Q_NOWARN_DEPRECATED_PUSH
                 action->triggerForFeature( vlayer, vlayer->selectedFeatures().at( 0 ) );
                 Q_NOWARN_DEPRECATED_POP
@@ -520,7 +526,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
             }
             else if ( target == Qgis::MapLayerActionTarget::MultipleFeatures )
             {
-              actionMenu->addAction( action->text(), action, [=]() {
+              actionMenu->addAction( action->text(), action, [action, vlayer, context]() {
                 Q_NOWARN_DEPRECATED_PUSH
                 action->triggerForFeatures( vlayer, vlayer->selectedFeatures() );
                 Q_NOWARN_DEPRECATED_POP
@@ -531,7 +537,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         }
       }
 
-      menu->addSeparator();
+      menu->addSeparator()->setObjectName( QLatin1String( "ActionPositionSeparator" ) );
 
       if ( layer && layer->isSpatial() )
       {
@@ -586,7 +592,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         const QList<QgsCoordinateReferenceSystem> recentProjections = QgsApplication::coordinateReferenceSystemRegistry()->recentCrs();
         if ( !recentProjections.isEmpty() )
         {
-          menuSetCRS->addSeparator();
+          menuSetCRS->addSeparator()->setObjectName( QLatin1String( "CRSSeparator" ) );
           int i = 0;
           for ( const QgsCoordinateReferenceSystem &crs : recentProjections )
           {
@@ -594,7 +600,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
               continue;
 
             QAction *action = menuSetCRS->addAction( tr( "Set to %1" ).arg( crs.userFriendlyIdentifier( Qgis::CrsIdentifierType::ShortString ) ) );
-            connect( action, &QAction::triggered, this, [=] {
+            connect( action, &QAction::triggered, this, [this, crs] {
               setLayerCrs( crs );
             } );
 
@@ -605,7 +611,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         }
 
         // set layer crs
-        menuSetCRS->addSeparator();
+        menuSetCRS->addSeparator()->setObjectName( QLatin1String( "SetLayerCrsSeparator" ) );
         QAction *actionSetLayerCrs = new QAction( tr( "Set &Layer CRS…" ), menuSetCRS );
         connect( actionSetLayerCrs, &QAction::triggered, QgisApp::instance(), &QgisApp::setLayerCrs );
         menuSetCRS->addAction( actionSetLayerCrs );
@@ -613,7 +619,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         menu->addMenu( menuSetCRS );
       }
 
-      menu->addSeparator();
+      menu->addSeparator()->setObjectName( QLatin1String( "LayerCrsSeparator" ) );
 
       // export menu
       if ( layer )
@@ -623,30 +629,33 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           case Qgis::LayerType::Vector:
             if ( vlayer )
             {
-              if ( vlayer->isTemporary() )
+              if ( vlayer->isTemporary() && mView->selectedLayerNodes().count() == 1 )
               {
                 QAction *actionMakePermanent = new QAction( QgsApplication::getThemeIcon( QStringLiteral( "mActionFileSave.svg" ) ), tr( "Make Permanent…" ), menu );
-                connect( actionMakePermanent, &QAction::triggered, QgisApp::instance(), [=] { QgisApp::instance()->makeMemoryLayerPermanent( vlayer ); } );
+                connect( actionMakePermanent, &QAction::triggered, QgisApp::instance(), [vlayer] { QgisApp::instance()->makeMemoryLayerPermanent( vlayer ); } );
                 menu->addAction( actionMakePermanent );
               }
               // save as vector file
               QMenu *menuExportVector = new QMenu( tr( "E&xport" ), menu );
               menuExportVector->setObjectName( QStringLiteral( "exportMenu" ) );
-              QAction *actionSaveAs = new QAction( tr( "Save Features &As…" ), menuExportVector );
-              connect( actionSaveAs, &QAction::triggered, QgisApp::instance(), [=] { QgisApp::instance()->saveAsFile(); } );
-              actionSaveAs->setEnabled( vlayer->isValid() );
-              menuExportVector->addAction( actionSaveAs );
-              QAction *actionSaveSelectedFeaturesAs = new QAction( tr( "Save &Selected Features As…" ), menuExportVector );
-              connect( actionSaveSelectedFeaturesAs, &QAction::triggered, QgisApp::instance(), [=] { QgisApp::instance()->saveAsFile( nullptr, true ); } );
-              actionSaveSelectedFeaturesAs->setEnabled( vlayer->isValid() && vlayer->selectedFeatureCount() > 0 );
-              menuExportVector->addAction( actionSaveSelectedFeaturesAs );
+              if ( mView->selectedLayerNodes().count() == 1 )
+              {
+                QAction *actionSaveAs = new QAction( tr( "Save Features &As…" ), menuExportVector );
+                connect( actionSaveAs, &QAction::triggered, QgisApp::instance(), [] { QgisApp::instance()->saveAsFile(); } );
+                actionSaveAs->setEnabled( vlayer->isValid() );
+                menuExportVector->addAction( actionSaveAs );
+                QAction *actionSaveSelectedFeaturesAs = new QAction( tr( "Save &Selected Features As…" ), menuExportVector );
+                connect( actionSaveSelectedFeaturesAs, &QAction::triggered, QgisApp::instance(), [] { QgisApp::instance()->saveAsFile( nullptr, true ); } );
+                actionSaveSelectedFeaturesAs->setEnabled( vlayer->isValid() && vlayer->selectedFeatureCount() > 0 );
+                menuExportVector->addAction( actionSaveSelectedFeaturesAs );
+              }
               QAction *actionSaveAsDefinitionLayer = new QAction( tr( "Save as Layer &Definition File…" ), menuExportVector );
               connect( actionSaveAsDefinitionLayer, &QAction::triggered, QgisApp::instance(), &QgisApp::saveAsLayerDefinition );
               menuExportVector->addAction( actionSaveAsDefinitionLayer );
               if ( vlayer->isSpatial() )
               {
                 QAction *actionSaveStyle = new QAction( tr( "Save as &QGIS Layer Style File…" ), menuExportVector );
-                connect( actionSaveStyle, &QAction::triggered, QgisApp::instance(), [=] { QgisApp::instance()->saveStyleFile(); } );
+                connect( actionSaveStyle, &QAction::triggered, QgisApp::instance(), [] { QgisApp::instance()->saveStyleFile(); } );
                 menuExportVector->addAction( actionSaveStyle );
               }
               menu->addMenu( menuExportVector );
@@ -659,18 +668,19 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           case Qgis::LayerType::PointCloud:
           case Qgis::LayerType::TiledScene:
           {
-            bool enableSaveAs = ( pcLayer && pcLayer->isValid() && pcLayer->dataProvider()->hasValidIndex() ) || ( rlayer && rlayer->isValid() );
             QMenu *menuExportRaster = new QMenu( tr( "E&xport" ), menu );
             menuExportRaster->setObjectName( QStringLiteral( "exportMenu" ) );
-            QAction *actionSaveAs = new QAction( tr( "Save &As…" ), menuExportRaster );
+            if ( mView->selectedLayerNodes().count() == 1 )
+            {
+              QAction *actionSaveAs = new QAction( tr( "Save &As…" ), menuExportRaster );
+              connect( actionSaveAs, &QAction::triggered, QgisApp::instance(), [] { QgisApp::instance()->saveAsFile(); } );
+              menuExportRaster->addAction( actionSaveAs );
+            }
             QAction *actionSaveAsDefinitionLayer = new QAction( tr( "Save as Layer &Definition File…" ), menuExportRaster );
             QAction *actionSaveStyle = new QAction( tr( "Save as &QGIS Layer Style File…" ), menuExportRaster );
-            connect( actionSaveAs, &QAction::triggered, QgisApp::instance(), [=] { QgisApp::instance()->saveAsFile(); } );
-            menuExportRaster->addAction( actionSaveAs );
-            actionSaveAs->setEnabled( enableSaveAs );
             connect( actionSaveAsDefinitionLayer, &QAction::triggered, QgisApp::instance(), &QgisApp::saveAsLayerDefinition );
             menuExportRaster->addAction( actionSaveAsDefinitionLayer );
-            connect( actionSaveStyle, &QAction::triggered, QgisApp::instance(), [=] { QgisApp::instance()->saveStyleFile(); } );
+            connect( actionSaveStyle, &QAction::triggered, QgisApp::instance(), [] { QgisApp::instance()->saveStyleFile(); } );
             menuExportRaster->addAction( actionSaveStyle );
             menu->addMenu( menuExportRaster );
           }
@@ -688,13 +698,13 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
             }
             break;
         }
-        menu->addSeparator();
+        menu->addSeparator()->setObjectName( QLatin1String( "LayerSpecificSeparator" ) );
       }
 
       // style-related actions
       if ( layer && mView->selectedLayerNodes().count() == 1 )
       {
-        menu->addSeparator();
+        menu->addSeparator()->setObjectName( QLatin1String( "StyleSeparator" ) );
         QMenu *menuStyleManager = new QMenu( tr( "Styles" ), menu );
         QgsMapLayerStyleManager *mgr = layer->styleManager();
         if ( mgr->styles().count() > 1 )
@@ -718,15 +728,15 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
             const QIcon icon = model->data( index, Qt::DecorationRole ).value<QIcon>();
             QAction *copyAction = new QAction( icon, name, copyStyleMenu );
             copyAction->setToolTip( tooltip );
-            connect( copyAction, &QAction::triggered, this, [=]() { app->copyStyle( layer, category ); } );
+            connect( copyAction, &QAction::triggered, this, [app, layer, category]() { app->copyStyle( layer, category ); } );
             copyStyleMenu->addAction( copyAction );
             if ( category == QgsMapLayer::AllStyleCategories )
-              copyStyleMenu->addSeparator();
+              copyStyleMenu->addSeparator()->setObjectName( QLatin1String( "CopyStyleSeparator" ) );
           }
         }
         else
         {
-          menuStyleManager->addAction( tr( "Copy Style" ), app, [=] { app->copyStyle(); } );
+          menuStyleManager->addAction( tr( "Copy Style" ), app, [app] { app->copyStyle(); } );
         }
 
         if ( layer && app->clipboard()->hasFormat( QGSCLIPBOARD_STYLE_MIME ) )
@@ -757,10 +767,10 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
                   const QIcon icon = model->data( index, Qt::DecorationRole ).value<QIcon>();
                   QAction *pasteAction = new QAction( icon, name, pasteStyleMenu );
                   pasteAction->setToolTip( tooltip );
-                  connect( pasteAction, &QAction::triggered, this, [=]() { app->pasteStyle( layer, category ); } );
+                  connect( pasteAction, &QAction::triggered, this, [app, layer, category]() { app->pasteStyle( layer, category ); } );
                   pasteStyleMenu->addAction( pasteAction );
                   if ( category == QgsMapLayer::AllStyleCategories )
-                    pasteStyleMenu->addSeparator();
+                    pasteStyleMenu->addSeparator()->setObjectName( QLatin1String( "PasteStyleSeparator" ) );
                   else
                     pasteAction->setEnabled( sourceCategories.testFlag( category ) );
                 }
@@ -769,11 +779,11 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           }
           else
           {
-            menuStyleManager->addAction( tr( "Paste Style" ), app, [=] { app->pasteStyle(); } );
+            menuStyleManager->addAction( tr( "Paste Style" ), app, [app] { app->pasteStyle(); } );
           }
         }
 
-        menuStyleManager->addSeparator();
+        menuStyleManager->addSeparator()->setObjectName( QLatin1String( "MenuStyleSeparator" ) );
         QgsMapLayerStyleGuiUtils::instance()->addStyleManagerActions( menuStyleManager, layer );
 
         if ( vlayer )
@@ -786,7 +796,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           if ( singleRenderer && singleRenderer->symbol() )
           {
             //single symbol renderer, so add set color/edit symbol actions
-            menuStyleManager->addSeparator();
+            menuStyleManager->addSeparator()->setObjectName( QLatin1String( "SymbolSeparator" ) );
             QgsColorWheel *colorWheel = new QgsColorWheel( menuStyleManager );
             colorWheel->setColor( singleRenderer->symbol()->color() );
             QgsColorWidgetAction *colorAction = new QgsColorWidgetAction( colorWheel, menuStyleManager, menuStyleManager );
@@ -808,7 +818,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
               connect( recentColorAction, &QgsColorSwatchGridAction::colorChanged, this, &QgsAppLayerTreeViewMenuProvider::setVectorSymbolColor );
             }
 
-            menuStyleManager->addSeparator();
+            menuStyleManager->addSeparator()->setObjectName( QLatin1String( "SymbolColorSeparator" ) );
             const QString layerId = vlayer->id();
 
             QAction *editSymbolAction = new QAction( tr( "Edit Symbol…" ), menuStyleManager );
@@ -848,7 +858,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
       }
 
       // Actions for layer notes
-      if ( layer )
+      if ( layer && mView->selectedLayerNodes().count() == 1 )
       {
         QAction *notes = new QAction( QgsLayerNotesUtils::layerHasNotes( layer ) ? tr( "Edit Layer Notes…" ) : tr( "Add Layer Notes…" ), menu );
         connect( notes, &QAction::triggered, this, [layer] {
@@ -869,7 +879,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         }
       }
 
-      if ( layer && QgsProject::instance()->layerIsEmbedded( layer->id() ).isEmpty() )
+      if ( layer && QgsProject::instance()->layerIsEmbedded( layer->id() ).isEmpty() && mView->selectedLayerNodes().count() == 1 )
         menu->addAction( tr( "&Properties…" ), QgisApp::instance(), &QgisApp::layerProperties );
     }
   }
@@ -880,7 +890,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
       menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionToggleAllLayers.svg" ) ), tr( "&Toggle Items" ), node, &QgsLayerTreeModelLegendNode::toggleAllItems );
       menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionShowAllLayers.svg" ) ), tr( "&Show All Items" ), node, &QgsLayerTreeModelLegendNode::checkAllItems );
       menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionHideAllLayers.svg" ) ), tr( "&Hide All Items" ), node, &QgsLayerTreeModelLegendNode::uncheckAllItems );
-      menu->addSeparator();
+      menu->addSeparator()->setObjectName( QLatin1String( "UserCheckableSeparator" ) );
     }
 
     if ( QgsSymbolLegendNode *symbolNode = qobject_cast<QgsSymbolLegendNode *>( node ) )
@@ -938,7 +948,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           }
         } );
 
-        menu->addSeparator();
+        menu->addSeparator()->setObjectName( QLatin1String( "MatchingAttributeSeparator" ) );
       }
 
       if ( layer && layer->type() == Qgis::LayerType::Vector && symbolNode->symbol() )
@@ -967,7 +977,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           connect( recentColorAction, &QgsColorSwatchGridAction::colorChanged, this, &QgsAppLayerTreeViewMenuProvider::setSymbolLegendNodeColor );
         }
 
-        menu->addSeparator();
+        menu->addSeparator()->setObjectName( QLatin1String( "VectorLayerSymbolSeparator" ) );
       }
 
       if ( layer && layer->type() == Qgis::LayerType::Vector )
@@ -1091,7 +1101,7 @@ void QgsAppLayerTreeViewMenuProvider::addCustomLayerActions( QMenu *menu, QgsMap
 
   if ( !lyrActions.isEmpty() )
   {
-    menu->addSeparator();
+    menu->addSeparator()->setObjectName( QLatin1String( "CustomLayerSeparator" ) );
     QList<QMenu *> menus;
     for ( int i = 0; i < lyrActions.count(); i++ )
     {
@@ -1146,7 +1156,7 @@ void QgsAppLayerTreeViewMenuProvider::addCustomLayerActions( QMenu *menu, QgsMap
         }
       }
     }
-    menu->addSeparator();
+    menu->addSeparator()->setObjectName( QLatin1String( "CustomLayerEndSeparator" ) );
   }
 }
 

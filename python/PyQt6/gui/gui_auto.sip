@@ -51,6 +51,7 @@
 %Include auto_generated/qgsdbrelationshipwidget.sip
 %Include auto_generated/qgsdecoratedscrollbar.sip
 %Include auto_generated/qgsnewdatabasetablenamewidget.sip
+%Include auto_generated/qgsdatabaseschemaselectiondialog.sip
 %Include auto_generated/qgsdetaileditemdata.sip
 %Include auto_generated/qgsdetaileditemdelegate.sip
 %Include auto_generated/qgsdetaileditemwidget.sip
@@ -95,6 +96,7 @@
 %Include auto_generated/qgsgeocoderlocatorfilter.sip
 %Include auto_generated/qgsgeometryrubberband.sip
 %Include auto_generated/qgsgeometrywidget.sip
+%Include auto_generated/qgsgpstoolsinterface.sip
 %Include auto_generated/qgsgradientcolorrampdialog.sip
 %Include auto_generated/qgsgradientstopeditor.sip
 %Include auto_generated/qgsgroupwmsdatadialog.sip
@@ -192,6 +194,7 @@
 %Include auto_generated/qgsrichtexteditor.sip
 %Include auto_generated/qgsrubberband.sip
 %Include auto_generated/qgsscalecombobox.sip
+%Include auto_generated/qgsscalemethodwidget.sip
 %Include auto_generated/qgsscalerangewidget.sip
 %Include auto_generated/qgsscalevisibilitydialog.sip
 %Include auto_generated/qgsscalewidget.sip
@@ -368,6 +371,7 @@
 %Include auto_generated/labeling/qgslabellineanchorwidget.sip
 %Include auto_generated/labeling/qgslabelobstaclesettingswidget.sip
 %Include auto_generated/labeling/qgslabelsettingswidgetbase.sip
+%Include auto_generated/labeling/qgslabelremoveduplicatesettingswidget.sip
 %Include auto_generated/labeling/qgstabpositionwidget.sip
 %Include auto_generated/layertree/qgscustomlayerorderwidget.sip
 %Include auto_generated/layertree/qgslayertreeembeddedconfigwidget.sip
@@ -435,6 +439,7 @@
 %Include auto_generated/processing/qgsprocessingfavoritealgorithmmanager.sip
 %Include auto_generated/processing/qgsprocessinggui.sip
 %Include auto_generated/processing/qgsprocessingguiregistry.sip
+%Include auto_generated/processing/qgsprocessingguiutils.sip
 %Include auto_generated/processing/qgsprocessinghistoryprovider.sip
 %Include auto_generated/processing/qgsprocessinghistorywidget.sip
 %Include auto_generated/processing/qgsprocessingmaplayercombobox.sip

@@ -35,9 +35,8 @@ class QgsAbstractCacheIndex;
 
 /**
  * \ingroup core
- * \brief This class caches features of a given QgsVectorLayer.
+ * \brief Caches features for a given QgsVectorLayer.
  *
- * \brief
  * The cached features can be indexed by QgsAbstractCacheIndex.
  *
  * Proper indexing for a given use-case may speed up performance substantially.
@@ -71,7 +70,7 @@ class CORE_EXPORT QgsVectorLayerCache : public QObject
           , mAllAttributesFetched( allAttributesFetched )
           , mGeometryFetched( geometryFetched )
         {
-          mFeature = new QgsFeature( feat );
+          mFeature = std::make_unique<QgsFeature>( feat );
         }
 
         ~QgsCachedFeature()
@@ -79,17 +78,17 @@ class CORE_EXPORT QgsVectorLayerCache : public QObject
           // That's the reason we need this wrapper:
           // Inform the cache that this feature has been removed
           mCache->featureRemoved( mFeature->id() );
-          delete mFeature;
+
         }
 
-        inline const QgsFeature *feature() { return mFeature; }
+        inline const QgsFeature *feature() { return mFeature.get(); }
 
         bool allAttributesFetched() const;
 
         bool geometryFetched() const;
 
       private:
-        QgsFeature *mFeature = nullptr;
+        std::unique_ptr<QgsFeature> mFeature;
         QgsVectorLayerCache *mCache = nullptr;
         bool mAllAttributesFetched = true;
         bool mGeometryFetched = false;

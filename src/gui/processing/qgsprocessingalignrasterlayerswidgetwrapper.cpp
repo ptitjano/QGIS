@@ -152,7 +152,7 @@ void QgsProcessingAlignRasterLayersPanelWidget::configureRaster()
     widget->setPanelTitle( tr( "Configure Raster" ) );
     widget->buttonBox()->hide();
 
-    connect( widget, &QgsProcessingAlignRasterLayerDetailsWidget::widgetChanged, this, [=]() {
+    connect( widget, &QgsProcessingAlignRasterLayerDetailsWidget::widgetChanged, this, [this, item, widget]() {
       setItemValue( item, widget->value() );
     } );
     panel->openPanel( widget );
@@ -238,7 +238,7 @@ void QgsProcessingAlignRasterLayersWidget::showDialog()
   {
     QgsProcessingAlignRasterLayersPanelWidget *widget = new QgsProcessingAlignRasterLayersPanelWidget( mValue, mProject );
     widget->setPanelTitle( tr( "Input layers" ) );
-    connect( widget, &QgsProcessingMultipleSelectionPanelWidget::selectionChanged, this, [=]() {
+    connect( widget, &QgsProcessingMultipleSelectionPanelWidget::selectionChanged, this, [this, widget]() {
       setValue( widget->selectedOptions() );
     } );
     connect( widget, &QgsProcessingMultipleSelectionPanelWidget::acceptClicked, widget, &QgsPanelWidget::acceptPanel );
@@ -272,7 +272,7 @@ void QgsProcessingAlignRasterLayersWidget::updateSummaryText()
 // QgsProcessingAlignRasterLayersWidgetWrapper
 //
 
-QgsProcessingAlignRasterLayersWidgetWrapper::QgsProcessingAlignRasterLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type, QWidget *parent )
+QgsProcessingAlignRasterLayersWidgetWrapper::QgsProcessingAlignRasterLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type, QWidget *parent )
   : QgsAbstractProcessingParameterWidgetWrapper( parameter, type, parent )
 {
 }
@@ -282,7 +282,7 @@ QString QgsProcessingAlignRasterLayersWidgetWrapper::parameterType() const
   return QgsProcessingParameterAlignRasterLayers::typeName();
 }
 
-QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingAlignRasterLayersWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type )
+QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingAlignRasterLayersWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type )
 {
   return new QgsProcessingAlignRasterLayersWidgetWrapper( parameter, type );
 }
@@ -291,7 +291,11 @@ QWidget *QgsProcessingAlignRasterLayersWidgetWrapper::createWidget()
 {
   mPanel = new QgsProcessingAlignRasterLayersWidget( nullptr );
   mPanel->setProject( widgetContext().project() );
-  connect( mPanel, &QgsProcessingAlignRasterLayersWidget::changed, this, [=] {
+  if ( parameterDefinition() )
+  {
+    mPanel->setToolTip( parameterDefinition()->toolTip() );
+  }
+  connect( mPanel, &QgsProcessingAlignRasterLayersWidget::changed, this, [this] {
     emit widgetValueHasChanged( this );
   } );
   return mPanel;
@@ -318,27 +322,6 @@ void QgsProcessingAlignRasterLayersWidgetWrapper::setWidgetValue( const QVariant
 QVariant QgsProcessingAlignRasterLayersWidgetWrapper::widgetValue() const
 {
   return mPanel ? mPanel->value() : QVariant();
-}
-
-QStringList QgsProcessingAlignRasterLayersWidgetWrapper::compatibleParameterTypes() const
-{
-  return QStringList()
-         << QgsProcessingParameterMultipleLayers::typeName()
-         << QgsProcessingParameterMapLayer::typeName()
-         << QgsProcessingParameterVectorLayer::typeName()
-         << QgsProcessingParameterFeatureSource::typeName()
-         << QgsProcessingParameterFile::typeName()
-         << QgsProcessingParameterString::typeName();
-}
-
-QStringList QgsProcessingAlignRasterLayersWidgetWrapper::compatibleOutputTypes() const
-{
-  return QStringList()
-         << QgsProcessingOutputString::typeName()
-         << QgsProcessingOutputMapLayer::typeName()
-         << QgsProcessingOutputVectorLayer::typeName()
-         << QgsProcessingOutputMultipleLayers::typeName()
-         << QgsProcessingOutputFile::typeName();
 }
 
 /// @endcond

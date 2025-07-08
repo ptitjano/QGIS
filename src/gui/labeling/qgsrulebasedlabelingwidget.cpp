@@ -228,6 +228,9 @@ void QgsRuleBasedLabelingWidget::copy()
 void QgsRuleBasedLabelingWidget::paste()
 {
   const QMimeData *mime = QApplication::clipboard()->mimeData();
+  if ( !mime )
+    return;
+
   QModelIndexList indexlist = viewRules->selectionModel()->selectedRows();
   QModelIndex index;
   if ( indexlist.isEmpty() )
@@ -707,8 +710,8 @@ QgsLabelingRulePropsWidget::QgsLabelingRulePropsWidget( QgsRuleBasedLabeling::Ru
   connect( mScaleRangeWidget, &QgsScaleRangeWidget::rangeChanged, this, &QgsLabelingRulePropsWidget::widgetChanged );
   connect( groupSettings, &QGroupBox::toggled, this, &QgsLabelingRulePropsWidget::widgetChanged );
   connect( mLabelingGui, &QgsTextFormatWidget::widgetChanged, this, &QgsLabelingRulePropsWidget::widgetChanged );
-  connect( mFilterRadio, &QRadioButton::toggled, this, [=]( bool toggled ) { filterFrame->setEnabled( toggled ); } );
-  connect( mElseRadio, &QRadioButton::toggled, this, [=]( bool toggled ) { if ( toggled ) editFilter->setText( QStringLiteral( "ELSE" ) ); } );
+  connect( mFilterRadio, &QRadioButton::toggled, this, [this]( bool toggled ) { filterFrame->setEnabled( toggled ); } );
+  connect( mElseRadio, &QRadioButton::toggled, this, [this]( bool toggled ) { if ( toggled ) editFilter->setText( QStringLiteral( "ELSE" ) ); } );
 }
 
 QgsLabelingRulePropsWidget::~QgsLabelingRulePropsWidget()

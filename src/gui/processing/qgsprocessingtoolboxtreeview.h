@@ -87,6 +87,23 @@ class GUI_EXPORT QgsProcessingToolboxTreeView : public QTreeView
     const QgsProcessingAlgorithm *selectedAlgorithm();
 
     /**
+     * Returns the model parameter at the specified tree view \a index, or NULLPTR
+     * if the index does not correspond to a model parameter.
+     * 
+     * \since 3.44
+     */
+    const QgsProcessingParameterType *parameterTypeForIndex( const QModelIndex &index );
+
+    /**
+     * Returns the currently selected model parameter in the tree view, or NULLPTR
+     * if no model parameter is currently selected.
+     * 
+     * \since 3.44
+     */
+    const QgsProcessingParameterType *selectedParameterType();
+
+
+    /**
      * Sets \a filters controlling the view's contents.
      * \see filters()
      */
@@ -111,6 +128,11 @@ class GUI_EXPORT QgsProcessingToolboxTreeView : public QTreeView
      * to matching algorithms.
      */
     void setFilterString( const QString &filter );
+
+    /**
+     * Expands the tree view if a filter string is set after the view is reset.
+     */
+    void reset() override;
 
   protected:
     void keyPressEvent( QKeyEvent *event ) override;

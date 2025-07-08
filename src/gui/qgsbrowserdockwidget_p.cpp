@@ -154,7 +154,7 @@ QgsBrowserLayerProperties::QgsBrowserLayerProperties( QWidget *parent )
   mMapCanvas->setMapTool( new QgsMapToolPan( mMapCanvas ) );
   mMapCanvas->freeze( true );
 
-  connect( mTabWidget, &QTabWidget::currentChanged, this, [=] {
+  connect( mTabWidget, &QTabWidget::currentChanged, this, [this] {
     if ( mTabWidget->currentWidget() == mPreviewTab && mMapCanvas->isFrozen() )
     {
       mMapCanvas->freeze( false );
@@ -270,6 +270,16 @@ void QgsBrowserLayerProperties::setItem( QgsDataItem *item )
     {
       mTabWidget->removeTab( mTabWidget->indexOf( mAttributesTab ) );
       mAttributesTab = nullptr;
+    }
+
+    // Remove Preview Tab if layer has no geometry
+    if ( QgsVectorLayer *vLayer = qobject_cast<QgsVectorLayer *>( mLayer.get() ) )
+    {
+      if ( vLayer->geometryType() == Qgis::GeometryType::Null )
+      {
+        mTabWidget->removeTab( mTabWidget->indexOf( mPreviewTab ) );
+        mPreviewTab = nullptr;
+      }
     }
   }
 

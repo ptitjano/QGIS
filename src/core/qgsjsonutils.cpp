@@ -352,7 +352,7 @@ QVariantList QgsJsonUtils::parseArray( const QString &json, QMetaType::Type type
     const auto jObj( json::parse( json.toStdString() ) );
     if ( ! jObj.is_array() )
     {
-      throw json::parse_error::create( 0, 0, QStringLiteral( "JSON value must be an array" ).toStdString() );
+      throw json::parse_error::create( 0, 0, QStringLiteral( "JSON value must be an array" ).toStdString(), &jObj );
     }
     for ( const auto &item : jObj )
     {
@@ -899,7 +899,7 @@ QVariant QgsJsonUtils::jsonToVariant( const json &value )
 
 QVariant QgsJsonUtils::parseJson( const QString &jsonString )
 {
-  return parseJson( jsonString.toStdString() );
+  return jsonString.isEmpty() ? QVariant() : parseJson( jsonString.toStdString() );
 }
 
 json QgsJsonUtils::exportAttributesToJsonObject( const QgsFeature &feature, QgsVectorLayer *layer, const QVector<QVariant> &attributeWidgetCaches, bool useFieldFormatters )

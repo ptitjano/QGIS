@@ -57,7 +57,7 @@ QgsAuthOAuth2Edit::QgsAuthOAuth2Edit( QWidget *parent )
   updatePredefinedLocationsTooltip();
 
   pteDefinedDesc->setOpenLinks( false );
-  connect( pteDefinedDesc, &QTextBrowser::anchorClicked, this, [=]( const QUrl &url ) {
+  connect( pteDefinedDesc, &QTextBrowser::anchorClicked, this, []( const QUrl &url ) {
     QDesktopServices::openUrl( url );
   } );
 }
@@ -164,7 +164,7 @@ void QgsAuthOAuth2Edit::setupConnections()
 
   connect( btnSoftStatementDir, &QToolButton::clicked, this, &QgsAuthOAuth2Edit::getSoftStatementDir );
   connect( leSoftwareStatementJwtPath, &QLineEdit::textChanged, this, &QgsAuthOAuth2Edit::softwareStatementJwtPathChanged );
-  connect( leSoftwareStatementConfigUrl, &QLineEdit::textChanged, this, [=]( const QString &txt ) {
+  connect( leSoftwareStatementConfigUrl, &QLineEdit::textChanged, this, [this]( const QString &txt ) {
     btnRegister->setEnabled( !leSoftwareStatementJwtPath->text().isEmpty() && ( QUrl( txt ).isValid() || !mRegistrationEndpoint.isEmpty() ) );
   } );
   connect( btnRegister, &QPushButton::clicked, this, &QgsAuthOAuth2Edit::getSoftwareStatementConfig );
@@ -176,7 +176,7 @@ void QgsAuthOAuth2Edit::setupConnections()
   connect( leTokenUrl, &QLineEdit::textChanged, mOAuthConfigCustom.get(), &QgsAuthOAuth2Config::setTokenUrl );
   connect( leRefreshTokenUrl, &QLineEdit::textChanged, mOAuthConfigCustom.get(), &QgsAuthOAuth2Config::setRefreshTokenUrl );
   connect( leRedirectUrl, &QLineEdit::textChanged, mOAuthConfigCustom.get(), &QgsAuthOAuth2Config::setRedirectUrl );
-  connect( comboRedirectHost, qOverload<int>( &QComboBox::currentIndexChanged ), this, [=] {
+  connect( comboRedirectHost, qOverload<int>( &QComboBox::currentIndexChanged ), this, [this] {
     mOAuthConfigCustom->setRedirectHost( comboRedirectHost->currentData().toString() );
   } );
   connect( spnbxRedirectPort, static_cast<void ( QSpinBox::* )( int )>( &QSpinBox::valueChanged ), mOAuthConfigCustom.get(), &QgsAuthOAuth2Config::setRedirectPort );
@@ -191,7 +191,7 @@ void QgsAuthOAuth2Edit::setupConnections()
   connect( spnbxRequestTimeout, static_cast<void ( QSpinBox::* )( int )>( &QSpinBox::valueChanged ), mOAuthConfigCustom.get(), &QgsAuthOAuth2Config::setRequestTimeout );
 
   connect( mTokenHeaderLineEdit, &QLineEdit::textChanged, mOAuthConfigCustom.get(), &QgsAuthOAuth2Config::setCustomHeader );
-  connect( mExtraTokensTable, &QTableWidget::cellChanged, mOAuthConfigCustom.get(), [=]( int, int ) {
+  connect( mExtraTokensTable, &QTableWidget::cellChanged, mOAuthConfigCustom.get(), [this]( int, int ) {
     mOAuthConfigCustom->setExtraTokens( extraTokens() );
   } );
   connect( mAddExtraTokenButton, &QToolButton::clicked, this, &QgsAuthOAuth2Edit::addExtraToken );
@@ -505,6 +505,7 @@ void QgsAuthOAuth2Edit::populateGrantFlows()
   cmbbxGrantFlow->addItem( QgsAuthOAuth2Config::grantFlowString( QgsAuthOAuth2Config::GrantFlow::Implicit ), static_cast<int>( QgsAuthOAuth2Config::GrantFlow::Implicit ) );
   cmbbxGrantFlow->addItem( QgsAuthOAuth2Config::grantFlowString( QgsAuthOAuth2Config::GrantFlow::ResourceOwner ), static_cast<int>( QgsAuthOAuth2Config::GrantFlow::ResourceOwner ) );
   cmbbxGrantFlow->addItem( QgsAuthOAuth2Config::grantFlowString( QgsAuthOAuth2Config::GrantFlow::Pkce ), static_cast<int>( QgsAuthOAuth2Config::GrantFlow::Pkce ) );
+  cmbbxGrantFlow->addItem( QgsAuthOAuth2Config::grantFlowString( QgsAuthOAuth2Config::GrantFlow::ClientCredentials ), static_cast<int>( QgsAuthOAuth2Config::GrantFlow::ClientCredentials ) );
 }
 
 
@@ -739,15 +740,16 @@ void QgsAuthOAuth2Edit::updateGrantFlow( int indx )
   // bool authcode = ( flow == QgsAuthOAuth2Config::AuthCode );
   const bool implicit = ( flow == QgsAuthOAuth2Config::GrantFlow::Implicit );
   const bool resowner = ( flow == QgsAuthOAuth2Config::GrantFlow::ResourceOwner );
+  const bool ccredentials = ( flow == QgsAuthOAuth2Config::GrantFlow::ClientCredentials );
   const bool pkce = ( flow == QgsAuthOAuth2Config::GrantFlow::Pkce );
 
-  lblRequestUrl->setVisible( !resowner );
-  leRequestUrl->setVisible( !resowner );
-  if ( resowner )
+  lblRequestUrl->setVisible( !resowner && !ccredentials );
+  leRequestUrl->setVisible( !resowner && !ccredentials );
+  if ( resowner || ccredentials )
     leRequestUrl->setText( QString() );
 
-  lblRedirectUrl->setVisible( !resowner );
-  frameRedirectUrl->setVisible( !resowner );
+  lblRedirectUrl->setVisible( !resowner && !ccredentials );
+  frameRedirectUrl->setVisible( !resowner && !ccredentials );
 
   lblClientSecret->setVisible( !implicit );
   leClientSecret->setVisible( !implicit );
@@ -760,7 +762,6 @@ void QgsAuthOAuth2Edit::updateGrantFlow( int indx )
   lblClientSecret->setVisible( !pkce );
   leClientSecret->setVisible( !pkce );
   leClientSecret->setPlaceholderText( resowner ? tr( "Optional" ) : tr( "Required" ) );
-
 
   lblUsername->setVisible( resowner );
   leUsername->setVisible( resowner );

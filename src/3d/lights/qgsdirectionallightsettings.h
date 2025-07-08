@@ -25,8 +25,8 @@ class QDomDocument;
 class QDomElement;
 
 /**
- * \ingroup 3d
- * \brief Definition of a directional light in a 3D map scene
+ * \ingroup qgis_3d
+ * \brief Definition of a directional light in a 3D map scene.
  *
  * \since QGIS 3.16
  */
@@ -58,7 +58,7 @@ class _3D_EXPORT QgsDirectionalLightSettings : public QgsLightSource
     void setIntensity( float intensity ) { mIntensity = intensity; }
 
     // TODO c++20 - replace with = default
-    bool operator==( const QgsDirectionalLightSettings &other );
+    bool operator==( const QgsDirectionalLightSettings &other ) const;
 
   private:
     QgsVector3D mDirection { -0.32, 0.27, -0.91 };

@@ -66,6 +66,7 @@
 #include <QStandardPaths>
 #include <QUuid>
 #include <QRegularExpression>
+#include <QXmlStreamReader>
 
 #include <sqlite3.h>
 
@@ -91,7 +92,7 @@ QgsMapLayer::QgsMapLayer( Qgis::LayerType type,
   , mServerProperties( std::make_unique<QgsMapLayerServerProperties>( this ) )
   , mUndoStack( new QUndoStack( this ) )
   , mUndoStackStyles( new QUndoStack( this ) )
-  , mStyleManager( new QgsMapLayerStyleManager( this ) )
+  , mStyleManager( std::make_unique<QgsMapLayerStyleManager>( this ) )
   , mRefreshTimer( new QTimer( this ) )
 {
   mID = generateId( lyrname );
@@ -121,9 +122,9 @@ QgsMapLayer::~QgsMapLayer()
     project()->removeAttachedFile( mDataSource );
   }
 
-  delete m3DRenderer;
-  delete mLegend;
-  delete mStyleManager;
+
+
+
 }
 
 void QgsMapLayer::clone( QgsMapLayer *layer ) const
@@ -682,30 +683,7 @@ bool QgsMapLayer::readLayerXml( const QDomElement &layerElement, QgsReadWriteCon
   }
   rebuildCrs3D();
 
-  //legendUrl
-  const QDomElement legendUrlElem = layerElement.firstChildElement( QStringLiteral( "legendUrl" ) );
-  if ( !legendUrlElem.isNull() )
-  {
-    mServerProperties->setLegendUrl( legendUrlElem.text() );
-    mServerProperties->setLegendUrlFormat( legendUrlElem.attribute( QStringLiteral( "format" ), QString() ) );
-  }
-
   serverProperties()->readXml( layerElement );
-
-  if ( serverProperties()->metadataUrls().isEmpty() )
-  {
-    // metadataUrl is still empty, maybe it's a QGIS Project < 3.22
-    // keep for legacy
-    const QDomElement metaUrlElem = layerElement.firstChildElement( QStringLiteral( "metadataUrl" ) );
-    if ( !metaUrlElem.isNull() )
-    {
-      const QString url = metaUrlElem.text();
-      const QString type = metaUrlElem.attribute( QStringLiteral( "type" ), QString() );
-      const QString format = metaUrlElem.attribute( QStringLiteral( "format" ), QString() );
-      const QgsMapLayerServerProperties::MetadataUrl newItem( url, type, format );
-      mServerProperties->setMetadataUrls( QList<QgsMapLayerServerProperties::MetadataUrl>() << newItem );
-    }
-  }
 
   // mMetadata.readFromLayer( this );
   const QDomElement metadataElem = layerElement.firstChildElement( QStringLiteral( "resourceMetadata" ) );
@@ -778,8 +756,15 @@ bool QgsMapLayer::writeLayerXml( QDomElement &layerElement, QDomDocument &docume
 
   if ( !mExtent3D.isNull() && dataProvider() && dataProvider()->elevationProperties() && dataProvider()->elevationProperties()->containsElevationData() )
     layerElement.appendChild( QgsXmlUtils::writeBox3D( mExtent3D, document ) );
-  else if ( !mExtent2D.isNull() )
-    layerElement.appendChild( QgsXmlUtils::writeRectangle( mExtent2D, document ) );
+  else
+  {
+    // Extent might be null because lazily set
+    const QgsRectangle extent2D { mExtent2D.isNull() ? extent() : mExtent2D };
+    if ( !extent2D.isNull() )
+    {
+      layerElement.appendChild( QgsXmlUtils::writeRectangle( extent2D, document ) );
+    }
+  }
 
   if ( const QgsRectangle lWgs84Extent = wgs84Extent( true ); !lWgs84Extent.isNull() )
   {
@@ -818,90 +803,6 @@ bool QgsMapLayer::writeLayerXml( QDomElement &layerElement, QDomDocument &docume
   layerName.appendChild( layerNameText );
   layerElement.appendChild( layerName );
 
-  // layer short name
-
-  // TODO -- ideally this would be in QgsMapLayerServerProperties::writeXml, but that's currently
-  // only called for SOME map layer subclasses!
-  if ( !mServerProperties->shortName().isEmpty() )
-  {
-    QDomElement layerShortName = document.createElement( QStringLiteral( "shortname" ) );
-    const QDomText layerShortNameText = document.createTextNode( mServerProperties->shortName() );
-    layerShortName.appendChild( layerShortNameText );
-    layerElement.appendChild( layerShortName );
-  }
-
-  // layer title
-  if ( !mServerProperties->title().isEmpty() )
-  {
-    QDomElement layerTitle = document.createElement( QStringLiteral( "title" ) );
-    const QDomText layerTitleText = document.createTextNode( mServerProperties->title() );
-    layerTitle.appendChild( layerTitleText );
-
-    if ( mServerProperties->title() != mServerProperties->wfsTitle() )
-    {
-      layerTitle.setAttribute( "wfs",  mServerProperties->wfsTitle() );
-    }
-
-    layerElement.appendChild( layerTitle );
-  }
-
-  // layer abstract
-  if ( !mServerProperties->abstract().isEmpty() )
-  {
-    QDomElement layerAbstract = document.createElement( QStringLiteral( "abstract" ) );
-    const QDomText layerAbstractText = document.createTextNode( mServerProperties->abstract() );
-    layerAbstract.appendChild( layerAbstractText );
-    layerElement.appendChild( layerAbstract );
-  }
-
-  // layer keyword list
-  const QStringList keywordStringList = mServerProperties->keywordList().split( ',' );
-  if ( !keywordStringList.isEmpty() )
-  {
-    QDomElement layerKeywordList = document.createElement( QStringLiteral( "keywordList" ) );
-    for ( int i = 0; i < keywordStringList.size(); ++i )
-    {
-      QDomElement layerKeywordValue = document.createElement( QStringLiteral( "value" ) );
-      const QDomText layerKeywordText = document.createTextNode( keywordStringList.at( i ).trimmed() );
-      layerKeywordValue.appendChild( layerKeywordText );
-      layerKeywordList.appendChild( layerKeywordValue );
-    }
-    layerElement.appendChild( layerKeywordList );
-  }
-
-  // layer dataUrl
-  const QString aDataUrl = mServerProperties->dataUrl();
-  if ( !aDataUrl.isEmpty() )
-  {
-    QDomElement layerDataUrl = document.createElement( QStringLiteral( "dataUrl" ) );
-    const QDomText layerDataUrlText = document.createTextNode( aDataUrl );
-    layerDataUrl.appendChild( layerDataUrlText );
-    layerDataUrl.setAttribute( QStringLiteral( "format" ), mServerProperties->dataUrlFormat() );
-    layerElement.appendChild( layerDataUrl );
-  }
-
-  // layer legendUrl
-  const QString aLegendUrl = mServerProperties->legendUrl();
-  if ( !aLegendUrl.isEmpty() )
-  {
-    QDomElement layerLegendUrl = document.createElement( QStringLiteral( "legendUrl" ) );
-    const QDomText layerLegendUrlText = document.createTextNode( aLegendUrl );
-    layerLegendUrl.appendChild( layerLegendUrlText );
-    layerLegendUrl.setAttribute( QStringLiteral( "format" ), mServerProperties->legendUrlFormat() );
-    layerElement.appendChild( layerLegendUrl );
-  }
-
-  // layer attribution
-  const QString aAttribution = mServerProperties->attribution();
-  if ( !aAttribution.isEmpty() )
-  {
-    QDomElement layerAttribution = document.createElement( QStringLiteral( "attribution" ) );
-    const QDomText layerAttributionText = document.createTextNode( aAttribution );
-    layerAttribution.appendChild( layerAttributionText );
-    layerAttribution.setAttribute( QStringLiteral( "href" ), mServerProperties->attributionUrl() );
-    layerElement.appendChild( layerAttribution );
-  }
-
   // timestamp if supported
   if ( timestamp() > QDateTime() )
   {
@@ -928,6 +829,8 @@ bool QgsMapLayer::writeLayerXml( QDomElement &layerElement, QDomDocument &docume
   layerElement.appendChild( myMetadataElem );
 
   layerElement.setAttribute( QStringLiteral( "legendPlaceholderImage" ), mLegendPlaceholderImage );
+
+  serverProperties()->writeXml( layerElement, document );
 
   // now append layer node to map layer node
   return writeXml( layerElement, document, context );
@@ -2202,11 +2105,21 @@ QString QgsMapLayer::saveNamedStyle( const QString &uri, bool &resultFlag, Style
 
 void QgsMapLayer::exportSldStyle( QDomDocument &doc, QString &errorMsg ) const
 {
-
-  return exportSldStyleV2( doc, errorMsg, QgsSldExportContext() );
+  QgsSldExportContext exportContext;
+  doc = exportSldStyleV3( exportContext );
+  if ( !exportContext.errors().empty() )
+    errorMsg = exportContext.errors().join( "\n" );
 }
 
-void QgsMapLayer::exportSldStyleV2( QDomDocument &doc, QString &errorMsg, const QgsSldExportContext &exportContext ) const
+void QgsMapLayer::exportSldStyleV2( QDomDocument &doc, QString &errorMsg, QgsSldExportContext &exportContext ) const
+{
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+  doc = exportSldStyleV3( exportContext );
+  if ( !exportContext.errors().empty() )
+    errorMsg = exportContext.errors().join( "\n" );
+}
+
+QDomDocument QgsMapLayer::exportSldStyleV3( QgsSldExportContext &exportContext ) const
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
@@ -2219,9 +2132,9 @@ void QgsMapLayer::exportSldStyleV2( QDomDocument &doc, QString &errorMsg, const 
   const QgsRasterLayer *rlayer = qobject_cast<const QgsRasterLayer *>( this );
   if ( !vlayer && !rlayer )
   {
-    errorMsg = tr( "Could not save symbology because:\n%1" )
-               .arg( tr( "Only vector and raster layers are supported" ) );
-    return;
+    exportContext.pushError( tr( "Could not save symbology because:\n%1" )
+                             .arg( tr( "Only vector and raster layers are supported" ) ) );
+    return myDocument;
   }
 
   // Create the root element
@@ -2257,11 +2170,12 @@ void QgsMapLayer::exportSldStyleV2( QDomDocument &doc, QString &errorMsg, const 
     root.appendChild( layerNode );
   }
 
-  QVariantMap props;
+  QVariantMap props = exportContext.extraProperties();
 
   QVariant context;
   context.setValue( exportContext );
 
+  // TODO -- move this to proper members of QgsSldExportContext
   props[ QStringLiteral( "SldExportContext" ) ] = context;
 
   if ( hasScaleBasedVisibility() )
@@ -2269,26 +2183,24 @@ void QgsMapLayer::exportSldStyleV2( QDomDocument &doc, QString &errorMsg, const 
     props[ QStringLiteral( "scaleMinDenom" ) ] = QString::number( mMinScale );
     props[ QStringLiteral( "scaleMaxDenom" ) ] = QString::number( mMaxScale );
   }
+  exportContext.setExtraProperties( props );
 
   if ( vlayer )
   {
-    if ( !vlayer->writeSld( layerNode, myDocument, errorMsg, props ) )
+    if ( !vlayer->writeSld( layerNode, myDocument, exportContext ) )
     {
-      errorMsg = tr( "Could not save symbology because:\n%1" ).arg( errorMsg );
-      return;
+      return myDocument;
     }
   }
-
-  if ( rlayer )
+  else if ( rlayer )
   {
-    if ( !rlayer->writeSld( layerNode, myDocument, errorMsg, props ) )
+    if ( !rlayer->writeSld( layerNode, myDocument, exportContext ) )
     {
-      errorMsg = tr( "Could not save symbology because:\n%1" ).arg( errorMsg );
-      return;
+      return myDocument;
     }
   }
 
-  doc = myDocument;
+  return myDocument;
 }
 
 QString QgsMapLayer::saveSldStyle( const QString &uri, bool &resultFlag ) const
@@ -2298,7 +2210,7 @@ QString QgsMapLayer::saveSldStyle( const QString &uri, bool &resultFlag ) const
   return saveSldStyleV2( resultFlag, context );
 }
 
-QString QgsMapLayer::saveSldStyleV2( bool &resultFlag, const QgsSldExportContext &exportContext ) const
+QString QgsMapLayer::saveSldStyleV2( bool &resultFlag, QgsSldExportContext &exportContext ) const
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
@@ -2344,18 +2256,15 @@ QString QgsMapLayer::saveSldStyleV2( bool &resultFlag, const QgsSldExportContext
     // now construct the file name for our .sld style file
     const QString myFileName = myFileInfo.path() + QDir::separator() + myFileInfo.completeBaseName() + ".sld";
 
-    QString errorMsg;
-    QDomDocument myDocument;
-
     QgsSldExportContext context { exportContext };
     context.setExportFilePath( myFileName );
 
-    mlayer->exportSldStyleV2( myDocument, errorMsg, context );
+    QDomDocument myDocument = mlayer->exportSldStyleV3( context );
 
-    if ( !errorMsg.isNull() )
+    if ( !context.errors().empty() )
     {
       resultFlag = false;
-      return errorMsg;
+      return context.errors().join( '\n' );
     }
 
     QFile myFile( myFileName );
@@ -2384,14 +2293,32 @@ QString QgsMapLayer::loadSldStyle( const QString &uri, bool &resultFlag )
   QDomDocument myDocument;
 
   // location of problem associated with errorMsg
-  int line, column;
+  int line = 0, column = 0;
   QString myErrorMessage;
 
   QFile myFile( uri );
   if ( myFile.open( QFile::ReadOnly ) )
   {
     // read file
+#if QT_VERSION >= QT_VERSION_CHECK( 6, 5, 0 )
+    QXmlStreamReader xmlReader( &myFile );
+    xmlReader.addExtraNamespaceDeclaration( QXmlStreamNamespaceDeclaration( QStringLiteral( "sld" ), QStringLiteral( "http://www.opengis.net/sld" ) ) );
+    xmlReader.addExtraNamespaceDeclaration( QXmlStreamNamespaceDeclaration( QStringLiteral( "fes" ), QStringLiteral( "http://www.opengis.net/fes/2.0" ) ) );
+    xmlReader.addExtraNamespaceDeclaration( QXmlStreamNamespaceDeclaration( QStringLiteral( "ogc" ), QStringLiteral( "http://www.opengis.net/ogc" ) ) );
+    const QDomDocument::ParseResult result = myDocument.setContent( &xmlReader, QDomDocument::ParseOption::UseNamespaceProcessing );
+    if ( result )
+    {
+      resultFlag = true;
+    }
+    else
+    {
+      myErrorMessage = result.errorMessage;
+      line = result.errorLine;
+      column = result.errorColumn;
+    }
+#else
     resultFlag = myDocument.setContent( &myFile, true, &myErrorMessage, &line, &column );
+#endif
     if ( !resultFlag )
       myErrorMessage = tr( "%1 at line %2 column %3" ).arg( myErrorMessage ).arg( line ).arg( column );
     myFile.close();
@@ -2731,28 +2658,45 @@ bool QgsMapLayer::deleteStyleFromDatabase( const QString &styleId, QString &msgE
 void QgsMapLayer::saveStyleToDatabase( const QString &name, const QString &description,
                                        bool useAsDefault, const QString &uiFileContent, QString &msgError, QgsMapLayer::StyleCategories categories )
 {
+  saveStyleToDatabaseV2( name, description, useAsDefault, uiFileContent, msgError, categories );
+}
+
+QgsMapLayer::SaveStyleResults QgsMapLayer::saveStyleToDatabaseV2( const QString &name, const QString &description, bool useAsDefault, const QString &uiFileContent, QString &msgError, QgsMapLayer::StyleCategories categories )
+{
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
+  QgsMapLayer::SaveStyleResults results;
+
   QString sldStyle, qmlStyle;
-  QDomDocument qmlDocument, sldDocument;
+  QDomDocument qmlDocument;
   QgsReadWriteContext context;
   exportNamedStyle( qmlDocument, msgError, context, categories );
-  if ( !msgError.isNull() )
+  if ( !msgError.isEmpty() )
   {
-    return;
+    results.setFlag( QgsMapLayer::SaveStyleResult::QmlGenerationFailed );
   }
-  qmlStyle = qmlDocument.toString();
-
-  this->exportSldStyle( sldDocument, msgError );
-  if ( !msgError.isNull() )
+  else
   {
-    return;
+    qmlStyle = qmlDocument.toString();
   }
-  sldStyle = sldDocument.toString();
 
-  QgsProviderRegistry::instance()->saveStyle( mProviderKey,
-      mDataSource, qmlStyle, sldStyle, name,
-      description, uiFileContent, useAsDefault, msgError );
+  QgsSldExportContext sldContext;
+  QDomDocument sldDocument = this->exportSldStyleV3( sldContext );
+  if ( !sldContext.errors().empty() )
+  {
+    results.setFlag( QgsMapLayer::SaveStyleResult::SldGenerationFailed );
+  }
+  else
+  {
+    sldStyle = sldDocument.toString();
+  }
+
+  if ( !QgsProviderRegistry::instance()->saveStyle( mProviderKey,
+       mDataSource, qmlStyle, sldStyle, name, description, uiFileContent, useAsDefault, msgError ) )
+  {
+    results.setFlag( QgsMapLayer::SaveStyleResult::DatabaseWriteFailed );
+  }
+  return results;
 }
 
 QString QgsMapLayer::loadNamedStyle( const QString &theURI, bool &resultFlag, bool loadFromLocalDB, QgsMapLayer::StyleCategories categories, Qgis::LoadStyleFlags flags )
@@ -2870,16 +2814,16 @@ void QgsMapLayer::setLegend( QgsMapLayerLegend *legend )
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
-  if ( legend == mLegend )
+  if ( legend == mLegend.get() )
     return;
 
-  delete mLegend;
-  mLegend = legend;
+  mLegend.reset( legend );
+
 
   if ( mLegend )
   {
     mLegend->setParent( this );
-    connect( mLegend, &QgsMapLayerLegend::itemsChanged, this, &QgsMapLayer::legendChanged, Qt::UniqueConnection );
+    connect( mLegend.get(), &QgsMapLayerLegend::itemsChanged, this, &QgsMapLayer::legendChanged, Qt::UniqueConnection );
   }
 
   emit legendChanged();
@@ -2889,25 +2833,25 @@ QgsMapLayerLegend *QgsMapLayer::legend() const
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
-  return mLegend;
+  return mLegend.get();
 }
 
 QgsMapLayerStyleManager *QgsMapLayer::styleManager() const
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
-  return mStyleManager;
+  return mStyleManager.get();
 }
 
 void QgsMapLayer::setRenderer3D( QgsAbstract3DRenderer *renderer )
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
-  if ( renderer == m3DRenderer )
+  if ( renderer == m3DRenderer.get() )
     return;
 
-  delete m3DRenderer;
-  m3DRenderer = renderer;
+  m3DRenderer.reset( renderer );
+
   emit renderer3DChanged();
   emit repaintRequested();
   trigger3DUpdate();
@@ -2917,7 +2861,7 @@ QgsAbstract3DRenderer *QgsMapLayer::renderer3D() const
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
-  return m3DRenderer;
+  return m3DRenderer.get();
 }
 
 void QgsMapLayer::triggerRepaint( bool deferredUpdate )
@@ -3120,7 +3064,7 @@ QgsRectangle QgsMapLayer::wgs84Extent( bool forceRecalculate ) const
   }
   else if ( ! mExtent2D.isNull() || ! mExtent3D.isNull() )
   {
-    QgsCoordinateTransform transformer { crs(), QgsCoordinateReferenceSystem::fromOgcWmsCrs( geoEpsgCrsAuthId() ), transformContext() };
+    QgsCoordinateTransform transformer { crs(), QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ), transformContext() };
     transformer.setBallparkTransformsAreAppropriate( true );
     try
     {
@@ -3319,6 +3263,9 @@ QString QgsMapLayer::generalHtmlMetadata() const
   if ( dataProvider() )
     metadata += QStringLiteral( "<tr><td class=\"highlight\">" ) + tr( "Provider" ) + QStringLiteral( "</td><td>%1" ).arg( dataProvider()->name() ) + QStringLiteral( "</td></tr>\n" );
 
+  // Layer ID
+  metadata += QStringLiteral( "<tr><td class=\"highlight\">" ) + tr( "Layer ID" ) + QStringLiteral( "</td><td>%1" ).arg( id() ) + QStringLiteral( "</td></tr>\n" );
+
   metadata += QLatin1String( "</table>\n<br><br>" );
 
   return metadata;
@@ -3428,7 +3375,7 @@ QString QgsMapLayer::crsHtmlMetadata() const
           if ( !ensemble.code().isEmpty() )
             id = QStringLiteral( "<i>%1</i> (%2:%3)" ).arg( ensemble.name(), ensemble.authority(), ensemble.code() );
           else
-            id = QStringLiteral( "<i>%</i>”" ).arg( ensemble.name() );
+            id = QStringLiteral( "<i>%1</i>”" ).arg( ensemble.name() );
 
           if ( ensemble.accuracy() > 0 )
           {

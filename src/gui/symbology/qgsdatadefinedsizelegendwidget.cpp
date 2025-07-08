@@ -43,7 +43,7 @@ QgsDataDefinedSizeLegendWidget::QgsDataDefinedSizeLegendWidget( const QgsDataDef
 
   mLineSymbolButton->setSymbolType( Qgis::SymbolType::Line );
 
-  QgsMarkerSymbol *symbol = nullptr;
+  std::unique_ptr< QgsMarkerSymbol > symbol;
 
   if ( !ddsLegend )
   {
@@ -64,13 +64,13 @@ QgsDataDefinedSizeLegendWidget::QgsDataDefinedSizeLegendWidget( const QgsDataDef
     if ( ddsLegend->lineSymbol() )
       mLineSymbolButton->setSymbol( ddsLegend->lineSymbol()->clone() );
 
-    symbol = ddsLegend->symbol() ? ddsLegend->symbol()->clone() : nullptr; // may be null (undefined)
+    symbol.reset( ddsLegend->symbol() ? ddsLegend->symbol()->clone() : nullptr ); // may be null (undefined)
   }
   groupBoxOptions->setEnabled( radSeparated->isChecked() );
 
   if ( overrideSymbol )
   {
-    symbol = overrideSymbol; // takes ownership
+    symbol.reset( overrideSymbol ); // takes ownership
     mOverrideSymbol = true;
   }
 
@@ -78,7 +78,7 @@ QgsDataDefinedSizeLegendWidget::QgsDataDefinedSizeLegendWidget( const QgsDataDef
   {
     symbol = QgsMarkerSymbol::createSimple( QVariantMap() );
   }
-  mSourceSymbol.reset( symbol );
+  mSourceSymbol = std::move( symbol );
 
   btnChangeSymbol->setEnabled( !mOverrideSymbol );
 
@@ -121,7 +121,7 @@ QgsDataDefinedSizeLegendWidget::QgsDataDefinedSizeLegendWidget( const QgsDataDef
     mPreviewModel->setLegendMapViewData( canvas->mapUnitsPerPixel(), canvas->mapSettings().outputDpi(), canvas->scale() );
   viewLayerTree->setModel( mPreviewModel );
 
-  connect( cboAlignSymbols, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, [=] { emit widgetChanged(); } );
+  connect( cboAlignSymbols, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, [this] { emit widgetChanged(); } );
   connect( radDisabled, &QRadioButton::clicked, this, &QgsPanelWidget::widgetChanged );
   connect( radSeparated, &QRadioButton::clicked, this, &QgsPanelWidget::widgetChanged );
   connect( radCollapsed, &QRadioButton::clicked, this, &QgsPanelWidget::widgetChanged );
@@ -130,7 +130,7 @@ QgsDataDefinedSizeLegendWidget::QgsDataDefinedSizeLegendWidget( const QgsDataDef
   connect( editTitle, &QLineEdit::textChanged, this, &QgsPanelWidget::widgetChanged );
   connect( mLineSymbolButton, &QgsSymbolButton::changed, this, &QgsPanelWidget::widgetChanged );
   connect( this, &QgsPanelWidget::widgetChanged, this, &QgsDataDefinedSizeLegendWidget::updatePreview );
-  connect( radCollapsed, &QRadioButton::toggled, this, [=]( bool toggled ) { groupBoxOptions->setEnabled( toggled ); } );
+  connect( radCollapsed, &QRadioButton::toggled, this, [this]( bool toggled ) { groupBoxOptions->setEnabled( toggled ); } );
   updatePreview();
 }
 
