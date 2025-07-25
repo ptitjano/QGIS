@@ -91,6 +91,8 @@ QgsTerrainEntity::~QgsTerrainEntity()
   // cancel / wait for jobs
   cancelActiveJobs();
 
+  if ( mMapSettings && mMapSettings->terrainGenerator() )
+    mMapSettings->terrainGenerator()->setTerrain( nullptr );
   delete mTextureGenerator;
 }
 
@@ -215,6 +217,11 @@ TerrainMapUpdateJob::TerrainMapUpdateJob( QgsTerrainTextureGenerator *textureGen
   : QgsChunkQueueJob( node )
   , mTextureGenerator( textureGenerator )
 {}
+
+TerrainMapUpdateJob::~TerrainMapUpdateJob()
+{
+  mNode = nullptr;
+}
 
 void TerrainMapUpdateJob::start()
 {
