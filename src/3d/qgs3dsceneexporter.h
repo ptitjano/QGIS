@@ -142,6 +142,8 @@ class _3D_EXPORT Qgs3DSceneExporter : public Qt3DCore::QEntity
 
     QString getObjectName( const QString &name );
 
+    void getSceneCenterAndScale( QVector3D &center, float &scale ) const;
+
   private:
     QMap<QString, int> mUsedObjectNamesCounter;
     QVector<Qgs3DExportObject *> mObjects;
