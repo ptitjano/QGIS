@@ -825,13 +825,26 @@ Qgs3DExportObject *Qgs3DSceneExporter::processPoints( Qt3DCore::QEntity *entity,
   return obj;
 }
 
-bool Qgs3DSceneExporter::save( const QString &sceneName, const QString &sceneFolderPath, int precision ) const
+bool Qgs3DSceneExporter::save( const QString &sceneName, const QString &sceneFolderPath, const Qgs3DTypes::ExportFormat &exportFormat, int precision ) const
 {
   if ( mObjects.isEmpty() )
   {
     return false;
   }
 
+  switch ( exportFormat )
+  {
+    case Qgs3DTypes::ExportFormat::Obj:
+      return saveObj( sceneName, sceneFolderPath, precision );
+    case Qgs3DTypes::ExportFormat::Stl:
+      return saveStl( sceneName, sceneFolderPath, precision );
+  }
+
+  BUILTIN_UNREACHABLE
+}
+
+bool Qgs3DSceneExporter::saveObj( const QString &sceneName, const QString &sceneFolderPath, int precision ) const
+{
   const QString objFilePath = QDir( sceneFolderPath ).filePath( sceneName + QStringLiteral( ".obj" ) );
   const QString mtlFilePath = QDir( sceneFolderPath ).filePath( sceneName + QStringLiteral( ".mtl" ) );
 
@@ -868,6 +881,35 @@ bool Qgs3DSceneExporter::save( const QString &sceneName, const QString &sceneFol
   }
 
   QgsDebugMsgLevel( QStringLiteral( "Scene exported to '%1'" ).arg( objFilePath ), 2 );
+  return true;
+}
+
+bool Qgs3DSceneExporter::saveStl( const QString &sceneName, const QString &sceneFolderPath, int precision ) const
+{
+  const QString stlFilePath = QDir( sceneFolderPath ).filePath( sceneName + QStringLiteral( ".stl" ) );
+
+  QFile file( stlFilePath );
+  if ( !file.open( QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate ) )
+  {
+    QgsDebugError( QStringLiteral( "Scene can not be exported to '%1'. File access error." ).arg( stlFilePath ) );
+    return false;
+  }
+
+  QVector3D center;
+  float scale;
+  getSceneCenterAndScale( center, scale );
+
+  QTextStream out( &file );
+
+  for ( Qgs3DExportObject *object : qAsConst( mObjects ) )
+  {
+    if ( !object )
+      continue;
+
+    object->saveTo( out, scale, center, Qgs3DTypes::ExportFormat::Stl, precision );
+  }
+
+  QgsDebugMsgLevel( QStringLiteral( "Scene exported to '%1'" ).arg( stlFilePath ), 2 );
   return true;
 }
 
