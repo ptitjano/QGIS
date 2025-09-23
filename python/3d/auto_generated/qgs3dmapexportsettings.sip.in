@@ -95,6 +95,8 @@ Sets the terrain texture resolution
 Sets the scale of exported model
 %End
 
+    QString exportFilePath() const;
+
 };
 
 /************************************************************************

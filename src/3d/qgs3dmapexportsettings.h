@@ -70,6 +70,8 @@ class _3D_EXPORT Qgs3DMapExportSettings
     //! Sets the scale of exported model
     void setScale( float scale ) { mScale = scale; }
 
+    QString exportFilePath() const;
+
   private:
     QString mSceneName = QString( "Scene" );
     QString mSceneFolderPath = QDir::homePath();
