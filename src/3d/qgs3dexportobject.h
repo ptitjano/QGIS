@@ -99,7 +99,7 @@ class _3D_EXPORT Qgs3DExportObject
     void objectBounds( float &minX, float &minY, float &minZ, float &maxX, float &maxY, float &maxZ ) const;
 
     //! Saves the current object to the output stream while scaling the object and centering it to be visible in exported scene
-    void saveTo( QTextStream &out, float scale, const QVector3D &center, int precision = 6 ) const;
+    void saveTo( QTextStream &out, float scale, const QVector3D &center, int precision = 6, const QString &materialName = QString() ) const;
     //! saves the texture of the object and material information
     QString saveMaterial( QTextStream &mtlOut, const QString &folder ) const;
 

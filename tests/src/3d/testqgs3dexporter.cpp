@@ -211,7 +211,6 @@ void TestQgs3DExporter::testExportObjectToObj()
     file.open( QIODevice::ReadWrite | QIODevice::Text | QIODevice::Truncate );
     QTextStream out( &file );
 
-    out << "o " << object.name() << "\n";
     object.saveTo( out, 1.0, QVector3D( 0, 0, 0 ), 3 );
 
     out.flush();
@@ -249,7 +248,6 @@ void TestQgs3DExporter::testExportObjectToObj()
     QFile file( myTmpDir + "sparse_faces.obj" );
     file.open( QIODevice::ReadWrite | QIODevice::Text | QIODevice::Truncate );
     QTextStream out( &file );
-    out << "o " << object.name() << "\n";
     object.saveTo( out, 1.0, QVector3D( 0, 0, 0 ), 3 );
 
     out.flush();
