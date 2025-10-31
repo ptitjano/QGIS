@@ -404,6 +404,25 @@ int QgsFeature::approximateMemoryUsage() const
   return static_cast<int>( s );
 }
 
+void QgsFeature::set( QgsFeatureId id, const QgsGeometry &geometry, const QgsFields &fields, const QgsAttributes &attrs )
+{
+  setId( id );
+  setGeometry( geometry );
+  setFields( fields, true );
+  setAttributes( attrs );
+}
+
+void QgsFeature::setWithIndex( QgsFeatureId id, const QgsGeometry &geometry, const QgsFields &fields, const QVector<int> &indexes, const QgsAttributes &attrs )
+{
+  setId( id );
+  setGeometry( geometry );
+  setFields( fields, true );
+  for ( int i = 0; i < indexes.size(); ++i )
+  {
+    setAttribute( indexes[i], attrs[i] );
+  }
+}
+
 
 /***************************************************************************
  * This class is considered CRITICAL and any change MUST be accompanied with
@@ -456,4 +475,3 @@ uint qHash( const QgsFeature &key, uint seed )
 
   return hash;
 }
-

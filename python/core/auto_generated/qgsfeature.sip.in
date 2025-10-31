@@ -1016,6 +1016,10 @@ bound estimation.
 
     operator QVariant() const;
 
+    void set( QgsFeatureId id, const QgsGeometry &geometry, const QgsFields &fields, const QgsAttributes &attrs ) /HoldGIL/;
+
+    void setWithIndex( QgsFeatureId id, const QgsGeometry &geometry, const QgsFields &fields, const QVector<int> &indexes, const QgsAttributes &attrs ) /HoldGIL/;
+
 }; // class QgsFeature
 
 

@@ -1237,6 +1237,10 @@ class CORE_EXPORT QgsFeature
       return QVariant::fromValue( *this );
     }
 
+    void set( QgsFeatureId id, const QgsGeometry &geometry, const QgsFields &fields, const QgsAttributes &attrs ) SIP_HOLDGIL;
+
+    void setWithIndex( QgsFeatureId id, const QgsGeometry &geometry, const QgsFields &fields, const QVector<int> &indexes, const QgsAttributes &attrs ) SIP_HOLDGIL;
+
   private:
 
     QExplicitlySharedDataPointer<QgsFeaturePrivate> d;
