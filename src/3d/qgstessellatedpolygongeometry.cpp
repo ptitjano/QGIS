@@ -149,8 +149,21 @@ static int binary_search( uint v, const uint *data, int count )
 }
 
 
-QgsFeatureId QgsTessellatedPolygonGeometry::triangleIndexToFeatureId( uint triangleIndex ) const
+QgsFeatureId QgsTessellatedPolygonGeometry::triangleIndexToFeatureId( uint triangleIndex, QVector3D ( *facePoints )[3] ) const
 {
   const int i = binary_search( triangleIndex, mTriangleIndexStartingIndices.constData(), mTriangleIndexStartingIndices.count() );
+  if ( i != -1 && facePoints )
+  {
+    const unsigned int *indexData = reinterpret_cast<const uint *>( mIndexBuffer->data().constData() );
+    for ( int idx = 0; idx < 3; idx++ )
+    {
+      const unsigned int vertexIndex = indexData[3 * triangleIndex + idx];
+      const unsigned int vertexOffsetBytes = vertexIndex * mPositionAttribute->byteStride();
+      const float *vertPtr = reinterpret_cast<const float *>( mVertexBuffer->data() + vertexOffsetBytes );
+      ( *facePoints )[idx].setX( vertPtr[0] );
+      ( *facePoints )[idx].setY( vertPtr[1] );
+      ( *facePoints )[idx].setZ( vertPtr[2] );
+    }
+  }
   return i != -1 ? mTriangleIndexFids[i] : FID_NULL;
 }
