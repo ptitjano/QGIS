@@ -131,6 +131,35 @@ Constructor for QgsPlotRectangularRubberBand.
 
 };
 
+class QgsPlotPointRubberBand : QgsPlotRubberBand
+{
+%Docstring(signature="appended")
+:py:class:`QgsPlotPointRubberBand` is a point rubber band for use within :py:class:`QgsPlotCanvas` widgets.
+
+.. versionadded:: 3.42
+%End
+
+%TypeHeaderCode
+#include "qgsplotrubberband.h"
+%End
+  public:
+
+    QgsPlotPointRubberBand( QgsPlotCanvas *canvas = 0 );
+%Docstring
+Constructor for QgsPlotPointRubberBand.
+%End
+
+    ~QgsPlotPointRubberBand();
+
+    virtual void start( QPointF position, Qt::KeyboardModifiers modifiers );
+
+    virtual void update( QPointF position, Qt::KeyboardModifiers modifiers );
+
+    virtual QRectF finish( QPointF position = QPointF(), Qt::KeyboardModifiers modifiers = Qt::KeyboardModifiers() );
+
+
+};
+
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *

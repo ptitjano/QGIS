@@ -17,9 +17,8 @@
 #ifndef QGSELEVATIONPROFILEWIDGET_H
 #define QGSELEVATIONPROFILEWIDGET_H
 
+#include "qgselevationprofiletoolselectfeatures.h"
 #include "qmenu.h"
-#include "qgsdockwidget.h"
-#include "qgis_app.h"
 #include "qgsgeometry.h"
 #include "qobjectuniqueptr.h"
 #include "qgselevationprofilelayertreeview.h"
@@ -50,6 +49,8 @@ class QgsLayerTree;
 class QgsLayerTreeRegistryBridge;
 class QgsElevationProfileToolIdentify;
 class QgsElevationProfileToolMeasure;
+class QgsElevationProfileToolAddPoint;
+class QgsElevationProfileToolMovePoint;
 class QLabel;
 class QgsProfilePoint;
 class QgsSettingsEntryDouble;
@@ -59,6 +60,9 @@ class QgsSettingsEntryColor;
 class QgsMapLayerProxyModel;
 class QgsLineSymbol;
 class QgsScaleComboBox;
+class QgsElevationProfileWidgetToggleEditingLayerAction;
+class QgsElevationProfileWidgetSaveLayerAction;
+class QgsElevationProfileWidgetDeleteFeaturesAction;
 
 class QgsAppElevationProfileLayerTreeView : public QgsElevationProfileLayerTreeView
 {
@@ -139,11 +143,13 @@ class QgsElevationProfileWidget : public QWidget
     void nudgeLeft();
     void nudgeRight();
     void nudgeCurve( Qgis::BufferSide side );
+    void captureCurveFlip();
     void axisScaleLockToggled( bool active );
     void renameProfileTriggered();
     void onProjectElevationPropertiesChanged();
     void showSubsectionsTriggered();
     void editSubsectionsSymbology();
+    void onLayerSelectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
 
   private:
     void setMainCanvas( QgsMapCanvas *canvas );
@@ -165,10 +171,14 @@ class QgsElevationProfileWidget : public QWidget
     QAction *mCaptureCurveFromFeatureAction = nullptr;
     QAction *mNudgeLeftAction = nullptr;
     QAction *mNudgeRightAction = nullptr;
+    QAction *mCaptureCurveFlipAction = nullptr;
     QAction *mRenameProfileAction = nullptr;
     QAction *mLockRatioAction = nullptr;
     QAction *mShowSubsectionsAction = nullptr;
     QAction *mSubsectionsSymbologyAction = nullptr;
+    QgsElevationProfileWidgetToggleEditingLayerAction *mToggleEditLayerAction = nullptr;
+    QgsElevationProfileWidgetSaveLayerAction *mSaveLayerAction = nullptr;
+    QgsElevationProfileWidgetDeleteFeaturesAction *mDeleteFeaturesAction = nullptr;
     QMenu *mDistanceUnitMenu = nullptr;
 
     QgsDockableWidgetHelper *mDockableWidgetHelper = nullptr;
@@ -189,6 +199,9 @@ class QgsElevationProfileWidget : public QWidget
     QgsPlotToolXAxisZoom *mXAxisZoomTool = nullptr;
     QgsPlotToolZoom *mZoomTool = nullptr;
     QgsElevationProfileToolIdentify *mIdentifyTool = nullptr;
+    QgsElevationProfileToolAddPoint *mAddPointTool = nullptr;
+    QgsElevationProfileToolMovePoint *mMovePointTool = nullptr;
+    QgsElevationProfileToolSelectFeatures *mSelectFeaturesTool = nullptr;
 
     QgsElevationProfileToleranceWidgetSettingsAction *mToleranceSettingsAction = nullptr;
     int mBlockScaleRatioChanges = 0;
@@ -228,5 +241,43 @@ class QgsElevationProfileScaleRatioWidgetSettingsAction : public QWidgetAction
     QgsScaleComboBox *mScaleRatioWidget = nullptr;
 };
 
+class QgsElevationProfileWidgetSaveLayerAction : public QAction
+{
+    Q_OBJECT
+
+  public:
+    QgsElevationProfileWidgetSaveLayerAction( const QString &text, QWidget *parent = nullptr );
+    void setLayer( QgsVectorLayer *layer );
+
+  private:
+    QgsVectorLayer *mLayer = nullptr;
+    void handleEnableState();
+};
+
+class QgsElevationProfileWidgetToggleEditingLayerAction : public QAction
+{
+    Q_OBJECT
+
+  public:
+    QgsElevationProfileWidgetToggleEditingLayerAction( const QString &text, QWidget *parent = nullptr );
+    void setLayer( QgsVectorLayer *layer );
+
+  private:
+    QgsVectorLayer *mLayer = nullptr;
+    void handleCheckEnableStates();
+};
+
+class QgsElevationProfileWidgetDeleteFeaturesAction : public QAction
+{
+    Q_OBJECT
+
+  public:
+    QgsElevationProfileWidgetDeleteFeaturesAction( const QString &text, QWidget *parent = nullptr );
+    void setLayer( QgsVectorLayer *layer );
+
+  private:
+    QgsVectorLayer *mLayer = nullptr;
+    void handleEnableState();
+};
 
 #endif // QGSELEVATIONPROFILEWIDGET_H
