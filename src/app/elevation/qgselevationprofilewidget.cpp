@@ -21,6 +21,7 @@
 #include "qgselevationprofilecanvas.h"
 #include "qgsdockablewidgethelper.h"
 #include "qgselevationprofilemanager.h"
+#include "qgsgeometry.h"
 #include "qgsmapcanvas.h"
 #include "qgsmaplayer.h"
 #include "qgsmaplayerelevationproperties.h"
@@ -267,6 +268,12 @@ QgsElevationProfileWidget::QgsElevationProfileWidget( QgsElevationProfile *profi
   };
   createShortcuts( QStringLiteral( "mProfileToolNudgeLeft" ), &QgsElevationProfileWidget::nudgeLeft );
   createShortcuts( QStringLiteral( "mProfileToolNudgeRight" ), &QgsElevationProfileWidget::nudgeRight );
+
+  mCaptureCurveFlipAction = new QAction( tr( "Flip Capture Curve" ), this );
+  mCaptureCurveFlipAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "mActionFlipLine.svg" ) ) );
+  connect( mCaptureCurveFlipAction, &QAction::triggered, this, &QgsElevationProfileWidget::captureCurveFlip );
+  mCaptureCurveFlipAction->setEnabled( false );
+  toolBar->addAction( mCaptureCurveFlipAction );
 
   QAction *clearAction = new QAction( tr( "Clear" ), this );
   clearAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "console/iconClearConsole.svg" ) ) );
@@ -890,6 +897,7 @@ void QgsElevationProfileWidget::setProfileCurve( const QgsGeometry &curve, bool 
 {
   mNudgeLeftAction->setEnabled( !curve.isEmpty() );
   mNudgeRightAction->setEnabled( !curve.isEmpty() );
+  mCaptureCurveFlipAction->setEnabled( !curve.isEmpty() );
   mShowSubsectionsAction->setEnabled( !curve.isEmpty() );
 
   mProfileCurve = curve;
@@ -975,6 +983,7 @@ void QgsElevationProfileWidget::clear()
   }
   mNudgeLeftAction->setEnabled( false );
   mNudgeRightAction->setEnabled( false );
+  mCaptureCurveFlipAction->setEnabled( false );
   mShowSubsectionsAction->setEnabled( false );
   mProfileCurve = QgsGeometry();
 }
@@ -1185,6 +1194,34 @@ void QgsElevationProfileWidget::nudgeCurve( Qgis::BufferSide side )
 
   const QgsGeometry nudgedCurve = mProfileCurve.offsetCurve( side == Qgis::BufferSide::Left ? distance : -distance, 8, Qgis::JoinStyle::Miter, 2 );
   setProfileCurve( nudgedCurve, false );
+}
+
+void QgsElevationProfileWidget::captureCurveFlip()
+{
+  if ( mProfileCurve.isEmpty() )
+  {
+    return;
+  }
+
+  QgsGeometry newProfileCurveGeom;
+
+  if ( mProfileCurve.isMultipart() )
+  {
+    QgsMultiPolylineXY newCurve = mProfileCurve.asMultiPolyline();
+    for ( int part = 0; part < newCurve.count(); ++part )
+    {
+      std::reverse( newCurve[part].begin(), newCurve[part].end() );
+    }
+    newProfileCurveGeom = QgsGeometry::fromMultiPolylineXY( newCurve );
+  }
+  else
+  {
+    QgsPolylineXY newCurve = mProfileCurve.asPolyline();
+    std::reverse( newCurve.begin(), newCurve.end() );
+    newProfileCurveGeom = QgsGeometry::fromPolylineXY( newCurve );
+  }
+
+  setProfileCurve( newProfileCurveGeom, false );
 }
 
 void QgsElevationProfileWidget::axisScaleLockToggled( bool active )

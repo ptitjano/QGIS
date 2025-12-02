@@ -143,6 +143,7 @@ class QgsElevationProfileWidget : public QWidget
     void nudgeLeft();
     void nudgeRight();
     void nudgeCurve( Qgis::BufferSide side );
+    void captureCurveFlip();
     void axisScaleLockToggled( bool active );
     void renameProfileTriggered();
     void onProjectElevationPropertiesChanged();
@@ -170,6 +171,7 @@ class QgsElevationProfileWidget : public QWidget
     QAction *mCaptureCurveFromFeatureAction = nullptr;
     QAction *mNudgeLeftAction = nullptr;
     QAction *mNudgeRightAction = nullptr;
+    QAction *mCaptureCurveFlipAction = nullptr;
     QAction *mRenameProfileAction = nullptr;
     QAction *mLockRatioAction = nullptr;
     QAction *mShowSubsectionsAction = nullptr;
