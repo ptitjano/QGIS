@@ -24,6 +24,7 @@
 #include "qobjectuniqueptr.h"
 
 class Qgs3DMapCanvasWidget;
+class Qgs3DSnappingManager;
 class QgsRubberBand3D;
 
 
@@ -32,7 +33,7 @@ class Qgs3DMapToolMeasure : public Qgs3DMapTool
     Q_OBJECT
 
   public:
-    Qgs3DMapToolMeasure( Qgs3DMapCanvasWidget *canvas, bool measureArea );
+    Qgs3DMapToolMeasure( Qgs3DMapCanvasWidget *canvas, bool measureArea, Qgs3DSnappingManager *snapper );
     ~Qgs3DMapToolMeasure() override;
 
     //! returns true when measuring area or false for distance
@@ -89,6 +90,8 @@ class Qgs3DMapToolMeasure : public Qgs3DMapTool
 
     //! Indicates whether we're measuring distances or areas
     bool mMeasureArea = false;
+
+    Qgs3DSnappingManager *mSnapper = nullptr;
 };
 
 #endif // QGS3DMAPTOOLMEASURE_H

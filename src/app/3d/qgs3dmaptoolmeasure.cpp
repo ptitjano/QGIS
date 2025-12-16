@@ -20,13 +20,13 @@
 #include "qgs3dmapcanvaswidget.h"
 #include "qgs3dmapscene.h"
 #include "qgs3dmeasuredialog.h"
+#include "qgs3dsnappingmanager.h"
 #include "qgs3dutils.h"
 #include "qgsabstractterrainsettings.h"
 #include "qgscameracontroller.h"
 #include "qgsframegraph.h"
 #include "qgsmaplayer.h"
 #include "qgspoint.h"
-#include "qgsraycastcontext.h"
 #include "qgsrubberband3d.h"
 #include "qgssettingsentryimpl.h"
 #include "qgssettingsregistrygui.h"
@@ -39,9 +39,10 @@
 
 using namespace Qt::StringLiterals;
 
-Qgs3DMapToolMeasure::Qgs3DMapToolMeasure( Qgs3DMapCanvasWidget *canvasWidget, bool measureArea )
+Qgs3DMapToolMeasure::Qgs3DMapToolMeasure( Qgs3DMapCanvasWidget *canvasWidget, bool measureArea, Qgs3DSnappingManager *snapper )
   : Qgs3DMapTool( canvasWidget->mapCanvas3D() )
   , mMeasureArea( measureArea )
+  , mSnapper( snapper )
 {
   // Dialog
   mDialog.reset( new Qgs3DMeasureDialog( this, canvasWidget ) );
@@ -56,6 +57,8 @@ void Qgs3DMapToolMeasure::activate()
   const Qgis::GeometryType rubberbandType = mMeasureArea ? Qgis::GeometryType::Polygon : Qgis::GeometryType::Line;
   mRubberBand = std::make_unique<QgsRubberBand3D>( *mCanvas->mapSettings(), mCanvas->engine(), mCanvas->engine()->frameGraph()->rubberBandsRootEntity(), rubberbandType );
 
+  mSnapper->start( mCanvas );
+
   restart();
   updateSettings();
 
@@ -67,6 +70,8 @@ void Qgs3DMapToolMeasure::activate()
 void Qgs3DMapToolMeasure::deactivate()
 {
   mRubberBand.reset();
+
+  mSnapper->finish();
 
   // Hide dialog
   mDialog->hide();
@@ -84,28 +89,14 @@ void Qgs3DMapToolMeasure::handleClick( const QPoint &screenPos )
     restart();
   }
 
-  QgsRayCastContext context;
-  context.setSingleResult( false );
-  context.setMaximumDistance( mCanvas->cameraController()->camera()->farPlane() );
-  context.setAngleThreshold( 0.5f );
-  const QgsRayCastResult results = mCanvas->castRay( screenPos, context );
-
-  if ( results.isEmpty() )
-    return;
-
-  QgsVector3D mapCoords;
-  double minDist = -1;
-  const QList<QgsRayCastHit> allHits = results.allHits();
-  for ( const QgsRayCastHit &hit : allHits )
+  bool snapSuccess;
+  const QgsPoint snapPoint = mSnapper->screenToMap( screenPos, &snapSuccess );
+  if ( !snapSuccess )
   {
-    const double resDist = hit.distance();
-    if ( minDist < 0 || resDist < minDist )
-    {
-      minDist = resDist;
-      mapCoords = hit.mapCoordinates();
-    }
+    return;
   }
-  addPoint( QgsPoint( mapCoords.x(), mapCoords.y(), mapCoords.z() ) );
+
+  addPoint( snapPoint );
   mDialog->show();
 }
 
@@ -157,6 +148,8 @@ void Qgs3DMapToolMeasure::restart()
     mRubberBand->reset();
     mRubberBand->setHideLastMarker( true );
   }
+
+  mSnapper->reset();
 }
 
 void Qgs3DMapToolMeasure::undo()
@@ -197,11 +190,15 @@ void Qgs3DMapToolMeasure::mouseMoveEvent( QMouseEvent *event )
     mMouseHasMoved = true;
   }
 
-  if ( mPoints.isEmpty() || mDone )
-    return;
+  bool snapSuccess;
+  const QgsPoint snapPoint = mSnapper->screenToMap( event->pos(), &snapSuccess );
 
-  const QgsPoint pointMap = Qgs3DUtils::screenPointToMapCoordinates( event->pos(), mCanvas->size(), mCanvas->cameraController(), mCanvas->mapSettings(), zMean );
-  mRubberBand->moveLastPoint( pointMap );
+  if ( !snapSuccess || mPoints.isEmpty() || mDone )
+  {
+    return;
+  }
+
+  mRubberBand->moveLastPoint( snapPoint );
 }
 
 void Qgs3DMapToolMeasure::mouseReleaseEvent( QMouseEvent *event )

@@ -397,9 +397,9 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
 
   mMapToolIdentify = new Qgs3DMapToolIdentify( mCanvas );
 
-  mMapToolMeasureLine = new Qgs3DMapToolMeasure( this, false );
+  mMapToolMeasureLine = new Qgs3DMapToolMeasure( this, false, mSnapper.get() );
 
-  mMapToolMeasureArea = new Qgs3DMapToolMeasure( this, true );
+  mMapToolMeasureArea = new Qgs3DMapToolMeasure( this, true, mSnapper.get() );
 
   mMapToolStreetView = new Qgs3DMapToolStreetView( mCanvas );
   connect( mMapToolStreetView, &Qgs3DMapToolStreetView::finished, this, [actionStreetViewTool, this]() {
