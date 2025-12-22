@@ -94,7 +94,6 @@ class Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
     //! Check if mouse was moved between mousePress and mouseRelease
     bool mMouseHasMoved = false;
     QPoint mMouseClickPos;
-    QPoint mMouseHoverPos;
     QVector<QgsPoint> mPointOnMap;
     int mNbMouseClick = 0;
 
