@@ -355,6 +355,7 @@ if (WITH_3D)
     3d/qgs3deditiontoolbar.cpp
     3d/qgs3dmapconfigwidget.cpp
     3d/qgs3dmapexportwidget.cpp
+    3d/qgs3dmaptoolcreatecube.cpp
     3d/qgs3dmaptoolidentify.cpp
     3d/qgs3dmaptoolmeasureline.cpp
     3d/qgs3dmaptoolpointcloudchangeattributepaintbrush.cpp
@@ -365,6 +366,7 @@ if (WITH_3D)
     3d/qgs3dnavigationwidget.cpp
     3d/qgs3doptions.cpp
     3d/qgs3dpointcloudeditiontoolbar.cpp
+    3d/qgs3dprimitiveeditiontoolbar.cpp
     3d/qgsannotationlayer3drendererwidget.cpp
     3d/qgscategorized3drendererwidget.cpp
     3d/qgsgoochmaterialwidget.cpp
