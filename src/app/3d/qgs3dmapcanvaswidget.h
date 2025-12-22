@@ -156,6 +156,8 @@ class APP_EXPORT Qgs3DMapCanvasWidget : public QWidget
     void onExtentChanged();
     void onGpuMemoryLimitReached();
 
+    void onLayerForEditionChanged();
+
     void onCrossSectionToolFinished();
 
   private:
@@ -167,6 +169,9 @@ class APP_EXPORT Qgs3DMapCanvasWidget : public QWidget
     void hideProfileRubberBands( QgsElevationProfile *profile );
 
     void updateEditionToolBar();
+
+    /// \return list of editable layers
+    QList<QgsMapLayer *> editableLayers() const;
 
     QString mCanvasName;
     Qgs3DMapCanvas *mCanvas = nullptr;
@@ -207,6 +212,8 @@ class APP_EXPORT Qgs3DMapCanvasWidget : public QWidget
     QAction *mActionSetSceneExtent = nullptr;
     QAction *mActionSetClippingPlanes = nullptr;
     QAction *mActionDisableClippingPlanes = nullptr;
+    QComboBox *mCboSelectLayerForEdition = nullptr;
+    QAction *mActionSelectLayerForEdition = nullptr;
     QAction *mActionUndo = nullptr;
     QMetaObject::Connection mUndoConnection;
     QAction *mActionRedo = nullptr;

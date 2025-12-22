@@ -44,6 +44,9 @@
 #include "qgsgui.h"
 #include "qgshelp.h"
 #include "qgsidentifyresultsdialog.h"
+#include "qgslayertree.h"
+#include "qgslayertreemodel.h"
+#include "qgslayertreeview.h"
 #include "qgslinestring.h"
 #include "qgsmapcanvas.h"
 #include "qgsmapthemecollection.h"
@@ -103,9 +106,16 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   mEditingToolBar = new QToolBar( this );
   mEditingToolBar->setWindowTitle( tr( "Editing Toolbar" ) );
 
+  mCboSelectLayerForEdition = new QComboBox();
+  mCboSelectLayerForEdition->setSizePolicy( QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Preferred );
+  mCboSelectLayerForEdition->setMinimumWidth( 200 );
+  connect( mCboSelectLayerForEdition, qOverload<int>( &QComboBox::currentIndexChanged ), this, [this]( int ) { onLayerForEditionChanged(); } );
+
   mActionUndo = new QAction( QgsApplication::getThemeIcon( u"/mActionUndo.svg"_s ), tr( "Undo" ), this );
   mActionRedo = new QAction( QgsApplication::getThemeIcon( u"/mActionRedo.svg"_s ), tr( "Redo" ), this );
 
+  mEditingToolBar->addWidget( new QLabel( tr( "Edit layer" ) ) );
+  mActionSelectLayerForEdition = mEditingToolBar->addWidget( mCboSelectLayerForEdition );
   mEditingToolBar->addAction( mActionUndo );
   mEditingToolBar->addAction( mActionRedo );
   mEditingToolBar->addSeparator();
@@ -512,6 +522,61 @@ void Qgs3DMapCanvasWidget::updateLayerRelatedActions( QgsMapLayer *layer )
 
   if ( mEditingToolBar )
   {
+    // refresh layer list
+    mCboSelectLayerForEdition->blockSignals( true );
+    mCboSelectLayerForEdition->clear();
+
+    mCboSelectLayerForEdition->addItem( "", "" );
+    mCboSelectLayerForEdition->setCurrentIndex( 0 );
+    int idx = 1;
+    for ( auto editableLayer : editableLayers() )
+    {
+      mCboSelectLayerForEdition->addItem( editableLayer->name(), editableLayer->id() );
+      if ( layer && editableLayer->id() == layer->id() )
+      {
+        mCboSelectLayerForEdition->setCurrentIndex( idx );
+      }
+      ++idx;
+    }
+    mCboSelectLayerForEdition->blockSignals( false );
+
+    updateEditionToolBar();
+  }
+}
+
+QList<QgsMapLayer *> Qgs3DMapCanvasWidget::editableLayers() const
+{
+  QList<QgsMapLayer *> editLayers;
+  // use legend layers (instead of registry) so QList mirrors its order
+  const auto constFindLayers = QgisApp::instance()->layerTreeView()->layerTreeModel()->rootGroup()->findLayers();
+  for ( QgsLayerTreeLayer *nodeLayer : constFindLayers )
+  {
+    QgsMapLayer *layer = nodeLayer->layer();
+    if ( !layer )
+      continue;
+
+    if ( layer->supportsEditing() )
+      editLayers << layer;
+  }
+
+  return editLayers;
+}
+
+void Qgs3DMapCanvasWidget::onLayerForEditionChanged()
+{
+  if ( mEditingToolBar )
+  {
+    if ( mCboSelectLayerForEdition->currentIndex() == 0 )
+      mLayer = nullptr;
+    else
+      for ( auto layer : editableLayers() )
+      {
+        if ( layer->id() == mCboSelectLayerForEdition->currentData().toString() )
+        {
+          mLayer = layer;
+          break;
+        }
+      }
     updateEditionToolBar();
   }
 }
