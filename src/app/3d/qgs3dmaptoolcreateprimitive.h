@@ -36,12 +36,31 @@ namespace Qt3DRender
   class QGeometryRenderer;
 } //namespace Qt3DRender
 
+/**
+ * 3D maptool used to create 3D primitives from the 3D canvas
+ */
 class Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
 {
     Q_OBJECT
 
   public:
-    Qgs3DMapToolCreatePrimitive( Qgs3DMapCanvas *canvas, const QString &type );
+    /// Primitive type to create
+    enum PrimitiveType : int
+    {
+      Cylinder, //!< Cylinder
+      Sphere,   //!< Sphere
+      Cone,     //!< Cone
+      Cube,     //!< Cube
+      Box,      //!< Cube
+      Torus,    //!< Torus
+    };
+
+    /**
+     * Default constructor
+     * @param canvas 3D canvas parent
+     * @param type primitive type to create
+     */
+    Qgs3DMapToolCreatePrimitive( Qgs3DMapCanvas *canvas, PrimitiveType type );
     ~Qgs3DMapToolCreatePrimitive() override;
 
     void activate() override;
@@ -49,9 +68,9 @@ class Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
 
     QCursor cursor() const override;
 
-    //! Reset and start new
+    //! Reset and start new maptool
     void restart();
-
+    //! Ends maptool
     void finish();
 
   private slots:
@@ -61,7 +80,7 @@ class Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
     void mouseMoveEvent( QMouseEvent *event ) override;
 
   private:
-    QString mType;
+    PrimitiveType mType;
     //! Dialog
     std::unique_ptr<Qgs3DCreatePrimitiveDialog> mDialog;
     std::unique_ptr<QgsRubberBand3D> mRubberBand;
@@ -81,7 +100,7 @@ class Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
     std::unique_ptr<Qt3DCore::QEntity> mPrimitiveLineEntity = nullptr;
 
     QgsPoint screenToMap( const QPoint &screenPos ) const;
-    void updatePrimitive( /*double length, double zRotation*/ );
+    void updatePrimitive();
 };
 
 ///@cond PRIVATE
@@ -89,7 +108,6 @@ class Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
 #include <Qt3DRender/QGeometryRenderer>
 #include <Qt3DCore/QAttribute>
 #include <Qt3DCore/QGeometry>
-//#include "qgsaabb.h"
 
 namespace QgsPrivate
 {

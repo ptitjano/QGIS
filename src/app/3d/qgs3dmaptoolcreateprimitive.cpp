@@ -15,52 +15,58 @@
 
 #include "qgs3dmaptoolcreateprimitive.h"
 
-#include <QString>
-
-using namespace Qt::StringLiterals;
-
-//#include "qgs3dmaptoolcreatecube.moc"
-//#include "moc_qgs3dmaptoolcreatecube.cpp"
+#include "qgs3dcreateprimitiveconedialog.h"
+#include "qgs3dcreateprimitivecubedialog.h"
+#include "qgs3dcreateprimitivecylinderdialog.h"
 #include "qgs3dcreateprimitivedialog.h"
+#include "qgs3dcreateprimitivespheredialog.h"
+#include "qgs3dcreateprimitivetorusdialog.h"
+#include "qgs3drendercontext.h"
 #include "qgs3dutils.h"
-#include "qgswindow3dengine.h"
+#include "qgscameracontroller.h"
 #include "qgsframegraph.h"
-#include "qgsrubberband3d.h"
+#include "qgsgeotransform.h"
 #include "qgsraycastcontext.h"
 #include "qgsraycasthit.h"
 #include "qgsraycastingutils.h"
-#include "qgscameracontroller.h"
-#include "qgs3drendercontext.h"
-#include "qgsgeotransform.h"
-#include "qgs3dcreateprimitivecubedialog.h"
-#include "qgs3dcreateprimitivespheredialog.h"
-#include "qgs3dcreateprimitivecylinderdialog.h"
-#include "qgs3dcreateprimitivetorusdialog.h"
-#include "qgs3dcreateprimitiveconedialog.h"
+#include "qgsrubberband3d.h"
+#include "qgswindow3dengine.h"
 
 #include <QMouseEvent>
+#include <QString>
+#include <Qt3DExtras/QConeMesh>
+#include <Qt3DExtras/QCylinderMesh>
 #include <Qt3DExtras/QPhongMaterial>
 #include <Qt3DExtras/QSphereMesh>
-#include <Qt3DExtras/QCylinderMesh>
 #include <Qt3DExtras/QTorusMesh>
-#include <Qt3DExtras/QConeMesh>
 #include <Qt3DRender/QRenderSettings>
 
-Qgs3DMapToolCreatePrimitive::Qgs3DMapToolCreatePrimitive( Qgs3DMapCanvas *canvas, const QString &type )
+using namespace Qt::StringLiterals;
+
+Qgs3DMapToolCreatePrimitive::Qgs3DMapToolCreatePrimitive( Qgs3DMapCanvas *canvas, PrimitiveType type )
   : Qgs3DMapTool( canvas )
   , mType( type )
 {
   // Dialog
-  if ( mType == "cube" )
-    mDialog.reset( new Qgs3DCreatePrimitiveCubeDialog() );
-  else if ( mType == "sphere" )
-    mDialog.reset( new Qgs3DCreatePrimitiveSphereDialog() );
-  else if ( mType == "cylinder" )
-    mDialog.reset( new Qgs3DCreatePrimitiveCylinderDialog() );
-  else if ( mType == "torus" )
-    mDialog.reset( new Qgs3DCreatePrimitiveTorusDialog() );
-  else if ( mType == "cone" )
-    mDialog.reset( new Qgs3DCreatePrimitiveConeDialog() );
+  switch ( type )
+  {
+    case Cube:
+    case Box:
+      mDialog.reset( new Qgs3DCreatePrimitiveCubeDialog() );
+      break;
+    case Sphere:
+      mDialog.reset( new Qgs3DCreatePrimitiveSphereDialog() );
+      break;
+    case Cylinder:
+      mDialog.reset( new Qgs3DCreatePrimitiveCylinderDialog() );
+      break;
+    case Torus:
+      mDialog.reset( new Qgs3DCreatePrimitiveTorusDialog() );
+      break;
+    case Cone:
+      mDialog.reset( new Qgs3DCreatePrimitiveConeDialog() );
+      break;
+  }
 
   connect( mDialog.get(), &Qgs3DCreatePrimitiveDialog::valueChanged, this, [this]() { updatePrimitive(); } );
 }
@@ -156,60 +162,69 @@ void Qgs3DMapToolCreatePrimitive::updatePrimitive()
     mPrimitiveLineEntity.reset( new Qt3DCore::QEntity( mCanvas->engine()->frameGraph()->rubberBandsRootEntity() ) );
     mPrimitiveLineEntity->setObjectName( "new_primitive" );
 
-    if ( mType == "cube" )
+    switch ( mType )
     {
-      QgsPrivate::Qgs3DWiredMesh *mesh = new QgsPrivate::Qgs3DWiredMesh;
-      QgsAABB box = QgsAABB(
-        -0.5f,
-        -0.5f,
-        0, //
-        0.5f,
-        0.5f,
-        1.0
-      );
-      mesh->setVertices( box.verticesForLines() );
-      mPrimitiveLineEntity->addComponent( mesh );
-      mCurrentMesh = mesh;
-    }
-    else if ( mType == "sphere" )
-    {
-      Qt3DExtras::QSphereMesh *mesh = new Qt3DExtras::QSphereMesh();
-      mesh->setRadius( 0.5 );
-      mesh->setRings( 6 );
-      mesh->setSlices( 6 );
-      mPrimitiveLineEntity->addComponent( mesh );
-      mCurrentMesh = mesh;
-    }
-    else if ( mType == "cylinder" )
-    {
-      Qt3DExtras::QCylinderMesh *mesh = new Qt3DExtras::QCylinderMesh();
-      mesh->setRadius( 0.5 );
-      mesh->setLength( 1.0 );
-      mesh->setRings( 6 );
-      mesh->setSlices( 6 );
-      mPrimitiveLineEntity->addComponent( mesh );
-      mCurrentMesh = mesh;
-    }
-    else if ( mType == "torus" )
-    {
-      Qt3DExtras::QTorusMesh *mesh = new Qt3DExtras::QTorusMesh();
-      mesh->setRadius( 0.5 );
-      mesh->setMinorRadius( 0.5 );
-      mesh->setRings( 6 );
-      mesh->setSlices( 6 );
-      mPrimitiveLineEntity->addComponent( mesh );
-      mCurrentMesh = mesh;
-    }
-    else if ( mType == "cone" )
-    {
-      Qt3DExtras::QConeMesh *mesh = new Qt3DExtras::QConeMesh();
-      mesh->setBottomRadius( 0.5 );
-      mesh->setLength( 1.0 );
-      mesh->setTopRadius( 0.5 );
-      mesh->setRings( 6 );
-      mesh->setSlices( 6 );
-      mPrimitiveLineEntity->addComponent( mesh );
-      mCurrentMesh = mesh;
+      case Cube:
+      case Box:
+      {
+        QgsPrivate::Qgs3DWiredMesh *mesh = new QgsPrivate::Qgs3DWiredMesh;
+        QgsAABB box = QgsAABB(
+          -0.5f,
+          -0.5f,
+          0, //
+          0.5f,
+          0.5f,
+          1.0
+        );
+        mesh->setVertices( box.verticesForLines() );
+        mPrimitiveLineEntity->addComponent( mesh );
+        mCurrentMesh = mesh;
+        break;
+      }
+      case Sphere:
+      {
+        Qt3DExtras::QSphereMesh *mesh = new Qt3DExtras::QSphereMesh();
+        mesh->setRadius( 0.5 );
+        mesh->setRings( 6 );
+        mesh->setSlices( 6 );
+        mPrimitiveLineEntity->addComponent( mesh );
+        mCurrentMesh = mesh;
+        break;
+      }
+      case Cylinder:
+      {
+        Qt3DExtras::QCylinderMesh *mesh = new Qt3DExtras::QCylinderMesh();
+        mesh->setRadius( 0.5 );
+        mesh->setLength( 1.0 );
+        mesh->setRings( 2 );
+        mesh->setSlices( 6 );
+        mPrimitiveLineEntity->addComponent( mesh );
+        mCurrentMesh = mesh;
+        break;
+      }
+      case Torus:
+      {
+        Qt3DExtras::QTorusMesh *mesh = new Qt3DExtras::QTorusMesh();
+        mesh->setRadius( 0.5 );
+        mesh->setMinorRadius( 0.5 );
+        mesh->setRings( 6 );
+        mesh->setSlices( 6 );
+        mPrimitiveLineEntity->addComponent( mesh );
+        mCurrentMesh = mesh;
+        break;
+      }
+      case Cone:
+      {
+        Qt3DExtras::QConeMesh *mesh = new Qt3DExtras::QConeMesh();
+        mesh->setBottomRadius( 0.5 );
+        mesh->setLength( 1.0 );
+        mesh->setTopRadius( 0.5 );
+        mesh->setRings( 2 );
+        mesh->setSlices( 6 );
+        mPrimitiveLineEntity->addComponent( mesh );
+        mCurrentMesh = mesh;
+        break;
+      }
     }
 
     Qt3DExtras::QPhongMaterial *material = new Qt3DExtras::QPhongMaterial;
@@ -227,36 +242,50 @@ void Qgs3DMapToolCreatePrimitive::updatePrimitive()
       break;
     }
 
-    if ( mType == "cube" )
+    switch ( mType )
     {
-      sX = mDialog->getParam( 0 );
-      sY = mDialog->getParam( 1 );
-      sZ = mDialog->getParam( 2 );
-    }
-    else if ( mType == "sphere" )
-    {
-      // Qgs3DCreatePrimitiveSphereDialog * dialog = dynamic_cast<Qgs3DCreatePrimitiveSphereDialog *>( mDialog.get() );
-      Qt3DExtras::QSphereMesh *mesh = dynamic_cast<Qt3DExtras::QSphereMesh *>( mCurrentMesh );
-      mesh->setRadius( mDialog->getParam( 0 ) );
-    }
-    else if ( mType == "cylinder" )
-    {
-      Qt3DExtras::QCylinderMesh *mesh = dynamic_cast<Qt3DExtras::QCylinderMesh *>( mCurrentMesh );
-      mesh->setRadius( mDialog->getParam( 0 ) );
-      mesh->setLength( mDialog->getParam( 1 ) );
-    }
-    else if ( mType == "torus" )
-    {
-      Qt3DExtras::QTorusMesh *mesh = dynamic_cast<Qt3DExtras::QTorusMesh *>( mCurrentMesh );
-      mesh->setRadius( mDialog->getParam( 0 ) );
-      mesh->setMinorRadius( mDialog->getParam( 1 ) );
-    }
-    else if ( mType == "cone" )
-    {
-      Qt3DExtras::QConeMesh *mesh = dynamic_cast<Qt3DExtras::QConeMesh *>( mCurrentMesh );
-      mesh->setBottomRadius( mDialog->getParam( 0 ) );
-      mesh->setLength( mDialog->getParam( 1 ) );
-      mesh->setTopRadius( mDialog->getParam( 2 ) );
+      case Cube:
+      case Box:
+      {
+        sX = mDialog->getParam( 0 );
+        sY = mDialog->getParam( 1 );
+        sZ = mDialog->getParam( 2 );
+        break;
+      }
+      case Sphere:
+      {
+        Qt3DExtras::QSphereMesh *mesh = dynamic_cast<Qt3DExtras::QSphereMesh *>( mCurrentMesh );
+        mesh->setRadius( mDialog->getParam( 0 ) );
+        mesh->setRings( std::min( 6, static_cast<int>( mDialog->getParam( 1 ) ) ) );
+        mesh->setSlices( std::min( 6, static_cast<int>( mDialog->getParam( 2 ) ) ) );
+        break;
+      }
+      case Cylinder:
+      {
+        Qt3DExtras::QCylinderMesh *mesh = dynamic_cast<Qt3DExtras::QCylinderMesh *>( mCurrentMesh );
+        mesh->setRadius( mDialog->getParam( 0 ) );
+        mesh->setLength( mDialog->getParam( 1 ) );
+        mesh->setSlices( std::min( 6, static_cast<int>( mDialog->getParam( 2 ) ) ) );
+        break;
+      }
+      case Torus:
+      {
+        Qt3DExtras::QTorusMesh *mesh = dynamic_cast<Qt3DExtras::QTorusMesh *>( mCurrentMesh );
+        mesh->setRadius( mDialog->getParam( 0 ) );
+        mesh->setMinorRadius( mDialog->getParam( 1 ) );
+        mesh->setRings( std::min( 6, static_cast<int>( mDialog->getParam( 2 ) ) ) );
+        mesh->setSlices( std::min( 6, static_cast<int>( mDialog->getParam( 3 ) ) ) );
+        break;
+      }
+      case Cone:
+      {
+        Qt3DExtras::QConeMesh *mesh = dynamic_cast<Qt3DExtras::QConeMesh *>( mCurrentMesh );
+        mesh->setBottomRadius( mDialog->getParam( 0 ) );
+        mesh->setLength( mDialog->getParam( 1 ) );
+        mesh->setTopRadius( mDialog->getParam( 2 ) );
+        mesh->setSlices( std::min( 6, static_cast<int>( mDialog->getParam( 3 ) ) ) );
+        break;
+      }
     }
   }
 
@@ -384,7 +413,7 @@ void Qgs3DMapToolCreatePrimitive::mouseMoveEvent( QMouseEvent *event )
 
     mDialog->setParam( mNbMouseClick - 1, length );
 
-    updatePrimitive( /*length, 0.0*/ );
+    updatePrimitive();
   }
 }
 
