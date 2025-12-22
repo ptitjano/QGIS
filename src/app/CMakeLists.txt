@@ -352,6 +352,7 @@ if (WITH_3D)
     3d/qgs3danimationexportdialog.cpp
     3d/qgs3dapputils.cpp
     3d/qgs3dicongenerator.cpp
+    3d/qgs3deditiontoolbar.cpp
     3d/qgs3dmapconfigwidget.cpp
     3d/qgs3dmapexportwidget.cpp
     3d/qgs3dmaptoolidentify.cpp
@@ -363,6 +364,7 @@ if (WITH_3D)
     3d/qgs3dmodelsourcelineedit.cpp
     3d/qgs3dnavigationwidget.cpp
     3d/qgs3doptions.cpp
+    3d/qgs3dpointcloudeditiontoolbar.cpp
     3d/qgsannotationlayer3drendererwidget.cpp
     3d/qgscategorized3drendererwidget.cpp
     3d/qgsgoochmaterialwidget.cpp
