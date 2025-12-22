@@ -78,6 +78,7 @@ class Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
     void mousePressEvent( QMouseEvent *event ) override;
     void mouseReleaseEvent( QMouseEvent *event ) override;
     void mouseMoveEvent( QMouseEvent *event ) override;
+    void keyReleaseEvent( QKeyEvent *event ) override;
 
   private:
     PrimitiveType mType;
@@ -101,6 +102,7 @@ class Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
 
     QgsPoint screenToMap( const QPoint &screenPos ) const;
     void updatePrimitive();
+    void createPrimitive( bool enabledAttributeValuesDlg = true );
 };
 
 ///@cond PRIVATE

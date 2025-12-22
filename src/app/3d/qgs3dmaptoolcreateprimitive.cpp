@@ -69,6 +69,7 @@ Qgs3DMapToolCreatePrimitive::Qgs3DMapToolCreatePrimitive( Qgs3DMapCanvas *canvas
   }
 
   connect( mDialog.get(), &Qgs3DCreatePrimitiveDialog::valueChanged, this, [this]() { updatePrimitive(); } );
+  connect( mDialog.get(), &Qgs3DCreatePrimitiveDialog::createClicked, this, [this]() { createPrimitive(); } );
 }
 
 Qgs3DMapToolCreatePrimitive::~Qgs3DMapToolCreatePrimitive() = default;
@@ -93,6 +94,9 @@ void Qgs3DMapToolCreatePrimitive::deactivate()
 void Qgs3DMapToolCreatePrimitive::finish()
 {
   qDebug() << u"%1 #%2:"_s.arg( __FUNCTION__ ).arg( __LINE__ ).toStdString();
+  mCanvas->setCursor( cursor() );
+  mDialog->unfocusCreateButton();
+
   mPrimitiveLineEntity.reset();
 
   mRubberBand.reset();
@@ -447,3 +451,18 @@ void Qgs3DMapToolCreatePrimitive::mouseReleaseEvent( QMouseEvent *event )
     // finish();
   }
 }
+
+void Qgs3DMapToolCreatePrimitive::keyReleaseEvent( QKeyEvent *event )
+{
+  if ( event->key() == Qt::Key_Escape )
+  {
+    finish();
+  }
+  else if ( event->key() == Qt::Key_Enter )
+  {
+    createPrimitive();
+  }
+}
+
+void Qgs3DMapToolCreatePrimitive::createPrimitive( bool enabledAttributeValuesDlg )
+{}
