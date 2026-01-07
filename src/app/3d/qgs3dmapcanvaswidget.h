@@ -132,6 +132,7 @@ class APP_EXPORT Qgs3DMapCanvasWidget : public QWidget
     void toggleAnimations();
     void cameraControl();
     void identify();
+    void measureArea();
     void measureLine();
     void streetView();
     void exportScene();
@@ -187,7 +188,8 @@ class APP_EXPORT Qgs3DMapCanvasWidget : public QWidget
     QLabel *mLabelNavigationSpeed = nullptr;
     QTimer *mLabelNavSpeedHideTimeout = nullptr;
     Qgs3DMapToolIdentify *mMapToolIdentify = nullptr;
-    Qgs3DMapToolMeasureLine *mMapToolMeasureLine = nullptr;
+    Qgs3DMapToolMeasure *mMapToolMeasureLine = nullptr;
+    Qgs3DMapToolMeasure *mMapToolMeasureArea = nullptr;
     Qgs3DMapToolStreetView *mMapToolStreetView = nullptr;
     QgsGeometry mCrossSectionLine;
     QObjectUniquePtr<QgsRubberBand> mCrossSectionRubberBand;

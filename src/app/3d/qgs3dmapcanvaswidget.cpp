@@ -142,8 +142,52 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   QAction *actionIdentify = toolBar->addAction( QIcon( QgsApplication::iconPath( "mActionIdentify.svg" ) ), tr( "Identify" ), this, &Qgs3DMapCanvasWidget::identify );
   actionIdentify->setCheckable( true );
 
-  QAction *actionMeasurementTool = toolBar->addAction( QIcon( QgsApplication::iconPath( "mActionMeasure.svg" ) ), tr( "Measurement Line" ), this, &Qgs3DMapCanvasWidget::measureLine );
-  actionMeasurementTool->setCheckable( true );
+  // Measure Menu
+  QMenu *measureMenu = new QMenu( this );
+  QToolButton *measureButton = new QToolButton( this );
+  measureButton->setPopupMode( QToolButton::MenuButtonPopup );
+  measureButton->setMenu( measureMenu );
+
+  toolBar->addWidget( measureButton );
+
+  QAction *actionMeasureLineTool = new QAction( QgsApplication::getThemeIcon( "mActionMeasure.svg" ), tr( "Measure Line" ), this );
+  connect( actionMeasureLineTool, &QAction::triggered, this, &Qgs3DMapCanvasWidget::measureLine );
+  measureMenu->addAction( actionMeasureLineTool );
+  actionMeasureLineTool->setCheckable( true );
+
+  QAction *actionMeasureAreaTool = new QAction( QgsApplication::getThemeIcon( "mActionMeasureArea.svg" ), tr( "Measure Area" ), this );
+  connect( actionMeasureAreaTool, &QAction::triggered, this, &Qgs3DMapCanvasWidget::measureArea );
+  measureMenu->addAction( actionMeasureAreaTool );
+  actionMeasureAreaTool->setCheckable( true );
+
+  QAction *defMeasureAction = actionMeasureLineTool;
+  switch ( setting.value( u"3D/measureTool"_s, 0 ).toInt() )
+  {
+    case 0:
+      defMeasureAction = actionMeasureLineTool;
+      break;
+    case 1:
+      defMeasureAction = actionMeasureAreaTool;
+      break;
+    default:
+      defMeasureAction = actionMeasureLineTool;
+      break;
+  }
+  measureButton->setDefaultAction( defMeasureAction );
+
+  connect( measureButton, &QToolButton::triggered, this, [actionMeasureAreaTool, actionMeasureLineTool, measureButton]( QAction *action ) {
+    QgsSettings settings;
+    if ( action == actionMeasureLineTool )
+    {
+      settings.setValue( u"3D/measureTool"_s, 0 );
+    }
+    else if ( action == actionMeasureAreaTool )
+    {
+      settings.setValue( u"3D/measureTool"_s, 1 );
+    }
+
+    measureButton->setDefaultAction( action );
+  } );
 
   QAction *actionStreetViewTool = toolBar->addAction( QIcon( QgsApplication::iconPath( "street-view.svg" ) ), tr( "Street view" ), this, &Qgs3DMapCanvasWidget::streetView );
   actionStreetViewTool->setCheckable( true );
@@ -153,7 +197,8 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   actionGroup->addAction( actionStreetViewTool );
   actionGroup->addAction( actionCameraControl );
   actionGroup->addAction( actionIdentify );
-  actionGroup->addAction( actionMeasurementTool );
+  actionGroup->addAction( actionMeasureAreaTool );
+  actionGroup->addAction( actionMeasureLineTool );
 
   for ( auto toolbar : mEditingToolBar->findChildren<Qgs3DEditionToolBar *>() )
   {
@@ -349,6 +394,8 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
 
   mMapToolMeasureLine = new Qgs3DMapToolMeasure( this, false );
 
+  mMapToolMeasureArea = new Qgs3DMapToolMeasure( this, true );
+
   mMapToolStreetView = new Qgs3DMapToolStreetView( mCanvas );
   connect( mMapToolStreetView, &Qgs3DMapToolStreetView::finished, this, [actionStreetViewTool, this]() {
     actionStreetViewTool->setChecked( false );
@@ -512,6 +559,15 @@ void Qgs3DMapCanvasWidget::measureLine()
     return;
 
   mCanvas->setMapTool( action->isChecked() ? mMapToolMeasureLine : nullptr );
+}
+
+void Qgs3DMapCanvasWidget::measureArea()
+{
+  QAction *action = qobject_cast<QAction *>( sender() );
+  if ( !action )
+    return;
+
+  mCanvas->setMapTool( action->isChecked() ? mMapToolMeasureArea : nullptr );
 }
 
 void Qgs3DMapCanvasWidget::streetView()
