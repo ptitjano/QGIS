@@ -98,7 +98,7 @@ class _3D_EXPORT Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
     bool mMouseHasMoved = false;
     QPoint mMouseClickPos;
     QVector<QgsPoint> mPointOnMap;
-    int mCurrentFieldIdx = 0;
+    int mCurrentFieldIdx = -1;
 
     std::unique_ptr<Qt3DCore::QEntity> mPrimitiveLineEntity = nullptr;
 
@@ -125,6 +125,9 @@ class _3D_EXPORT Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
      * \return raycasted map point from screen position
      */
     QgsPoint screenToMap( const QPoint &screenPos ) const;
+
+    void handleNextParameter();
+    void handlePreviousParameter();
 };
 
 ///\cond PRIVATE
