@@ -339,7 +339,7 @@ void Qgs3DMapToolCreatePrimitive::handleClick( QMouseEvent *event )
 
     ++mNbMouseClick;
   }
-  else if ( mNbMouseClick <= mDialog->paramNumber() )
+  else if ( mNbMouseClick <= mDialog->creationParamNumber() )
   {
     QgsPoint pointMap = screenToMap( event->pos() );
     double length = constraintMapPoint( pointMap, event->modifiers() );
@@ -352,7 +352,7 @@ void Qgs3DMapToolCreatePrimitive::handleClick( QMouseEvent *event )
     mRubberBand->addPoint( rbPoint );
 
     ++mNbMouseClick;
-    if ( mNbMouseClick > mDialog->paramNumber() )
+    if ( mNbMouseClick > mDialog->creationParamNumber() )
     {
       mCanvas->setCursor( Qt::WaitCursor );
       mDialog->hide();
@@ -435,7 +435,7 @@ void Qgs3DMapToolCreatePrimitive::mouseMoveEvent( QMouseEvent *event )
   {
     mDialog->setTranslation( pointMap );
   }
-  else if ( mNbMouseClick <= mDialog->paramNumber() )
+  else if ( mNbMouseClick <= mDialog->creationParamNumber() )
   {
     if ( mNbMouseClick == 1 && mType == Cube )
     {
