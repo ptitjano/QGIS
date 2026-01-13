@@ -347,7 +347,7 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
 
   mMapToolIdentify = new Qgs3DMapToolIdentify( mCanvas );
 
-  mMapToolMeasureLine = new Qgs3DMapToolMeasure( this );
+  mMapToolMeasureLine = new Qgs3DMapToolMeasure( this, false );
 
   mMapToolStreetView = new Qgs3DMapToolStreetView( mCanvas );
   connect( mMapToolStreetView, &Qgs3DMapToolStreetView::finished, this, [actionStreetViewTool, this]() {
