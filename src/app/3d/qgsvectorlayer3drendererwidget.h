@@ -78,6 +78,9 @@ class QgsVectorLayer3DRendererWidget : public QgsMapLayerConfigWidget
     void onRendererTypeChanged( int index );
 
   private:
+    void createRendererFrom2DSymbology();
+
+  private:
     QComboBox *cboRendererType = nullptr;
     QStackedWidget *widgetRendererStack = nullptr;
     QgsVectorLayer3DPropertiesWidget *widgetBaseProperties = nullptr;
