@@ -13,6 +13,8 @@
  *                                                                         *
  ***************************************************************************/
 
+#include <testqgs3dmaptoolutils.h>
+
 #include "qgisapp.h"
 #include "qgs3d.h"
 #include "qgs3dmapcanvas.h"
@@ -34,7 +36,6 @@
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayer3drenderer.h"
 #include "qgswindow3dengine.h"
-#include "testqgs3dmaptoolutils.h"
 
 #include <QString>
 
@@ -42,6 +43,7 @@ using namespace Qt::StringLiterals;
 
 class Qgs3DMapToolCreatePrimitiveForTest : public Qgs3DMapToolCreatePrimitive
 {
+    Q_OBJECT
   public:
     Qgs3DMapToolCreatePrimitiveForTest( Qgs3DMapCanvas *canvas, PrimitiveType type )
       : Qgs3DMapToolCreatePrimitive( canvas, type )
