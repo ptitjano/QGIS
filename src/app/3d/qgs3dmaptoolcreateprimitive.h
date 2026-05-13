@@ -39,7 +39,7 @@ namespace Qt3DRender
 /**
  * 3D maptool used to create 3D primitives from the 3D canvas
  */
-class _3D_EXPORT Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
+class Qgs3DMapToolCreatePrimitive : public Qgs3DMapTool
 {
     Q_OBJECT
 
