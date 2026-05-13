@@ -40,7 +40,7 @@ class Qgs3DPrimitiveEditionToolBar : public Qgs3DEditionToolBar
     QList<QAction *> groupActions() const override;
 
   private slots:
-    void createCube();
+    void createBox();
     void createSphere();
     void createTorus();
     void createCylinder();
