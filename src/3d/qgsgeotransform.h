@@ -28,19 +28,22 @@
 //
 
 
+#include "qgis_3d.h"
 #include "qgsvector3d.h"
 
+#include <QString>
 #include <Qt3DCore/QTransform>
 
 #define SIP_NO_FILE
 
+using namespace Qt::StringLiterals;
 /**
  * Specialized kind of QTransform that:
  *
  * - stores translation as QgsVector3D, i.e. in double precision
  * - reacts to map scene's origin shifts and updates the QTransform accordingly
  */
-class QgsGeoTransform : public Qt3DCore::QTransform
+class _3D_EXPORT QgsGeoTransform : public Qt3DCore::QTransform
 {
     Q_OBJECT
   public:
@@ -51,6 +54,8 @@ class QgsGeoTransform : public Qt3DCore::QTransform
 
     //! Sets 3D scene's origin in map coordinates and updates the underlying QTransform
     void setOrigin( const QgsVector3D &origin );
+
+    QString toString() const { return u"QgsGeoTransform trans:%1, origin:%2"_s.arg( mTranslation.toString() ).arg( mOrigin.toString() ); }
 
   private:
     QgsVector3D mTranslation;

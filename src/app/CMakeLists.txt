@@ -102,9 +102,6 @@ set(QGIS_APP_SRCS
   qgsmaptoolrotatefeature.cpp
   qgsmaptoolrotatepointsymbols.cpp
   qgsmaptoolscalefeature.cpp
-  qgsmaptoolselect.cpp
-  qgsmaptoolselectionhandler.cpp
-  qgsmaptoolselectutils.cpp
   qgsmaptoolsimplify.cpp
   qgsmaptoolsplitfeatures.cpp
   qgsmaptoolsplitparts.cpp
@@ -354,18 +351,31 @@ if (WITH_3D)
     3d/qgs3danimationwidget.cpp
     3d/qgs3danimationexportdialog.cpp
     3d/qgs3dapputils.cpp
+    3d/qgs3dcreateprimitivedialog.cpp
+    3d/qgs3dcreateprimitiveboxdialog.cpp
+    3d/qgs3dcreateprimitiveconedialog.cpp
+    3d/qgs3dcreateprimitivecylinderdialog.cpp
+    3d/qgs3dcreateprimitivespheredialog.cpp
+    3d/qgs3dcreateprimitivetorusdialog.cpp
     3d/qgs3dicongenerator.cpp
+    3d/qgs3deditiontoolbar.cpp
     3d/qgs3dmapconfigwidget.cpp
     3d/qgs3dmapexportwidget.cpp
+    3d/qgs3dmaptoolcreateprimitive.cpp
     3d/qgs3dmaptoolidentify.cpp
-    3d/qgs3dmaptoolmeasureline.cpp
+    3d/qgs3dmaptoolmeasure.cpp
     3d/qgs3dmaptoolpointcloudchangeattributepaintbrush.cpp
     3d/qgs3dmaptoolpointcloudchangeattribute.cpp
     3d/qgs3dmaptoolpointcloudchangeattributepolygon.cpp
+    3d/qgs3dmaptoolstreetview.cpp
     3d/qgs3dmeasuredialog.cpp
     3d/qgs3dmodelsourcelineedit.cpp
     3d/qgs3dnavigationwidget.cpp
     3d/qgs3doptions.cpp
+    3d/qgs3dpointcloudeditiontoolbar.cpp
+    3d/qgs3dprimitiveeditiontoolbar.cpp
+    3d/qgs3dsnappingmanager.cpp
+    3d/qgs3dsnappingtoolbar.cpp
     3d/qgsannotationlayer3drendererwidget.cpp
     3d/qgscategorized3drendererwidget.cpp
     3d/qgsgoochmaterialwidget.cpp

@@ -24,6 +24,7 @@
 #include "qgsapplication.h"
 #include "qgscameracontroller.h"
 #include "qgschunkedentity.h"
+#include "qgsdemheightmapcache_p.h"
 #include "qgsfeature.h"
 #include "qgsfeatureiterator.h"
 #include "qgsfeaturerequest.h"
@@ -548,9 +549,18 @@ void Qgs3DUtils::extractPointPositions(
     {
       geomZ = pt.z();
     }
-    const float terrainZ = context.terrainRenderingEnabled() && context.terrainGenerator()
-                             ? static_cast<float>( context.terrainGenerator()->heightAt( pt.x(), pt.y(), context ) * ( context.terrainSettings() ? context.terrainSettings()->verticalScale() : 1 ) )
-                             : 0.f;
+    float terrainZ = 0.0f;
+    if ( context.terrainRenderingEnabled() && context.terrainGenerator() )
+    {
+      if ( const QgsTerrainGeneratorWithCache *demCache = dynamic_cast<const QgsTerrainGeneratorWithCache *>( context.terrainGenerator() ) )
+      {
+        int qual;
+        demCache->heightMapCache()->heightAndQualityAt( pt.x(), pt.y(), terrainZ, qual );
+      }
+      else
+        terrainZ = context.terrainGenerator()->heightAt( pt.x(), pt.y(), context );
+      terrainZ *= context.terrainSettings() ? context.terrainSettings()->verticalScale() : 1;
+    }
     float h = 0.0f;
     switch ( altClamp )
     {
@@ -1074,13 +1084,23 @@ QQuaternion Qgs3DUtils::rotationFromPitchHeadingAngles( float pitchAngle, float 
   return QQuaternion::fromAxisAndAngle( QVector3D( 0, 0, 1 ), headingAngle ) * QQuaternion::fromAxisAndAngle( QVector3D( 1, 0, 0 ), pitchAngle );
 }
 
-QgsPoint Qgs3DUtils::screenPointToMapCoordinates( const QPoint &screenPoint, const QSize size, const QgsCameraController *cameraController, const Qgs3DMapSettings *mapSettings )
+QgsPoint Qgs3DUtils::screenPointToMapCoordinates( const QPoint &screenPoint, const QSize size, const QgsCameraController *cameraController, const Qgs3DMapSettings *mapSettings, float zKnown )
 {
   const QgsRay3D ray = rayFromScreenPoint( screenPoint, size, cameraController->camera() );
+  const float rayDirectionZ = ray.direction().z();
+  float pointDistance;
 
-  // pick an arbitrary point mid-way between near and far plane
-  const float pointDistance = ( cameraController->camera()->farPlane() + cameraController->camera()->nearPlane() ) / 2;
-  const QVector3D worldPoint = ray.origin() + pointDistance * ray.direction().normalized();
+  // use the provided z
+  if ( !std::isnan( zKnown ) && !qgsFloatNear( rayDirectionZ, 0.0f ) )
+  {
+    pointDistance = ( static_cast<float>( zKnown ) - ray.origin().z() ) / rayDirectionZ;
+  }
+  else // pick an arbitrary point mid-way between near and far plane
+  {
+    pointDistance = ( cameraController->camera()->farPlane() + cameraController->camera()->nearPlane() ) / 2;
+  }
+
+  const QVector3D worldPoint = ray.point( pointDistance );
   const QgsVector3D mapTransform = worldToMapCoordinates( worldPoint, mapSettings->origin() );
   const QgsPoint mapPoint( mapTransform.x(), mapTransform.y(), mapTransform.z() );
   return mapPoint;

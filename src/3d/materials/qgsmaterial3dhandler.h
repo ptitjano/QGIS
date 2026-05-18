@@ -151,6 +151,18 @@ class _3D_EXPORT QgsAbstractMaterial3DHandler SIP_ABSTRACT
     virtual QgsMaterial *toMaterial( const QgsAbstractMaterialSettings *settings, Qgis::MaterialRenderingTechnique technique, const QgsMaterialContext &context ) const = 0 SIP_FACTORY;
 
     /**
+     * Creates a QgsMaterial for instanced point rendering.
+     *
+     * The \a flags argument controls which per-instance attributes are active.
+     *
+     * The default implementation returns NULLPTR.
+     *
+     * Subclasses that support instancing must override this method to construct the material with the
+     * correct shader from the start.
+     */
+    virtual QgsMaterial *toInstancedMaterial( const QgsAbstractMaterialSettings *settings, const QgsMaterialContext &context, Qgis::InstancedMaterialFlags flags ) const;
+
+    /**
      * Returns the parameters to be exported to .mtl file
      */
     virtual QMap<QString, QString> toExportParameters( const QgsAbstractMaterialSettings *settings ) const = 0;

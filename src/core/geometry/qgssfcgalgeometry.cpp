@@ -297,7 +297,7 @@ bool QgsSfcgalGeometry::fuzzyEqual( const QgsSfcgalGeometry &other, double epsil
 
   if ( mIsPrimitive )
   {
-    if ( !mPrimTransform.fuzzyEqual( other.mPrimTransform ) )
+    if ( !mPrimTransform.fuzzyEqual( other.mPrimTransform, epsilon ) )
     {
       return false;
     }
@@ -949,6 +949,45 @@ std::unique_ptr<QgsSfcgalGeometry> QgsSfcgalGeometry::toPolyhedralSurface() cons
   return phsGeom;
 }
 
+std::unique_ptr<QgsSfcgalGeometry> QgsSfcgalGeometry::createBox( double sizeX, double sizeY, double sizeZ )
+{
+#if SFCGAL_VERSION_NUM >= SFCGAL_MAKE_VERSION( 2, 3, 0 )
+  QString errorMsg;
+  sfcgal::errorHandler()->clearText( &errorMsg );
+  sfcgal::shared_prim result = QgsSfcgalEngine::createBox( sizeX, sizeY, sizeZ, &errorMsg );
+  THROW_ON_ERROR( &errorMsg );
+
+  auto resultGeom = QgsSfcgalEngine::toSfcgalGeometry( result, sfcgal::primitiveType::SFCGAL_TYPE_BOX, &errorMsg );
+  THROW_ON_ERROR( &errorMsg );
+  return resultGeom;
+#else
+  ( void ) sizeX;
+  ( void ) sizeY;
+  ( void ) sizeZ;
+  throw QgsNotSupportedException( QObject::tr( "This operation requires a QGIS build based on SFCGAL 2.3 or later" ) );
+#endif
+}
+
+std::unique_ptr<QgsSfcgalGeometry> QgsSfcgalGeometry::createCone( double bottomRadius, double height, double topRadius, unsigned int radial )
+{
+#if SFCGAL_VERSION_NUM >= SFCGAL_MAKE_VERSION( 2, 3, 0 )
+  QString errorMsg;
+  sfcgal::errorHandler()->clearText( &errorMsg );
+  sfcgal::shared_prim result = QgsSfcgalEngine::createCone( bottomRadius, height, topRadius, radial, &errorMsg );
+  THROW_ON_ERROR( &errorMsg );
+
+  auto resultGeom = QgsSfcgalEngine::toSfcgalGeometry( result, sfcgal::primitiveType::SFCGAL_TYPE_CONE, &errorMsg );
+  THROW_ON_ERROR( &errorMsg );
+  return resultGeom;
+#else
+  ( void ) bottomRadius;
+  ( void ) height;
+  ( void ) topRadius;
+  ( void ) radial;
+  throw QgsNotSupportedException( QObject::tr( "This operation requires a QGIS build based on SFCGAL 2.3 or later" ) );
+#endif
+}
+
 std::unique_ptr<QgsSfcgalGeometry> QgsSfcgalGeometry::createCube( double size )
 {
 #if SFCGAL_VERSION_NUM >= SFCGAL_MAKE_VERSION( 2, 3, 0 )
@@ -962,6 +1001,63 @@ std::unique_ptr<QgsSfcgalGeometry> QgsSfcgalGeometry::createCube( double size )
   return resultGeom;
 #else
   ( void ) size;
+  throw QgsNotSupportedException( QObject::tr( "This operation requires a QGIS build based on SFCGAL 2.3 or later" ) );
+#endif
+}
+
+std::unique_ptr<QgsSfcgalGeometry> QgsSfcgalGeometry::createCylinder( double radius, double height, unsigned int radial )
+{
+#if SFCGAL_VERSION_NUM >= SFCGAL_MAKE_VERSION( 2, 3, 0 )
+  QString errorMsg;
+  sfcgal::errorHandler()->clearText( &errorMsg );
+  sfcgal::shared_prim result = QgsSfcgalEngine::createCylinder( radius, height, radial, &errorMsg );
+  THROW_ON_ERROR( &errorMsg );
+
+  auto resultGeom = QgsSfcgalEngine::toSfcgalGeometry( result, sfcgal::primitiveType::SFCGAL_TYPE_CYLINDER, &errorMsg );
+  THROW_ON_ERROR( &errorMsg );
+  return resultGeom;
+#else
+  ( void ) radius;
+  ( void ) height;
+  ( void ) radial;
+  throw QgsNotSupportedException( QObject::tr( "This operation requires a QGIS build based on SFCGAL 2.3 or later" ) );
+#endif
+}
+
+std::unique_ptr<QgsSfcgalGeometry> QgsSfcgalGeometry::createSphere( double radius, unsigned int subdivisions )
+{
+#if SFCGAL_VERSION_NUM >= SFCGAL_MAKE_VERSION( 2, 3, 0 )
+  QString errorMsg;
+  sfcgal::errorHandler()->clearText( &errorMsg );
+  sfcgal::shared_prim result = QgsSfcgalEngine::createSphere( radius, subdivisions, &errorMsg );
+  THROW_ON_ERROR( &errorMsg );
+
+  auto resultGeom = QgsSfcgalEngine::toSfcgalGeometry( result, sfcgal::primitiveType::SFCGAL_TYPE_SPHERE, &errorMsg );
+  THROW_ON_ERROR( &errorMsg );
+  return resultGeom;
+#else
+  ( void ) radius;
+  ( void ) subdivisions;
+  throw QgsNotSupportedException( QObject::tr( "This operation requires a QGIS build based on SFCGAL 2.3 or later" ) );
+#endif
+}
+
+std::unique_ptr<QgsSfcgalGeometry> QgsSfcgalGeometry::createTorus( double mainRadius, double tubeRadius, unsigned int mainRadial, unsigned int tubeRadial )
+{
+#if SFCGAL_VERSION_NUM >= SFCGAL_MAKE_VERSION( 2, 3, 0 )
+  QString errorMsg;
+  sfcgal::errorHandler()->clearText( &errorMsg );
+  sfcgal::shared_prim result = QgsSfcgalEngine::createTorus( mainRadius, tubeRadius, mainRadial, tubeRadial, &errorMsg );
+  THROW_ON_ERROR( &errorMsg );
+
+  auto resultGeom = QgsSfcgalEngine::toSfcgalGeometry( result, sfcgal::primitiveType::SFCGAL_TYPE_TORUS, &errorMsg );
+  THROW_ON_ERROR( &errorMsg );
+  return resultGeom;
+#else
+  ( void ) mainRadius;
+  ( void ) tubeRadius;
+  ( void ) mainRadial;
+  ( void ) tubeRadial;
   throw QgsNotSupportedException( QObject::tr( "This operation requires a QGIS build based on SFCGAL 2.3 or later" ) );
 #endif
 }

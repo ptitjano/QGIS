@@ -15,12 +15,18 @@
 
 #include "qgsvectorlayer3drendererwidget.h"
 
+#include "qgisapp.h"
 #include "qgs3dsymbolregistry.h"
+#include "qgs3dsymbolutils.h"
 #include "qgsapplication.h"
 #include "qgscategorized3drenderer.h"
 #include "qgscategorized3drendererwidget.h"
+#include "qgscategorizedsymbolrenderer.h"
+#include "qgsmapcanvas.h"
 #include "qgsrulebased3drenderer.h"
 #include "qgsrulebased3drendererwidget.h"
+#include "qgsrulebasedrenderer.h"
+#include "qgssinglesymbolrenderer.h"
 #include "qgssymbol3dwidget.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayer3dpropertieswidget.h"
@@ -32,6 +38,7 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QStackedWidget>
+#include <QStandardItemModel>
 #include <QString>
 
 #include "moc_qgsvectorlayer3drendererwidget.cpp"
@@ -116,6 +123,7 @@ QgsVectorLayer3DRendererWidget::QgsVectorLayer3DRendererWidget( QgsMapLayer *lay
   cboRendererType->addItem( QgsApplication::getThemeIcon( u"rendererSingleSymbol.svg"_s ), tr( "Single Symbol" ) );
   cboRendererType->addItem( QgsApplication::getThemeIcon( u"rendererCategorizedSymbol.svg"_s ), tr( "Categorized" ) );
   cboRendererType->addItem( QgsApplication::getThemeIcon( u"rendererRuleBasedSymbol.svg"_s ), tr( "Rule-based" ) );
+  cboRendererType->addItem( QgsApplication::getThemeIcon( u"propertyicons/symbology.svg"_s ), tr( "From 2D Symbology" ) );
 
   widgetBaseProperties = new QgsVectorLayer3DPropertiesWidget( this );
 
@@ -157,6 +165,22 @@ void QgsVectorLayer3DRendererWidget::syncToLayer( QgsMapLayer *layer )
     return;
   }
   mLayer = layer;
+
+  // Enable the "From 2D Symbology" item only when the current
+  // 2D renderer type supports conversion to a corresponding 3D renderer.
+  const QgsVectorLayer *vLayer = qobject_cast<const QgsVectorLayer *>( mLayer );
+  const QgsFeatureRenderer *renderer2D = vLayer->renderer();
+  const QString renderer2DType = renderer2D ? renderer2D->type() : "";
+  QStandardItemModel *rendererTypeModel = qobject_cast<QStandardItemModel *>( cboRendererType->model() );
+  QStandardItem *from2DItem = rendererTypeModel->item( 4 );
+  if ( renderer2DType == "singleSymbol"_L1 || renderer2DType == "RuleRenderer"_L1 || renderer2DType == "categorizedSymbol"_L1 )
+  {
+    from2DItem->setFlags( from2DItem->flags() | Qt::ItemIsEnabled );
+  }
+  else
+  {
+    from2DItem->setFlags( from2DItem->flags() & ~Qt::ItemIsEnabled );
+  }
 
   int pageIndex;
   QgsAbstract3DRenderer *r = vlayer->renderer3D();
@@ -254,12 +278,93 @@ void QgsVectorLayer3DRendererWidget::onRendererTypeChanged( int index )
     case 3:
       widgetRuleBasedRenderer->setLayer( qobject_cast<QgsVectorLayer *>( mLayer ) );
       break;
+    case 4:
+      createRendererFrom2DSymbology();
+      break;
     default:
       Q_ASSERT( false );
   }
   emit widgetChanged();
 }
 
+void QgsVectorLayer3DRendererWidget::createRendererFrom2DSymbology()
+{
+  QgsVectorLayer *vLayer = qobject_cast<QgsVectorLayer *>( mLayer );
+  QgsFeatureRenderer *renderer2D = vLayer->renderer();
+  if ( !renderer2D )
+  {
+    // fallback to single symbol renderer
+    cboRendererType->setCurrentIndex( 1 );
+    return;
+  }
+
+  if ( renderer2D->type() == "singleSymbol"_L1 )
+  {
+    QgsSingleSymbolRenderer *singleRenderer2D = dynamic_cast<QgsSingleSymbolRenderer *>( renderer2D );
+    if ( singleRenderer2D )
+    {
+      QgsVectorLayer3DRenderer *renderer3D = new QgsVectorLayer3DRenderer();
+      QgsRenderContext context = QgsRenderContext::fromMapSettings( QgisApp::instance()->mapCanvas()->mapSettings() );
+      std::unique_ptr<QgsAbstract3DSymbol> symbol3D = Qgs3DSymbolUtils::create3DSymbolFrom2D( vLayer, singleRenderer2D->symbol(), context );
+      renderer3D->setSymbol( symbol3D.release() );
+      vLayer->setRenderer3D( renderer3D );
+    }
+
+    cboRendererType->setCurrentIndex( 1 );
+  }
+  else if ( renderer2D->type() == "categorizedSymbol"_L1 )
+  {
+    const QgsCategorizedSymbolRenderer *categorizedRenderer2D = dynamic_cast<const QgsCategorizedSymbolRenderer *>( renderer2D );
+    if ( categorizedRenderer2D )
+    {
+      QgsRenderContext context = QgsRenderContext::fromMapSettings( QgisApp::instance()->mapCanvas()->mapSettings() );
+      QList<Qgs3DRendererCategory> categories3D;
+      for ( const QgsRendererCategory &category2D : categorizedRenderer2D->categories() )
+      {
+        std::unique_ptr<QgsAbstract3DSymbol> symbol3D = Qgs3DSymbolUtils::create3DSymbolFrom2D( vLayer, category2D.symbol(), context );
+        Qgs3DRendererCategory category3D( category2D.value(), symbol3D.release(), category2D.renderState() );
+        categories3D.append( category3D );
+      }
+
+      QgsCategorized3DRenderer *renderer3D = new QgsCategorized3DRenderer( categorizedRenderer2D->classAttribute(), categories3D );
+      std::unique_ptr<QgsAbstract3DSymbol> sourceSymbol3D = Qgs3DSymbolUtils::create3DSymbolFrom2D( vLayer, categorizedRenderer2D->sourceSymbol(), context );
+      renderer3D->setSourceSymbol( sourceSymbol3D.release() );
+      if ( categorizedRenderer2D->sourceColorRamp() )
+      {
+        renderer3D->setSourceColorRamp( categorizedRenderer2D->sourceColorRamp()->clone() );
+      }
+      vLayer->setRenderer3D( renderer3D );
+    }
+
+    cboRendererType->setCurrentIndex( 2 );
+  }
+  else if ( renderer2D->type() == "RuleRenderer"_L1 )
+  {
+    const QgsRuleBasedRenderer *ruleRenderer2D = dynamic_cast<const QgsRuleBasedRenderer *>( renderer2D );
+    if ( ruleRenderer2D )
+    {
+      QgsRenderContext context = QgsRenderContext::fromMapSettings( QgisApp::instance()->mapCanvas()->mapSettings() );
+      auto rootRule3D = std::make_unique<QgsRuleBased3DRenderer::Rule>( nullptr );
+      for ( const QgsRuleBasedRenderer::Rule *rule2D : ruleRenderer2D->rootRule()->children() )
+      {
+        std::unique_ptr<QgsAbstract3DSymbol> symbol3D = Qgs3DSymbolUtils::create3DSymbolFrom2D( vLayer, rule2D->symbol(), context );
+        QgsRuleBased3DRenderer::Rule *rule3D = new QgsRuleBased3DRenderer::Rule( symbol3D.release(), rule2D->filterExpression(), rule2D->label(), rule2D->isElse() );
+        rootRule3D->appendChild( rule3D );
+      }
+
+      QgsRuleBased3DRenderer *renderer3D = new QgsRuleBased3DRenderer( rootRule3D.release() );
+      vLayer->setRenderer3D( renderer3D );
+    }
+
+    cboRendererType->setCurrentIndex( 3 );
+  }
+  else
+  {
+    // fallback to single symbol renderer
+    cboRendererType->setCurrentIndex( 1 );
+    return;
+  }
+}
 
 QgsVectorLayer3DRendererWidgetFactory::QgsVectorLayer3DRendererWidgetFactory( QObject *parent )
   : QObject( parent )

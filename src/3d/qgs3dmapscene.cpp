@@ -79,7 +79,6 @@
 #include <QUrl>
 #include <Qt3DExtras/QDiffuseSpecularMaterial>
 #include <Qt3DExtras/QForwardRenderer>
-#include <Qt3DExtras/QPhongAlphaMaterial>
 #include <Qt3DExtras/QPhongMaterial>
 #include <Qt3DExtras/QSphereMesh>
 #include <Qt3DLogic/QFrameAction>
@@ -87,6 +86,7 @@
 #include <Qt3DRender/QCullFace>
 #include <Qt3DRender/QDepthTest>
 #include <Qt3DRender/QEffect>
+#include <Qt3DRender/QMaterial>
 #include <Qt3DRender/QMesh>
 #include <Qt3DRender/QRenderPass>
 #include <Qt3DRender/QRenderSettings>
@@ -98,6 +98,11 @@
 #include "moc_qgs3dmapscene.cpp"
 
 using namespace Qt::StringLiterals;
+
+#include "qgsdemterraingenerator.h"
+#include "qgsline3dsymbol.h"
+#include "qgspolygon3dsymbol.h"
+#include "qgsvectorlayerchunkloader_p.h"
 
 std::function<QMap<QString, Qgs3DMapScene *>()> Qgs3DMapScene::sOpenScenesFunction = [] { return QMap<QString, Qgs3DMapScene *>(); };
 
@@ -119,8 +124,8 @@ Qgs3DMapScene::Qgs3DMapScene( Qgs3DMapSettings &map, QgsAbstract3DEngine *engine
   mMaxClipPlanes = Qgs3DUtils::openGlMaxClipPlanes( mEngine->surface() );
 
   // Camera
-  float aspectRatio = ( float ) viewportRect.width() / viewportRect.height();
-  mEngine->camera()->lens()->setPerspectiveProjection( mMap.fieldOfView(), aspectRatio, 10.f, 10000.0f );
+  double aspectRatio = static_cast<double>( viewportRect.width() ) / static_cast<double>( viewportRect.height() );
+  mEngine->camera()->lens()->setPerspectiveProjection( mMap.fieldOfView(), static_cast<float>( aspectRatio ), 10.f, 10000.0f );
 
   mFrameAction = new Qt3DLogic::QFrameAction();
   connect( mFrameAction, &Qt3DLogic::QFrameAction::triggered, this, &Qgs3DMapScene::onFrameTriggered );
@@ -307,9 +312,9 @@ QVector<QgsPointXY> Qgs3DMapScene::viewFrustum2DExtent() const
     else
     {
       // If the projected point is on the front of the camera we choose the closest between it and farthest point in the front
-      t = std::min<float>( t, camera->farPlane() );
+      t = std::min<double>( t, static_cast<double>( camera->farPlane() ) );
     }
-    QVector3D planePoint = ray.origin() + t * dir;
+    QVector3D planePoint = ray.origin() + static_cast<float>( t ) * dir;
     QgsVector3D pMap = mMap.worldToMapCoordinates( planePoint );
     extent.push_back( QgsPointXY( pMap.x(), pMap.y() ) );
   }
@@ -642,6 +647,12 @@ void Qgs3DMapScene::createTerrainDeferred()
 
     mTerrain = new QgsTerrainEntity( &mMap );
     terrainOrGlobe = mTerrain;
+
+    // when terrain generator is DEM, we watch for new hi-res tile are downloaded in order to correct the elevation of entities
+    if ( const QgsTerrainGeneratorWithCache *demGen = dynamic_cast<const QgsTerrainGeneratorWithCache *>( mMap.terrainGenerator() ) )
+    {
+      connect( demGen->heightMapCache(), &QgsDemHeightMapCache::maxResTileReceived, this, &Qgs3DMapScene::onNewDemTileReceived );
+    }
   }
 
   if ( terrainOrGlobe )
@@ -791,7 +802,9 @@ void Qgs3DMapScene::addSceneEntity( Qgs3DMapSceneEntity *sceneNewEntity )
 
   connect( sceneNewEntity, &Qgs3DMapSceneEntity::pendingJobsCountChanged, this, &Qgs3DMapScene::totalPendingJobsCountChanged );
 
-  onCameraChanged(); // needed for chunked entities
+  // needed for chunked entities
+  updateScene( true );
+  updateCameraNearFarPlanes();
 }
 
 void Qgs3DMapScene::removeSceneEntity( Qgs3DMapSceneEntity *sceneEntity )
@@ -977,20 +990,22 @@ void Qgs3DMapScene::finalizeNewEntity( Qt3DCore::QEntity *newEntity )
 
   // this is probably not the best place for material-specific configuration,
   // maybe this could be more generalized when other materials need some specific treatment
-  const QList<QgsLineMaterial *> childLineMaterials = newEntity->findChildren<QgsLineMaterial *>();
-  for ( QgsLineMaterial *lm : childLineMaterials )
-  {
-    connect( mEngine, &QgsAbstract3DEngine::sizeChanged, lm, [lm, this] { lm->setViewportSize( mEngine->size() ); } );
+  const QList<Qt3DRender::QMaterial *> childMaterials = newEntity->findChildren<Qt3DRender::QMaterial *>();
 
-    lm->setViewportSize( mEngine->size() );
-  }
-  // configure billboard's viewport when the viewport is changed.
-  const QList<QgsPoint3DBillboardMaterial *> childBillboardMaterials = newEntity->findChildren<QgsPoint3DBillboardMaterial *>();
-  for ( QgsPoint3DBillboardMaterial *bm : childBillboardMaterials )
+  // first pass over materials -- setup viewport sizing logic for ALL materials that require it
+  // (this needs to apply to all materials, includes those for highlight entities)
+  for ( Qt3DRender::QMaterial *material : childMaterials )
   {
-    connect( mEngine, &QgsAbstract3DEngine::sizeChanged, bm, [bm, this] { bm->setViewportSize( mEngine->size() ); } );
-
-    bm->setViewportSize( mEngine->size() );
+    if ( auto lm = qobject_cast< QgsLineMaterial * >( material ) )
+    {
+      connect( mEngine, &QgsAbstract3DEngine::sizeChanged, lm, [lm, this] { lm->setViewportSize( mEngine->size() ); } );
+      lm->setViewportSize( mEngine->size() );
+    }
+    else if ( auto bm = qobject_cast< QgsPoint3DBillboardMaterial * >( material ) )
+    {
+      connect( mEngine, &QgsAbstract3DEngine::sizeChanged, bm, [bm, this] { bm->setViewportSize( mEngine->size() ); } );
+      bm->setViewportSize( mEngine->size() );
+    }
   }
 
   QgsFrameGraph *frameGraph = mEngine->frameGraph();
@@ -1003,22 +1018,46 @@ void Qgs3DMapScene::finalizeNewEntity( Qt3DCore::QEntity *newEntity )
 
   // Add the required QLayers to the entity
   newEntity->addComponent( frameGraph->forwardRenderView().renderLayer() );
-  newEntity->addComponent( frameGraph->shadowRenderView().entityCastingShadowsLayer() );
 
-  // Finalize adding the 3D transparent objects by adding the layer components to the entities
+  Qt3DRender::QLayer *shadowCastingEntityLayer = frameGraph->shadowRenderView().entityCastingShadowsLayer();
   Qt3DRender::QLayer *transparentLayer = frameGraph->forwardRenderView().transparentObjectLayer();
-  const QList<Qt3DRender::QMaterial *> childMaterials = newEntity->findChildren<Qt3DRender::QMaterial *>();
   for ( Qt3DRender::QMaterial *material : childMaterials )
   {
+    // find the specific entity this material belongs to -- it may be a child of the parent entity
+    // being finalized
+    auto materialEntity = qobject_cast<Qt3DCore::QEntity *>( material->parent() );
+    if ( !materialEntity )
+      continue;
+
+    bool materialCastsShadows = false;
+    if ( auto qgsMaterial = qobject_cast< QgsMaterial * >( material ) )
+    {
+      if ( qgsMaterial->castsShadows() )
+      {
+        materialCastsShadows = true;
+      }
+    }
+    else
+    {
+      // for non QgsMaterial materials we assume they need shadows
+      materialCastsShadows = true;
+    }
+
+    if ( materialCastsShadows && !materialEntity->components().contains( shadowCastingEntityLayer ) )
+    {
+      materialEntity->addComponent( shadowCastingEntityLayer );
+    }
+
+    // Finalize adding the 3D transparent objects by adding the layer components to the entities
+
     // This handles the phong material without data defined properties.
-    if ( Qt3DExtras::QDiffuseSpecularMaterial *ph = qobject_cast<Qt3DExtras::QDiffuseSpecularMaterial *>( material ) )
+    if ( auto ph = qobject_cast<Qt3DExtras::QDiffuseSpecularMaterial *>( material ) )
     {
       if ( ph->diffuse().value<QColor>().alphaF() != 1.0f )
       {
-        Qt3DCore::QEntity *entity = qobject_cast<Qt3DCore::QEntity *>( ph->parent() );
-        if ( entity && !entity->components().contains( transparentLayer ) )
+        if ( !materialEntity->components().contains( transparentLayer ) )
         {
-          entity->addComponent( transparentLayer );
+          materialEntity->addComponent( transparentLayer );
         }
       }
     }
@@ -1039,36 +1078,40 @@ void Qgs3DMapScene::finalizeNewEntity( Qt3DCore::QEntity *newEntity )
      * Consider enabling if/when we have some workaround for the stacking issue,
      * eg CPU based sorting on camera movement...
      */
-    else if ( QgsPoint3DBillboardMaterial *billboardMaterial = qobject_cast<QgsPoint3DBillboardMaterial *>( material ) )
+    else if ( auto billboardMaterial = qobject_cast<QgsPoint3DBillboardMaterial *>( material ) )
     {
       Qt3DCore::QEntity *entity = qobject_cast<Qt3DCore::QEntity *>( billboardMaterial->parent() );
-      if ( entity && !entity->components().contains( transparentLayer ) )
+      if ( !materialEntity->components().contains( transparentLayer ) )
       {
-        entity->addComponent( transparentLayer );
+        materialEntity->addComponent( transparentLayer );
       }
     }
 #endif
     else
     {
       // This handles the phong material with data defined properties, the textured case and point (instanced) symbols.
-      Qt3DRender::QEffect *effect = material->effect();
-      if ( effect )
+      if ( Qt3DRender::QEffect *effect = material->effect() )
       {
         const QVector<Qt3DRender::QParameter *> parameters = effect->parameters();
         for ( const Qt3DRender::QParameter *parameter : parameters )
         {
           if ( parameter->name() == "opacity" && parameter->value() != 1.0f )
           {
-            Qt3DCore::QEntity *entity = qobject_cast<Qt3DCore::QEntity *>( material->parent() );
-            if ( entity && !entity->components().contains( transparentLayer ) )
+            if ( !materialEntity->components().contains( transparentLayer ) )
             {
-              entity->addComponent( transparentLayer );
+              materialEntity->addComponent( transparentLayer );
             }
             break;
           }
         }
       }
     }
+  }
+
+  if ( childMaterials.empty() )
+  {
+    // handle shadows for entities without materials -- eg point models
+    newEntity->addComponent( shadowCastingEntityLayer );
   }
 }
 
@@ -1146,16 +1189,15 @@ void Qgs3DMapScene::updateSceneState()
 
 void Qgs3DMapScene::onBackgroundSettingsChanged()
 {
+  if ( mBackgroundEntity )
+  {
+    mBackgroundEntity->deleteLater();
+    mBackgroundEntity = nullptr;
+  }
+
   const QgsAbstract3DMapBackgroundSettings *settings = mMap.backgroundSettings();
   if ( !settings )
-  {
-    if ( mBackgroundEntity )
-    {
-      mBackgroundEntity->deleteLater();
-      mBackgroundEntity = nullptr;
-    }
     return;
-  }
 
   QgsFrameGraph *frameGraph = mEngine->frameGraph();
 
@@ -1431,10 +1473,90 @@ void Qgs3DMapScene::onOriginChanged()
     QgsVector3D originShift = mMap.origin() - oldOrigin;
     for ( QVector4D plane : std::as_const( mClipPlanesEquations ) )
     {
-      plane.setW( originShift.x() * plane.x() + originShift.y() * plane.y() + originShift.z() * plane.z() + plane.w() );
+      plane.setW( static_cast<float>( originShift.x() * plane.x() + originShift.y() * plane.y() + originShift.z() * plane.z() + plane.w() ) );
       newPlanes.append( plane );
     }
     enableClipping( newPlanes );
+  }
+}
+
+void Qgs3DMapScene::onNewDemTileReceived( const QgsChunkNodeId &tileId, const QgsRectangle &extent )
+{
+  Q_UNUSED( tileId );
+
+  // search for vector layer
+  for ( auto it = mLayerEntities.constBegin(); it != mLayerEntities.constEnd(); ++it )
+  {
+    bool doReloadNodes = false;
+    QgsMapLayer *layer = it.key();
+    Qt3DCore::QEntity *rootEntity = it.value();
+    Qgis::LayerType layerType = layer->type();
+    switch ( layerType )
+    {
+      case Qgis::LayerType::Vector:
+        // use QgsVectorLayerChunkedEntity::applyTerrainOffset?
+        // search for 3D symbols which need DEM elevation
+        if ( QgsVectorLayer3DRenderer *renderer = dynamic_cast<QgsVectorLayer3DRenderer *>( layer->renderer3D() ) )
+        {
+          if ( renderer->symbol()->type() == "point" )
+          {
+            const QgsPoint3DSymbol *symb = dynamic_cast<const QgsPoint3DSymbol *>( renderer->symbol() );
+            if ( symb->altitudeClamping() != Qgis::AltitudeClamping::Absolute )
+              doReloadNodes = true;
+          }
+          else if ( renderer->symbol()->type() == "line" )
+          {
+            const QgsLine3DSymbol *symb = dynamic_cast<const QgsLine3DSymbol *>( renderer->symbol() );
+            if ( symb->altitudeClamping() != Qgis::AltitudeClamping::Absolute )
+              doReloadNodes = true;
+          }
+          else if ( renderer->symbol()->type() == "polygon" )
+          {
+            const QgsPolygon3DSymbol *symb = dynamic_cast<const QgsPolygon3DSymbol *>( renderer->symbol() );
+            if ( symb->altitudeClamping() != Qgis::AltitudeClamping::Absolute )
+              doReloadNodes = true;
+          }
+        }
+        break;
+      default:
+        break;
+    }
+
+    // search chunk nodes of vector layer who intersect the new DEM hi-res tile
+    if ( doReloadNodes )
+    {
+      if ( QgsChunkedEntity *c = qobject_cast<QgsChunkedEntity *>( rootEntity ) )
+      {
+        QList<QgsChunkNode *> nodesToReload;
+        const QList<QgsChunkNode *> activeNodes = c->activeNodes();
+
+        // search within all active chunknodes of current entity
+        for ( QgsChunkNode *n : activeNodes )
+        {
+          if ( n->box3D().toRectangle().intersects( extent ) && ( n->state() == QgsChunkNode::Loaded ) )
+          {
+            nodesToReload << n;
+          }
+        }
+
+        // tag all intersecting nodes to reload
+        if ( !nodesToReload.isEmpty() )
+        {
+          switch ( layerType )
+          {
+            case Qgis::LayerType::Vector:
+            {
+              QgsVectorLayerChunkedEntity *vlc = qobject_cast<QgsVectorLayerChunkedEntity *>( rootEntity );
+              vlc->updateNodes( nodesToReload );
+              break;
+            }
+
+            default:
+              break;
+          }
+        }
+      }
+    }
   }
 }
 
@@ -1494,7 +1616,7 @@ void Qgs3DMapScene::enableClipping( const QList<QVector4D> &clipPlaneEquations )
   mClipPlanesEquations = clipPlaneEquations.mid( 0, mMaxClipPlanes );
 
   // enable the clip planes on the framegraph
-  mEngine->frameGraph()->addClipPlanes( clipPlaneEquations.size() );
+  mEngine->frameGraph()->addClipPlanes( static_cast<int>( clipPlaneEquations.size() ) );
 
   // Enable the clip planes for the material of each entity.
   handleClippingOnAllEntities();

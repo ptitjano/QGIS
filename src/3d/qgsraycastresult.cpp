@@ -17,6 +17,10 @@
 
 #include "qgsmaplayer.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 QgsRayCastResult::QgsRayCastResult()
 {}
 
@@ -69,7 +73,12 @@ QList<QgsRayCastHit> QgsRayCastResult::allHits() const
 
 void QgsRayCastResult::addLayerHits( QgsMapLayer *layer, const QList<QgsRayCastHit> &hits )
 {
-  mLayerResults[layer].append( hits );
+  for ( auto hit : hits )
+  {
+    QgsRayCastHit hitWithLayerId = hit;
+    hitWithLayerId.addProperty( u"layerId"_s, layer->id() );
+    mLayerResults[layer].append( hitWithLayerId );
+  }
   if ( !mLayerPointers.contains( layer ) )
   {
     mLayerPointers[layer] = layer;
@@ -78,5 +87,10 @@ void QgsRayCastResult::addLayerHits( QgsMapLayer *layer, const QList<QgsRayCastH
 
 void QgsRayCastResult::addTerrainHits( const QList<QgsRayCastHit> &hits )
 {
-  mTerrainResults.append( hits );
+  for ( auto hit : hits )
+  {
+    QgsRayCastHit hitWithLayerId = hit;
+    hitWithLayerId.addProperty( u"layerId"_s, "terrain" );
+    mTerrainResults.append( hitWithLayerId );
+  }
 }
