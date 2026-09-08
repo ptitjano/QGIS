@@ -192,7 +192,7 @@ void QgsMaterialWidget::updateMaterialWidget()
   {
     // stop updating from the original widget
     if ( QgsMaterialSettingsWidget *w = qobject_cast<QgsMaterialSettingsWidget *>( mStackedWidget->currentWidget() ) )
-      disconnect( w, &QgsMaterialSettingsWidget::changed, this, &QgsMaterialWidget::materialWidgetChanged );
+      disconnect( w, &QgsMaterialSettingsWidget::widgetChanged, this, &QgsMaterialWidget::materialWidgetChanged );
     mStackedWidget->removeWidget( mStackedWidget->currentWidget() );
   }
 
@@ -208,7 +208,7 @@ void QgsMaterialWidget::updateMaterialWidget()
       mStackedWidget->addWidget( w );
       mStackedWidget->setCurrentWidget( w );
       // start receiving updates from widget
-      connect( w, &QgsMaterialSettingsWidget::changed, this, &QgsMaterialWidget::materialWidgetChanged );
+      connect( w, &QgsMaterialSettingsWidget::widgetChanged, this, &QgsMaterialWidget::materialWidgetChanged );
       connect( w, &QgsMaterialSettingsWidget::showPanel, this, &QgsMaterialWidget::openPanel );
       return;
     }
