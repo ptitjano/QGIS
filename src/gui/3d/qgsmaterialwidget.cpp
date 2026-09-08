@@ -172,7 +172,7 @@ void QgsMaterialWidget::materialTypeChanged()
 
       mCurrentSettings = std::move( newMaterial );
       updateMaterialWidget();
-      emit changed();
+      emit widgetChanged();
     }
   }
 }
@@ -183,7 +183,7 @@ void QgsMaterialWidget::materialWidgetChanged()
   {
     mCurrentSettings = w->settings();
   }
-  emit changed();
+  emit widgetChanged();
 }
 
 void QgsMaterialWidget::updateMaterialWidget()

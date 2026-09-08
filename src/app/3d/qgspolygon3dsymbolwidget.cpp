@@ -56,7 +56,7 @@ QgsPolygon3DSymbolWidget::QgsPolygon3DSymbolWidget( QWidget *parent )
   connect( mComboRenderedFacade, &QgsCheckableComboBox::checkedItemsChanged, this, &QgsPolygon3DSymbolWidget::changed );
   connect( chkAddBackFaces, &QCheckBox::toggled, this, &QgsPolygon3DSymbolWidget::changed );
   connect( chkInvertNormals, &QCheckBox::toggled, this, &QgsPolygon3DSymbolWidget::changed );
-  connect( widgetMaterial, &QgsMaterialWidget::changed, this, &QgsPolygon3DSymbolWidget::changed );
+  connect( widgetMaterial, &QgsMaterialWidget::widgetChanged, this, &QgsPolygon3DSymbolWidget::changed );
   connect( widgetMaterial, &QgsMaterialWidget::showPanel, this, &QgsPolygon3DSymbolWidget::openPanel );
   connect( btnHeightDD, &QgsPropertyOverrideButton::changed, this, &QgsPolygon3DSymbolWidget::changed );
   connect( btnExtrusionDD, &QgsPropertyOverrideButton::changed, this, &QgsPolygon3DSymbolWidget::changed );
