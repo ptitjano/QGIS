@@ -310,6 +310,14 @@ void Qgs3DMapCanvas::setMapTool( Qgs3DMapTool *tool )
   emit mapToolSet( mMapTool, oldTool );
 }
 
+void Qgs3DMapCanvas::unsetMapTool( Qgs3DMapTool *tool )
+{
+  if ( mMapTool && mMapTool == tool )
+  {
+    setMapTool( nullptr );
+  }
+}
+
 bool Qgs3DMapCanvas::eventFilter( QObject *watched, QEvent *event )
 {
   if ( watched == this )
