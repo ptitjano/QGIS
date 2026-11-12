@@ -21,6 +21,7 @@
 #include "qgs3dcameracontrolswidget.h"
 #include "qgs3ddebugwidget.h"
 #include "qgs3dmapcanvas.h"
+#include "qgs3dmapcanvastoolbarfactory.h"
 #include "qgs3dmapconfigwidget.h"
 #include "qgs3dmapexportsettings.h"
 #include "qgs3dmapexportwidget.h"
@@ -528,6 +529,13 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   layout->setSpacing( 0 );
   layout->addLayout( topLayout );
   layout->addWidget( mEditingToolBar );
+
+  // Add a layout for toolbars created by Qgs3DMapCanvasToolBarFactory (a plugin)
+  mFactoryToolBarsLayout = new QVBoxLayout;
+  mFactoryToolBarsLayout->setContentsMargins( 0, 0, 0, 0 );
+  mFactoryToolBarsLayout->setSpacing( 0 );
+  layout->addLayout( mFactoryToolBarsLayout );
+
   layout->addWidget( mMessageBar );
 
   mOpenGLSupported = isOpenGLSupported();
@@ -586,8 +594,13 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   dockAction->setObjectName( u"m3DActionDock"_s );
   toolBar->addAction( dockAction );
   connect( mDockableWidgetHelper, &QgsDockableWidgetHelper::closed, this, [this]() { QgisApp::instance()->close3DMapView( canvasName() ); } );
-  connect( dockAction, &QAction::toggled, this, [toolBar]( const bool isSmallSize ) {
-    toolBar->setIconSize( QgsGui::iconSize( isSmallSize ? Qgis::UserInterfaceIconType::DockedToolbar : Qgis::UserInterfaceIconType::MainWindowToolbar ) );
+  connect( dockAction, &QAction::toggled, this, [this, toolBar]( const bool isSmallSize ) {
+    const QSize iconSize = QgsGui::iconSize( isSmallSize ? Qgis::UserInterfaceIconType::DockedToolbar : Qgis::UserInterfaceIconType::MainWindowToolbar );
+    toolBar->setIconSize( iconSize );
+    for ( QToolBar *factoryToolBar : std::as_const( mFactoryToolBars ) )
+    {
+      factoryToolBar->setIconSize( iconSize );
+    }
   } );
 
   updateLayerRelatedActions( QgisApp::instance()->activeLayer() );
@@ -616,6 +629,34 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
 
   toolBar->installEventFilter( this );
   mEditingToolBar->installEventFilter( this );
+}
+
+void Qgs3DMapCanvasWidget::addToolBarFromFactory( Qgs3DMapCanvasToolBarFactory *factory )
+{
+  if ( !factory || mFactoryToolBars.contains( factory ) )
+  {
+    return;
+  }
+
+  QToolBar *toolBar = factory->createToolBar( mCanvas, this );
+  if ( !toolBar )
+  {
+    return;
+  }
+
+  toolBar->setIconSize( QgsGui::iconSize( mDockableWidgetHelper->isDocked() ? Qgis::UserInterfaceIconType::DockedToolbar : Qgis::UserInterfaceIconType::MainWindowToolbar ) );
+
+  mFactoryToolBarsLayout->addWidget( toolBar );
+  mToolbarMenu->addAction( toolBar->toggleViewAction() );
+  toolBar->installEventFilter( this );
+
+  mFactoryToolBars.insert( factory, toolBar );
+}
+
+void Qgs3DMapCanvasWidget::removeToolBarFromFactory( Qgs3DMapCanvasToolBarFactory *factory )
+{
+  QToolBar *toolbar = mFactoryToolBars.take( factory );
+  delete toolbar;
 }
 
 Qgs3DMapCanvasWidget::~Qgs3DMapCanvasWidget()

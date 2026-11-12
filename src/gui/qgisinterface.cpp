@@ -19,3 +19,13 @@
 #include "qgisinterface.h"
 
 #include "moc_qgisinterface.cpp"
+
+void QgisInterface::register3DMapCanvasToolBarFactory( Qgs3DMapCanvasToolBarFactory *factory )
+{
+  Q_UNUSED( factory )
+}
+
+void QgisInterface::unregister3DMapCanvasToolBarFactory( Qgs3DMapCanvasToolBarFactory *factory )
+{
+  Q_UNUSED( factory )
+}
