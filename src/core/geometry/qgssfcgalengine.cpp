@@ -15,7 +15,9 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifdef WITH_SFCGAL
+#include "qgsconfig.h"
+
+#ifdef HAVE_SFCGAL
 #include "qgssfcgalengine.h"
 
 #include <SFCGAL/capi/sfcgal_c.h>
@@ -1446,4 +1448,4 @@ sfcgal::shared_prim QgsSfcgalEngine::primitiveScale( const sfcgal::primitive *pr
 #endif
 
 
-#endif // #ifdef WITH_SFCGAL
+#endif // #ifdef HAVE_SFCGAL

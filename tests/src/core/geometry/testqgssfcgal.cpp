@@ -12,7 +12,9 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#ifdef WITH_SFCGAL
+#include "qgsconfig.h"
+
+#ifdef HAVE_SFCGAL
 
 #include <cmath>
 #include <memory>
