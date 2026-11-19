@@ -292,8 +292,9 @@ void Qgs3DMapCanvas::setMapTool( Qgs3DMapTool *tool )
     setCursor( Qt::OpenHandCursor );
   }
 
-  if ( mMapTool )
-    mMapTool->deactivate();
+  Qgs3DMapTool *oldTool = mMapTool;
+  if ( oldTool )
+    oldTool->deactivate();
 
   mMapTool = tool;
 
@@ -302,6 +303,8 @@ void Qgs3DMapCanvas::setMapTool( Qgs3DMapTool *tool )
     mMapTool->activate();
     setCursor( mMapTool->cursor() );
   }
+
+  emit mapToolSet( mMapTool, oldTool );
 }
 
 bool Qgs3DMapCanvas::eventFilter( QObject *watched, QEvent *event )
