@@ -493,8 +493,10 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   connect( resultDialog, &QgsIdentifyResultsDialog::highlightsCleared, mCanvas, &Qgs3DMapCanvas::clearHighlights );
 
   mMapToolIdentify = new Qgs3DMapToolIdentify( mCanvas );
+  mMapToolIdentify->setAction( actionIdentify );
 
   mMapToolMeasureLine = new Qgs3DMapToolMeasureLine( this );
+  mMapToolMeasureLine->setAction( actionMeasurementTool );
 
   mMapToolChangeAttribute = new Qgs3DMapToolPointCloudChangeAttribute( mCanvas );
 
@@ -724,13 +726,14 @@ void Qgs3DMapCanvasWidget::measureLine()
 
 void Qgs3DMapCanvasWidget::changePointCloudAttributeByPaintbrush()
 {
-  const QAction *action = qobject_cast<QAction *>( sender() );
+  QAction *action = qobject_cast<QAction *>( sender() );
   if ( !action )
     return;
 
   mCanvas->requestActivate();
   mMapToolChangeAttribute->deleteLater();
   mMapToolChangeAttribute = new Qgs3DMapToolPointCloudChangeAttributePaintbrush( mCanvas );
+  mMapToolChangeAttribute->setAction( action );
   onPointCloudChangeAttributeSettingsChanged();
   mCanvas->setMapTool( mMapToolChangeAttribute );
   mEditingToolsAction->setIcon( action->icon() );
@@ -738,12 +741,13 @@ void Qgs3DMapCanvasWidget::changePointCloudAttributeByPaintbrush()
 
 void Qgs3DMapCanvasWidget::changePointCloudAttributeByPolygon()
 {
-  const QAction *action = qobject_cast<QAction *>( sender() );
+  QAction *action = qobject_cast<QAction *>( sender() );
   if ( !action )
     return;
 
   mMapToolChangeAttribute->deleteLater();
   mMapToolChangeAttribute = new Qgs3DMapToolPointCloudChangeAttributePolygon( mCanvas, Qgs3DMapToolPointCloudChangeAttributePolygon::Polygon );
+  mMapToolChangeAttribute->setAction( action );
   onPointCloudChangeAttributeSettingsChanged();
   mCanvas->setMapTool( mMapToolChangeAttribute );
   mEditingToolsAction->setIcon( action->icon() );
@@ -751,12 +755,13 @@ void Qgs3DMapCanvasWidget::changePointCloudAttributeByPolygon()
 
 void Qgs3DMapCanvasWidget::changePointCloudAttributeByAboveLine()
 {
-  const QAction *action = qobject_cast<QAction *>( sender() );
+  QAction *action = qobject_cast<QAction *>( sender() );
   if ( !action )
     return;
 
   mMapToolChangeAttribute->deleteLater();
   mMapToolChangeAttribute = new Qgs3DMapToolPointCloudChangeAttributePolygon( mCanvas, Qgs3DMapToolPointCloudChangeAttributePolygon::AboveLine );
+  mMapToolChangeAttribute->setAction( action );
   onPointCloudChangeAttributeSettingsChanged();
   mCanvas->setMapTool( mMapToolChangeAttribute );
   mEditingToolsAction->setIcon( action->icon() );
@@ -764,12 +769,13 @@ void Qgs3DMapCanvasWidget::changePointCloudAttributeByAboveLine()
 
 void Qgs3DMapCanvasWidget::changePointCloudAttributeByBelowLine()
 {
-  const QAction *action = qobject_cast<QAction *>( sender() );
+  QAction *action = qobject_cast<QAction *>( sender() );
   if ( !action )
     return;
 
   mMapToolChangeAttribute->deleteLater();
   mMapToolChangeAttribute = new Qgs3DMapToolPointCloudChangeAttributePolygon( mCanvas, Qgs3DMapToolPointCloudChangeAttributePolygon::BelowLine );
+  mMapToolChangeAttribute->setAction( action );
   onPointCloudChangeAttributeSettingsChanged();
   mCanvas->setMapTool( mMapToolChangeAttribute );
   mEditingToolsAction->setIcon( action->icon() );
