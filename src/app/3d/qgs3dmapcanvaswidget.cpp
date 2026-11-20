@@ -21,6 +21,7 @@
 #include "qgs3dcameracontrolswidget.h"
 #include "qgs3ddebugwidget.h"
 #include "qgs3dmapcanvas.h"
+#include "qgs3dmapcanvastoolbarfactory.h"
 #include "qgs3dmapconfigwidget.h"
 #include "qgs3dmapexportsettings.h"
 #include "qgs3dmapexportwidget.h"
@@ -114,6 +115,7 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   QAction *actionCameraControl = toolBar->addAction( QIcon( QgsApplication::iconPath( "mActionPan.svg" ) ), tr( "Camera Control" ), this, &Qgs3DMapCanvasWidget::cameraControl );
   actionCameraControl->setObjectName( u"m3DActionCameraControl"_s );
   actionCameraControl->setCheckable( true );
+  actionCameraControl->setChecked( true );
 
   QAction *zoomFullAction = toolBar->addAction( QgsApplication::getThemeIcon( u"mActionZoomFullExtent.svg"_s ), tr( "Zoom Full" ), this, &Qgs3DMapCanvasWidget::resetView );
   zoomFullAction->setObjectName( u"m3DActionZoomFull"_s );
@@ -488,8 +490,10 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   connect( resultDialog, &QgsIdentifyResultsDialog::highlightsCleared, mCanvas, &Qgs3DMapCanvas::clearHighlights );
 
   mMapToolIdentify = new Qgs3DMapToolIdentify( mCanvas );
+  mMapToolIdentify->setAction( actionIdentify );
 
   mMapToolMeasureLine = new Qgs3DMapToolMeasureLine( this );
+  mMapToolMeasureLine->setAction( actionMeasurementTool );
 
   mMapToolChangeAttribute = new Qgs3DMapToolPointCloudChangeAttribute( mCanvas );
 
@@ -528,6 +532,13 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   layout->setSpacing( 0 );
   layout->addLayout( topLayout );
   layout->addWidget( mEditingToolBar );
+
+  // Add a layout for toolbars created by Qgs3DMapCanvasToolBarFactory (a plugin)
+  mFactoryToolBarsLayout = new QVBoxLayout;
+  mFactoryToolBarsLayout->setContentsMargins( 0, 0, 0, 0 );
+  mFactoryToolBarsLayout->setSpacing( 0 );
+  layout->addLayout( mFactoryToolBarsLayout );
+
   layout->addWidget( mMessageBar );
 
   mOpenGLSupported = isOpenGLSupported();
@@ -618,6 +629,34 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
   mEditingToolBar->installEventFilter( this );
 }
 
+void Qgs3DMapCanvasWidget::addToolBarFromFactory( Qgs3DMapCanvasToolBarFactory *factory )
+{
+  if ( !factory || mFactoryToolBars.contains( factory ) )
+  {
+    return;
+  }
+
+  QToolBar *toolBar = factory->createToolBar( mCanvas, this );
+  if ( !toolBar )
+  {
+    return;
+  }
+
+  toolBar->setIconSize( QgsGui::iconSize( mDockableWidgetHelper->isDocked() ? Qgis::UserInterfaceIconType::DockedToolbar : Qgis::UserInterfaceIconType::MainWindowToolbar ) );
+
+  mFactoryToolBarsLayout->addWidget( toolBar );
+  mToolbarMenu->addAction( toolBar->toggleViewAction() );
+  toolBar->installEventFilter( this );
+
+  mFactoryToolBars.insert( factory, toolBar );
+}
+
+void Qgs3DMapCanvasWidget::removeToolBarFromFactory( Qgs3DMapCanvasToolBarFactory *factory )
+{
+  QToolBar *toolbar = mFactoryToolBars.take( factory );
+  delete toolbar;
+}
+
 Qgs3DMapCanvasWidget::~Qgs3DMapCanvasWidget()
 {
   if ( mCrossSectionRubberBand )
@@ -684,13 +723,14 @@ void Qgs3DMapCanvasWidget::measureLine()
 
 void Qgs3DMapCanvasWidget::changePointCloudAttributeByPaintbrush()
 {
-  const QAction *action = qobject_cast<QAction *>( sender() );
+  QAction *action = qobject_cast<QAction *>( sender() );
   if ( !action )
     return;
 
   mCanvas->requestActivate();
   mMapToolChangeAttribute->deleteLater();
   mMapToolChangeAttribute = new Qgs3DMapToolPointCloudChangeAttributePaintbrush( mCanvas );
+  mMapToolChangeAttribute->setAction( action );
   onPointCloudChangeAttributeSettingsChanged();
   mCanvas->setMapTool( mMapToolChangeAttribute );
   mEditingToolsAction->setIcon( action->icon() );
@@ -698,12 +738,13 @@ void Qgs3DMapCanvasWidget::changePointCloudAttributeByPaintbrush()
 
 void Qgs3DMapCanvasWidget::changePointCloudAttributeByPolygon()
 {
-  const QAction *action = qobject_cast<QAction *>( sender() );
+  QAction *action = qobject_cast<QAction *>( sender() );
   if ( !action )
     return;
 
   mMapToolChangeAttribute->deleteLater();
   mMapToolChangeAttribute = new Qgs3DMapToolPointCloudChangeAttributePolygon( mCanvas, Qgs3DMapToolPointCloudChangeAttributePolygon::Polygon );
+  mMapToolChangeAttribute->setAction( action );
   onPointCloudChangeAttributeSettingsChanged();
   mCanvas->setMapTool( mMapToolChangeAttribute );
   mEditingToolsAction->setIcon( action->icon() );
@@ -711,12 +752,13 @@ void Qgs3DMapCanvasWidget::changePointCloudAttributeByPolygon()
 
 void Qgs3DMapCanvasWidget::changePointCloudAttributeByAboveLine()
 {
-  const QAction *action = qobject_cast<QAction *>( sender() );
+  QAction *action = qobject_cast<QAction *>( sender() );
   if ( !action )
     return;
 
   mMapToolChangeAttribute->deleteLater();
   mMapToolChangeAttribute = new Qgs3DMapToolPointCloudChangeAttributePolygon( mCanvas, Qgs3DMapToolPointCloudChangeAttributePolygon::AboveLine );
+  mMapToolChangeAttribute->setAction( action );
   onPointCloudChangeAttributeSettingsChanged();
   mCanvas->setMapTool( mMapToolChangeAttribute );
   mEditingToolsAction->setIcon( action->icon() );
@@ -724,12 +766,13 @@ void Qgs3DMapCanvasWidget::changePointCloudAttributeByAboveLine()
 
 void Qgs3DMapCanvasWidget::changePointCloudAttributeByBelowLine()
 {
-  const QAction *action = qobject_cast<QAction *>( sender() );
+  QAction *action = qobject_cast<QAction *>( sender() );
   if ( !action )
     return;
 
   mMapToolChangeAttribute->deleteLater();
   mMapToolChangeAttribute = new Qgs3DMapToolPointCloudChangeAttributePolygon( mCanvas, Qgs3DMapToolPointCloudChangeAttributePolygon::BelowLine );
+  mMapToolChangeAttribute->setAction( action );
   onPointCloudChangeAttributeSettingsChanged();
   mCanvas->setMapTool( mMapToolChangeAttribute );
   mEditingToolsAction->setIcon( action->icon() );
@@ -777,9 +820,7 @@ void Qgs3DMapCanvasWidget::updateLayerRelatedActions( QgsMapLayer *layer )
     mActionUndo->setEnabled( false );
     mActionRedo->setEnabled( false );
 
-    if ( mCanvas->mapTool() && mCanvas->mapTool() == mMapToolChangeAttribute )
-      mCanvas->setMapTool( nullptr );
-
+    mCanvas->unsetMapTool( mMapToolChangeAttribute );
     return;
   }
 

@@ -87,6 +87,7 @@ using namespace Qt::StringLiterals;
 
 #include "qgsmaplayerutils.h"
 #include "qgsappmenuutils.h"
+#include "qgsconfig.h"
 #include "qgsscreenhelper.h"
 #include "qgssettingsregistrycore.h"
 #include "qgssettingsentryenumflag.h"
@@ -196,7 +197,7 @@ using namespace Qt::StringLiterals;
 #include "qgsdirectionallightsettings.h"
 #endif
 
-#ifdef WITH_SFCGAL
+#ifdef HAVE_SFCGAL
 #include <SFCGAL/capi/sfcgal_c.h>
 #include <SFCGAL/version.h>
 #endif
@@ -5738,7 +5739,7 @@ QString QgisApp::getVersionString()
   versionString += "</td></tr><tr>"_L1;
 
   // SFCGAL version
-#ifdef WITH_SFCGAL
+#ifdef HAVE_SFCGAL
   const QString sfcgalVersionCompiled { SFCGAL_VERSION };
   const QString sfcgalVersionRunning { sfcgal_version() };
   versionString += u"<td>%1</td><td>%2"_s.arg( tr( "SFCGAL version" ), sfcgalVersionCompiled );
@@ -13262,6 +13263,30 @@ void QgisApp::unregisterApplicationExitBlocker( QgsApplicationExitBlockerInterfa
   mApplicationExitBlockers.removeAll( blocker );
 }
 
+void QgisApp::register3DMapCanvasToolBarFactory( Qgs3DMapCanvasToolBarFactory *factory )
+{
+  m3DMapCanvasToolBarFactories << factory;
+
+#ifdef HAVE_3D
+  for ( Qgs3DMapCanvasWidget *widget : std::as_const( mOpen3DMapViews ) )
+  {
+    widget->addToolBarFromFactory( factory );
+  }
+#endif
+}
+
+void QgisApp::unregister3DMapCanvasToolBarFactory( Qgs3DMapCanvasToolBarFactory *factory )
+{
+  m3DMapCanvasToolBarFactories.removeAll( factory );
+
+#ifdef HAVE_3D
+  for ( Qgs3DMapCanvasWidget *widget : std::as_const( mOpen3DMapViews ) )
+  {
+    widget->removeToolBarFromFactory( factory );
+  }
+#endif
+}
+
 void QgisApp::registerMapToolHandler( QgsAbstractMapToolHandler *handler )
 {
   if ( !handler->action() || !handler->mapTool() )
@@ -13540,6 +13565,10 @@ Qgs3DMapCanvasWidget *QgisApp::createNew3DMapCanvasDock( const QString &name, bo
 
   mOpen3DMapViews.insert( widget );
   widget->setMainCanvas( mMapCanvas );
+  for ( Qgs3DMapCanvasToolBarFactory *factory : std::as_const( m3DMapCanvasToolBarFactories ) )
+  {
+    widget->addToolBarFromFactory( factory );
+  }
   widget->mapCanvas3D()->setTemporalController( mTemporalControllerWidget->temporalController() );
 
   for ( QgsElevationProfileWidget *profileWidget : std::as_const( mElevationProfileWidgets ) )
