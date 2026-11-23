@@ -18,8 +18,6 @@
 
 #include "qgis_gui.h"
 
-#define SIP_NO_FILE
-
 class Qgs3DMapCanvas;
 class QToolBar;
 class QWidget;
@@ -32,7 +30,6 @@ class QWidget;
  * Factories are registered through QgisInterface::register3DMapCanvasToolBarFactory().
  * The created toolbar is shown below the 3D map view's own toolbars.
  *
- * \note Not available in Python bindings
  * \since QGIS 4.4.1
  */
 class GUI_EXPORT Qgs3DMapCanvasToolBarFactory
@@ -43,7 +40,7 @@ class GUI_EXPORT Qgs3DMapCanvasToolBarFactory
     /**
      * Creates a new toolbar for the 3D map \a canvas with the specified \a parent.
      */
-    virtual QToolBar *createToolBar( Qgs3DMapCanvas *canvas, QWidget *parent ) = 0;
+    virtual QToolBar *createToolBar( Qgs3DMapCanvas *canvas, QWidget *parent ) = 0 SIP_FACTORY;
 };
 
 #endif // QGS3DMAPCANVASTOOLBARFACTORY_H
