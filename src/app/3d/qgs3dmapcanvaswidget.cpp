@@ -551,6 +551,7 @@ Qgs3DMapCanvasWidget::Qgs3DMapCanvasWidget( const QString &name, bool isDocked )
     mContainer = QWidget::createWindowContainer( mCanvas );
     mContainer->setFocusPolicy( Qt::FocusPolicy::StrongFocus );
     mContainer->installEventFilter( mCanvas );
+    mCanvas->installEventFilter( this );
   }
   else
   {
